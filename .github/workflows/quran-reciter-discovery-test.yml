@@ -1,0 +1,241 @@
+name: Quran Reciter Discovery Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  reciter-discovery:
+    runs-on: ubuntu-latest
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --quiet requests
+
+      - name: Authenticate with Quran Foundation
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+
+          if not client_id or not client_secret:
+              print("ERROR: Quran Foundation credentials are missing.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: QF_ENV must be production or prelive.")
+              sys.exit(1)
+
+          response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not response.ok:
+              print(f"Authentication failed: HTTP {response.status_code}")
+              sys.exit(1)
+
+          token = response.json().get("access_token")
+
+          if not token:
+              print("ERROR: No access token returned.")
+              sys.exit(1)
+
+          print("Authentication: SUCCESS")
+
+          # Persist only non-secret configuration.
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"QF_API_BASE={api_base}\n")
+              f.write(f"QF_ACCESS_TOKEN={token}\n")
+          PY
+
+      - name: Discover ayah-by-ayah recitations
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_API_BASE: ${{ env.QF_API_BASE }}
+          QF_ACCESS_TOKEN: ${{ env.QF_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          api_base = os.environ["QF_API_BASE"]
+          token = os.environ["QF_ACCESS_TOKEN"]
+          client_id = os.environ["QF_CLIENT_ID"]
+
+          response = requests.get(
+              f"{api_base}/content/api/v4/resources/recitations",
+              params={"language": "en"},
+              headers={
+                  "x-auth-token": token,
+                  "x-client-id": client_id,
+              },
+              timeout=30,
+          )
+
+          print(f"Ayah recitation catalog: HTTP {response.status_code}")
+
+          if not response.ok:
+              print("ERROR: Could not retrieve ayah recitation catalog.")
+              print(response.text[:500])
+              sys.exit(1)
+
+          data = response.json()
+          recitations = data.get("recitations", [])
+
+          print(f"Total ayah recitations returned: {len(recitations)}")
+          print("")
+          print("MATCHING SAAD / GHAMDI RECITATIONS:")
+
+          matches = []
+
+          for item in recitations:
+              name = str(item.get("reciter_name", ""))
+              translated = item.get("translated_name") or {}
+              translated_name = str(translated.get("name", ""))
+
+              combined = f"{name} {translated_name}".lower()
+
+              if "saad" in combined or "ghamdi" in combined or "ghamdi" in combined:
+                  matches.append(item)
+
+          if not matches:
+              print("NONE FOUND")
+          else:
+              for item in matches:
+                  print(
+                      f"ID: {item.get('id')} | "
+                      f"Name: {item.get('reciter_name')} | "
+                      f"Style: {item.get('style')}"
+                  )
+
+          print("")
+          print(f"Matching ayah recitations: {len(matches)}")
+
+          # Save safe metadata only.
+          with open("ayah-reciter-results.txt", "w", encoding="utf-8") as f:
+              for item in matches:
+                  f.write(
+                      f"ID={item.get('id')}\n"
+                      f"NAME={item.get('reciter_name')}\n"
+                      f"STYLE={item.get('style')}\n"
+                      "---\n"
+                  )
+          PY
+
+      - name: Discover chapter reciters
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_API_BASE: ${{ env.QF_API_BASE }}
+          QF_ACCESS_TOKEN: ${{ env.QF_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          api_base = os.environ["QF_API_BASE"]
+          token = os.environ["QF_ACCESS_TOKEN"]
+          client_id = os.environ["QF_CLIENT_ID"]
+
+          response = requests.get(
+              f"{api_base}/content/api/v4/resources/chapter_reciters",
+              params={"language": "en"},
+              headers={
+                  "x-auth-token": token,
+                  "x-client-id": client_id,
+              },
+              timeout=30,
+          )
+
+          print(f"Chapter reciter catalog: HTTP {response.status_code}")
+
+          if not response.ok:
+              print("ERROR: Could not retrieve chapter reciter catalog.")
+              print(response.text[:500])
+              sys.exit(1)
+
+          data = response.json()
+          reciters = data.get("reciters", [])
+
+          print(f"Total chapter reciters returned: {len(reciters)}")
+          print("")
+          print("MATCHING SAAD / GHAMDI CHAPTER RECITERS:")
+
+          matches = []
+
+          for item in reciters:
+              name = str(item.get("name", ""))
+              translated = item.get("translated_name") or {}
+              translated_name = str(translated.get("name", ""))
+
+              combined = f"{name} {translated_name}".lower()
+
+              if "saad" in combined or "ghamdi" in combined:
+                  matches.append(item)
+
+          if not matches:
+              print("NONE FOUND")
+          else:
+              for item in matches:
+                  style = item.get("style") or {}
+                  qirat = item.get("qirat") or {}
+
+                  print(
+                      f"ID: {item.get('id')} | "
+                      f"Name: {item.get('name')} | "
+                      f"Style: {style.get('name')} | "
+                      f"Qira'at: {qirat.get('name')}"
+                  )
+
+          print("")
+          print(f"Matching chapter reciters: {len(matches)}")
+
+          # Save safe metadata only.
+          with open("chapter-reciter-results.txt", "w", encoding="utf-8") as f:
+              for item in matches:
+                  style = item.get("style") or {}
+                  qirat = item.get("qirat") or {}
+
+                  f.write(
+                      f"ID={item.get('id')}\n"
+                      f"NAME={item.get('name')}\n"
+                      f"STYLE={style.get('name')}\n"
+                      f"QIRAT={qirat.get('name')}\n"
+                      "---\n"
+                  )
+          PY
+
+      - name: Upload discovery results
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-reciter-discovery
+          path: |
+            ayah-reciter-results.txt
+            chapter-reciter-results.txt
+          retention-days: 1
