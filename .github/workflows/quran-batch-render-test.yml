@@ -1,0 +1,324 @@
+name: Quran Batch Render Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  batch-render-test:
+    runs-on: ubuntu-latest
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --quiet requests
+
+      - name: Install FFmpeg and Arabic fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ffmpeg \
+            fonts-noto-core \
+            fonts-noto-extra \
+            fontconfig
+
+          fc-match "Noto Naskh Arabic"
+
+      - name: Fetch verses 1:1 through 1:5
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import json
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+
+          if not client_id or not client_secret:
+              print("ERROR: Quran Foundation credentials are missing.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: QF_ENV must be production or prelive.")
+              sys.exit(1)
+
+          token_response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not token_response.ok:
+              print(
+                  f"Authentication failed: HTTP "
+                  f"{token_response.status_code}"
+              )
+              sys.exit(1)
+
+          token_data = token_response.json()
+          access_token = token_data.get("access_token")
+
+          if not access_token:
+              print("ERROR: No access token returned.")
+              sys.exit(1)
+
+          print("Authentication: SUCCESS")
+
+          verses = []
+
+          for ayah in range(1, 6):
+              verse_key = f"1:{ayah}"
+
+              response = requests.get(
+                  f"{api_base}/content/api/v4/verses/by_key/{verse_key}",
+                  params={
+                      "translations": "20",
+                      "fields": "text_uthmani",
+                  },
+                  headers={
+                      "x-auth-token": access_token,
+                      "x-client-id": client_id,
+                  },
+                  timeout=30,
+              )
+
+              print(
+                  f"{verse_key}: Quran API HTTP "
+                  f"{response.status_code}"
+              )
+
+              if not response.ok:
+                  print(f"ERROR: API request failed for {verse_key}")
+                  print(response.text[:500])
+                  sys.exit(1)
+
+              data = response.json()
+              verse = data.get("verse")
+
+              if not isinstance(verse, dict):
+                  print(f"ERROR: No verse object for {verse_key}")
+                  sys.exit(1)
+
+              arabic_text = verse.get("text_uthmani")
+              translations = verse.get("translations", [])
+
+              if verse.get("verse_key") != verse_key:
+                  print(
+                      f"ERROR: Expected {verse_key}, "
+                      f"got {verse.get('verse_key')}"
+                  )
+                  sys.exit(1)
+
+              if not isinstance(arabic_text, str) or not arabic_text.strip():
+                  print(f"ERROR: Arabic text missing for {verse_key}")
+                  sys.exit(1)
+
+              selected_translation = None
+
+              for translation in translations:
+                  if str(translation.get("resource_id")) == "20":
+                      selected_translation = translation
+                      break
+
+              if selected_translation is None:
+                  print(
+                      f"ERROR: Translation resource 20 "
+                      f"missing for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              english_text = selected_translation.get("text")
+
+              if not isinstance(english_text, str) or not english_text.strip():
+                  print(
+                      f"ERROR: Translation text missing for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              verses.append(
+                  {
+                      "verse_key": verse_key,
+                      "arabic_text": arabic_text,
+                      "translation": {
+                          "resource_id": 20,
+                          "text": english_text,
+                      },
+                  }
+              )
+
+              print(
+                  f"PASS {verse_key} | "
+                  f"Arabic=yes | resource=20 | translation=yes"
+              )
+
+          os.makedirs("output", exist_ok=True)
+
+          with open(
+              "output/quran-batch-input.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  {
+                      "translation_resource_id": 20,
+                      "verses": verses,
+                  },
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("")
+          print("QURAN BATCH INPUT: CREATED")
+          print("Verses: 1:1, 1:2, 1:3, 1:4, 1:5")
+          print("Translation resource: 20")
+          print("Verse count: 5")
+          print("Credentials: NOT written to output")
+          print("STEP 28A DATA TEST: PASSED")
+          PY
+
+      - name: Create batch subtitle file
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          data = json.loads(
+              Path("output/quran-batch-input.json")
+              .read_text(encoding="utf-8")
+          )
+
+          verses = data.get("verses", [])
+
+          if len(verses) != 5:
+              raise SystemExit(
+                  f"ERROR: Expected 5 verses, got {len(verses)}"
+              )
+
+          def clean_translation(text):
+              text = re.sub(
+                  r"<sup\b[^>]*>.*?</sup>",
+                  "",
+                  text,
+                  flags=re.IGNORECASE | re.DOTALL,
+              )
+              return re.sub(r"<[^>]+>", "", text).strip()
+
+          lines = [
+              "[Script Info]",
+              "ScriptType: v4.00+",
+              "PlayResX: 1080",
+              "PlayResY: 1920",
+              "WrapStyle: 2",
+              "ScaledBorderAndShadow: yes",
+              "",
+              "[V4+ Styles]",
+              "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+              "Style: Reference,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,1,0,0,0,100,100,0,0,1,3,1,8,80,80,140,1",
+              "Style: Arabic,Noto Naskh Arabic,82,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,5,80,80,0,1",
+              "Style: English,Noto Sans,48,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,5,100,100,0,1",
+              "",
+              "[Events]",
+              "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+          ]
+
+          for index, verse in enumerate(verses):
+              start = index * 4
+              end = start + 4
+
+              start_time = f"0:00:{start:02d}.00"
+              end_time = f"0:00:{end:02d}.00"
+
+              verse_key = verse["verse_key"]
+              arabic = verse["arabic_text"].strip()
+              english = clean_translation(
+                  verse["translation"]["text"]
+              )
+
+              if not english:
+                  raise SystemExit(
+                      f"ERROR: Empty translation after cleanup for {verse_key}"
+                  )
+
+              lines.append(
+                  f"Dialogue: 0,{start_time},{end_time},Reference,,0,0,140,,VERSE {verse_key}"
+              )
+              lines.append(
+                  f"Dialogue: 0,{start_time},{end_time},Arabic,,0,0,0,,{arabic}"
+              )
+              lines.append(
+                  f"Dialogue: 0,{start_time},{end_time},English,,0,0,0,,{english}"
+              )
+
+          Path("output/quran-batch.ass").write_text(
+              "\n".join(lines) + "\n",
+              encoding="utf-8",
+          )
+
+          print("Batch subtitle generation: SUCCESS")
+          print("Subtitle entries: 15")
+          print("Verses: 1:1 through 1:5")
+          PY
+
+      - name: Create test background
+        run: |
+          ffmpeg \
+            -y \
+            -f lavfi \
+            -i "testsrc2=size=1080x1920:rate=30" \
+            -t 20 \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            output/batch-background.mp4
+
+      - name: Render five verses
+        run: |
+          ffmpeg \
+            -y \
+            -i output/batch-background.mp4 \
+            -vf "subtitles=output/quran-batch.ass:fontsdir=/usr/share/fonts/truetype/noto" \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            -movflags +faststart \
+            output/quran-batch-render-test.mp4
+
+      - name: Verify final video
+        run: |
+          ffprobe \
+            -v error \
+            -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            output/quran-batch-render-test.mp4
+
+      - name: Upload batch test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-batch-render-test
+          path: |
+            output/quran-batch-input.json
+            output/quran-batch.ass
+            output/quran-batch-render-test.mp4
+          retention-days: 1
