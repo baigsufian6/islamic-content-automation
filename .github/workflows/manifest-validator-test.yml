@@ -37,10 +37,15 @@ jobs:
           # 999:2
           # 999:4
 
-          data["ayahs"][1], data["ayahs"][2] = (
-              data["ayahs"][2],
-              data["ayahs"][1],
-          )
+          # Deliberately create an incorrect ayah sequence.
+          # Keep sequence_index values intact so the validator
+          # must detect the verse-order mismatch itself.
+
+          data["ayahs"][1]["ayah_number"] = 3
+          data["ayahs"][1]["verse_key"] = "999:3"
+
+          data["ayahs"][2]["ayah_number"] = 2
+          data["ayahs"][2]["verse_key"] = "999:2"
 
           with open(destination, "w", encoding="utf-8") as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
