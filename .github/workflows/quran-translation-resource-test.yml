@@ -10,14 +10,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Install Python dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install requests
 
-      - name: Verify English translation resource
+      - name: Verify Clear Quran translation resource 131
         env:
           QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
@@ -27,23 +27,54 @@ jobs:
           import requests
           from requests.auth import HTTPBasicAuth
 
-          AUTH_URL = "https://oauth2.quran.foundation"
-          API_URL = "https://apis.quran.foundation"
+          # -------------------------------------------------
+          # Official Quran.Foundation production endpoints
+          # -------------------------------------------------
 
+          AUTH_URL = "https://oauth2.quran.foundation"
+          API_BASE = "https://apis.quran.foundation/content/api/v4"
+
+          # The exact translation resource we have selected.
           TARGET_RESOURCE_ID = 131
-          TARGET_NAME = "Dr. Mustafa Khattab, the Clear Quran"
-          TARGET_AUTHOR = "Dr. Mustafa Khattab"
-          TARGET_LANGUAGE = "english"
+
+          EXPECTED_RESOURCE_NAME = (
+              "Dr. Mustafa Khattab, the Clear Quran"
+          )
+
+          EXPECTED_AUTHOR = "Dr. Mustafa Khattab"
+          EXPECTED_LANGUAGE = "english"
+
+          # We use ONE specific ayah for this verification.
+          TEST_VERSE_KEY = "1:1"
 
           # -------------------------------------------------
-          # 1. Authenticate
+          # 1. Validate required secrets exist
+          # -------------------------------------------------
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+
+          if not client_id:
+              raise SystemExit(
+                  "QF_CLIENT_ID secret is missing."
+              )
+
+          if not client_secret:
+              raise SystemExit(
+                  "QF_CLIENT_SECRET secret is missing."
+              )
+
+          print("QF credentials detected.")
+
+          # -------------------------------------------------
+          # 2. Get production Content API access token
           # -------------------------------------------------
 
           token_response = requests.post(
               f"{AUTH_URL}/oauth2/token",
               auth=HTTPBasicAuth(
-                  os.environ["QF_CLIENT_ID"],
-                  os.environ["QF_CLIENT_SECRET"],
+                  client_id,
+                  client_secret,
               ),
               headers={
                   "Content-Type":
@@ -56,129 +87,220 @@ jobs:
               timeout=30,
           )
 
-          token_response.raise_for_status()
+          if token_response.status_code != 200:
+              print(
+                  "Authentication failed with HTTP status:",
+                  token_response.status_code,
+              )
 
-          access_token = token_response.json()["access_token"]
+              try:
+                  print(
+                      "API response:",
+                      token_response.json(),
+                  )
+              except Exception:
+                  print(
+                      "API response:",
+                      token_response.text[:500],
+                  )
 
-          headers = {
-              "x-auth-token": access_token,
-              "x-client-id": os.environ["QF_CLIENT_ID"],
-          }
+              raise SystemExit(
+                  "Quran.Foundation authentication failed."
+              )
+
+          token_data = token_response.json()
+
+          access_token = token_data.get("access_token")
+
+          if not access_token:
+              raise SystemExit(
+                  "Authentication succeeded but no access token "
+                  "was returned."
+              )
 
           print("Authentication: SUCCESS")
 
           # -------------------------------------------------
-          # 2. Retrieve translation resource catalog
+          # 3. Request one known verse with translation 131
+          #
+          # This is the official documented Content API pattern:
+          # /verses/by_key/{verse_key}?translations=131
           # -------------------------------------------------
 
-          page = 1
-          per_page = 50
-          resource = None
+          verse_url = (
+              f"{API_BASE}/verses/by_key/"
+              f"{TEST_VERSE_KEY}"
+          )
 
-          while True:
-              response = requests.get(
-                  f"{API_URL}/content/api/v4/resources/translations",
-                  headers=headers,
-                  params={
-                      "language": "en",
-                      "page": page,
-                      "per_page": per_page,
-                  },
-                  timeout=30,
+          response = requests.get(
+              verse_url,
+              headers={
+                  "x-auth-token": access_token,
+                  "x-client-id": client_id,
+              },
+              params={
+                  "translations": str(TARGET_RESOURCE_ID),
+              },
+              timeout=30,
+          )
+
+          if response.status_code != 200:
+              print(
+                  "Translation request failed with HTTP status:",
+                  response.status_code,
               )
 
-              response.raise_for_status()
-
-              data = response.json()
-
-              translations = data.get("translations")
-
-              if not isinstance(translations, list):
-                  raise SystemExit(
-                      "Translation catalog response is invalid."
+              try:
+                  print(
+                      "API response:",
+                      response.json(),
+                  )
+              except Exception:
+                  print(
+                      "API response:",
+                      response.text[:500],
                   )
 
-              print(
-                  f"Translation catalog page {page}: "
-                  f"{len(translations)} resources"
-              )
-
-              for item in translations:
-                  if item.get("id") == TARGET_RESOURCE_ID:
-                      resource = item
-                      break
-
-              if resource is not None:
-                  break
-
-              pagination = data.get("pagination")
-
-              if not isinstance(pagination, dict):
-                  break
-
-              next_page = pagination.get("next_page")
-
-              if next_page is None:
-                  break
-
-              page = next_page
-
-          print("Translation resource request: SUCCESS")
-
-          # -------------------------------------------------
-          # 3. Verify the exact approved translation
-          # -------------------------------------------------
-
-          if resource is None:
               raise SystemExit(
-                  "Required translation resource 131 "
-                  "was not found in the complete catalog."
+                  "Quran.Foundation translation request failed."
               )
+
+          data = response.json()
+
+          print("Translation API request: SUCCESS")
+
+          # -------------------------------------------------
+          # 4. Validate verse payload
+          # -------------------------------------------------
+
+          verse = data.get("verse")
+
+          if not isinstance(verse, dict):
+              raise SystemExit(
+                  "API response did not contain a valid verse object."
+              )
+
+          returned_verse_key = verse.get("verse_key")
+
+          if returned_verse_key != TEST_VERSE_KEY:
+              raise SystemExit(
+                  "Verse integrity check failed: "
+                  f"expected {TEST_VERSE_KEY}, "
+                  f"received {returned_verse_key!r}."
+              )
+
+          translations = verse.get("translations")
+
+          if not isinstance(translations, list):
+              raise SystemExit(
+                  "API response did not contain a valid translations array."
+              )
+
+          # -------------------------------------------------
+          # 5. Locate EXACT resource 131
+          # -------------------------------------------------
+
+          translation = None
+
+          for item in translations:
+              resource_id = item.get("resource_id")
+
+              try:
+                  resource_id = int(resource_id)
+              except (TypeError, ValueError):
+                  continue
+
+              if resource_id == TARGET_RESOURCE_ID:
+                  translation = item
+                  break
+
+          if translation is None:
+              raise SystemExit(
+                  "Translation resource 131 was not returned "
+                  "for the test verse."
+              )
+
+          # -------------------------------------------------
+          # 6. Read returned metadata
+          # -------------------------------------------------
+
+          returned_resource_id = translation.get(
+              "resource_id"
+          )
+
+          returned_resource_name = translation.get(
+              "resource_name"
+          )
+
+          returned_language = translation.get(
+              "language_name"
+          )
+
+          returned_text = translation.get("text")
 
           print()
           print("Translation resource found:")
-          print("ID:", resource.get("id"))
-          print("Name:", resource.get("name"))
-          print("Author:", resource.get("author_name"))
-          print("Language:", resource.get("language_name"))
-          print("Slug:", resource.get("slug"))
+          print(
+              "Resource ID:",
+              returned_resource_id,
+          )
+          print(
+              "Resource name:",
+              returned_resource_name,
+          )
+          print(
+              "Language:",
+              returned_language,
+          )
+          print(
+              "Verse key:",
+              translation.get("verse_key"),
+          )
 
           # -------------------------------------------------
-          # 4. Strict identity checks
+          # 7. STRICT IDENTITY CHECKS
           # -------------------------------------------------
 
-          if resource.get("id") != TARGET_RESOURCE_ID:
+          if int(returned_resource_id) != TARGET_RESOURCE_ID:
               raise SystemExit(
-                  "Translation ID integrity check failed."
+                  "CRITICAL: Translation resource ID mismatch."
               )
 
-          if resource.get("name") != TARGET_NAME:
+          if returned_resource_name != EXPECTED_RESOURCE_NAME:
               raise SystemExit(
-                  "Translation name integrity check failed."
+                  "CRITICAL: Translation resource name mismatch."
               )
 
-          if resource.get("author_name") != TARGET_AUTHOR:
+          if translation.get("language_name") != EXPECTED_LANGUAGE:
               raise SystemExit(
-                  "Translation author integrity check failed."
+                  "CRITICAL: Translation language mismatch."
               )
 
-          if resource.get("language_name") != TARGET_LANGUAGE:
+          if not isinstance(returned_text, str):
               raise SystemExit(
-                  "Translation language integrity check failed."
+                  "CRITICAL: Translation text is missing."
               )
 
-          if not resource.get("slug"):
+          if not returned_text.strip():
               raise SystemExit(
-                  "Translation slug is missing."
+                  "CRITICAL: Translation text is empty."
               )
+
+          # -------------------------------------------------
+          # 8. Final verification
+          # -------------------------------------------------
 
           print()
           print("Translation identity verified.")
           print(
-              "Resource 131 matches the expected "
-              "Clear Quran translation."
+              "Resource 131 = "
+              "Dr. Mustafa Khattab, the Clear Quran"
           )
-
+          print(
+              f"Test verse verified: {TEST_VERSE_KEY}"
+          )
           print()
-          print("TRANSLATION RESOURCE TEST: PASSED")
+          print(
+              "TRANSLATION RESOURCE TEST: PASSED"
+          )
           PY
