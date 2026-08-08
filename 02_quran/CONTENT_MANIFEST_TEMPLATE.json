@@ -1,0 +1,144 @@
+{
+  "manifest_version": "1.0",
+
+  "content_type": "quran_video",
+
+  "content_id": "",
+
+  "status": "DRAFT",
+
+  "language": {
+    "arabic": "ar",
+    "translation": "en"
+  },
+
+  "quran": {
+    "surah_number": null,
+    "surah_name": "",
+    "start_ayah": null,
+    "end_ayah": null,
+
+    "ayahs": []
+  },
+
+  "translation": {
+    "source_name": "",
+    "translator": "",
+    "version": "",
+    "source_reference": "",
+    "status": "NOT_VERIFIED"
+  },
+
+  "recitation": {
+    "reciter": "Saad Al-Ghamdi",
+    "source_name": "",
+    "source_reference": "",
+    "license_status": "NOT_VERIFIED",
+    "status": "NOT_VERIFIED"
+  },
+
+  "presentation": {
+    "format": "vertical_9_16",
+
+    "show_arabic": true,
+
+    "show_english_translation": true,
+
+    "show_verse_indicator": true,
+
+    "verse_indicator_format": "SURAH {surah_number} • {surah_name} • AYAH {ayah_number}",
+
+    "arabic_and_translation_same_frame": true,
+
+    "change_content_on_ayah_boundary": true
+  },
+
+  "visuals": {
+    "people_allowed": false,
+    "faces_allowed": false,
+
+    "allowed_categories": [
+      "quran_manuscript",
+      "quran_calligraphy",
+      "islamic_architecture",
+      "mosque",
+      "masjid_interior",
+      "islamic_geometric_patterns",
+      "historical_architecture",
+      "courtyard",
+      "arches",
+      "lanterns",
+      "desert",
+      "mountains",
+      "ocean",
+      "rain",
+      "clouds",
+      "stars",
+      "sky",
+      "abstract_cinematic_environment",
+      "atmospheric_light",
+      "water"
+    ],
+
+    "unseen_religious_figures_allowed": false,
+
+    "visual_meaning_match_required": true,
+
+    "visual_source_status": "NOT_VERIFIED"
+  },
+
+  "audio_sync": {
+    "ayah_level_sync_required": true,
+    "verified_timing_required": true,
+    "status": "NOT_VERIFIED"
+  },
+
+  "quality_control": {
+    "arabic_verified": false,
+    "surah_verified": false,
+    "ayah_numbers_verified": false,
+    "ayah_order_verified": false,
+    "translation_verified": false,
+    "recitation_verified": false,
+    "audio_ayah_sync_verified": false,
+    "visuals_verified": false,
+    "no_faces_verified": false,
+    "video_integrity_verified": false,
+
+    "ready_for_human_review": false,
+    "human_approved": false,
+    "ready_for_publishing": false
+  },
+
+  "storage": {
+    "temporary_files_cleanup_required": true,
+    "temporary_files_retention_hours": 24,
+    "cleanup_after_failed_job": true
+  },
+
+  "publishing": {
+    "youtube": {
+      "enabled": false,
+      "published": false,
+      "platform_id": ""
+    },
+
+    "instagram": {
+      "enabled": false,
+      "published": false,
+      "platform_id": ""
+    },
+
+    "facebook": {
+      "enabled": false,
+      "published": false,
+      "platform_id": ""
+    },
+
+    "x": {
+      "enabled": false,
+      "published": false,
+      "platform_id": ""
+    }
+  }
+}
