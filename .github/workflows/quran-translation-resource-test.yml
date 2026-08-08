@@ -30,6 +30,11 @@ jobs:
           AUTH_URL = "https://oauth2.quran.foundation"
           API_URL = "https://apis.quran.foundation"
 
+          TARGET_RESOURCE_ID = 131
+          TARGET_NAME = "Dr. Mustafa Khattab, the Clear Quran"
+          TARGET_AUTHOR = "Dr. Mustafa Khattab"
+          TARGET_LANGUAGE = "english"
+
           # -------------------------------------------------
           # 1. Authenticate
           # -------------------------------------------------
@@ -63,90 +68,117 @@ jobs:
           print("Authentication: SUCCESS")
 
           # -------------------------------------------------
-          # 2. Retrieve translation resources
+          # 2. Retrieve translation resource catalog
           # -------------------------------------------------
 
-          response = requests.get(
-              f"{API_URL}/content/api/v4/resources/translations",
-              headers=headers,
-              params={"language": "en"},
-              timeout=30,
-          )
+          page = 1
+          per_page = 50
+          resource = None
 
-          response.raise_for_status()
-
-          data = response.json()
-
-          translations = data.get("translations")
-
-          if not isinstance(translations, list):
-              raise SystemExit(
-                  "Translation resource response is invalid."
+          while True:
+              response = requests.get(
+                  f"{API_URL}/content/api/v4/resources/translations",
+                  headers=headers,
+                  params={
+                      "language": "en",
+                      "page": page,
+                      "per_page": per_page,
+                  },
+                  timeout=30,
               )
 
-          print(
-              "Translation resource request: SUCCESS"
-          )
+              response.raise_for_status()
+
+              data = response.json()
+
+              translations = data.get("translations")
+
+              if not isinstance(translations, list):
+                  raise SystemExit(
+                      "Translation catalog response is invalid."
+                  )
+
+              print(
+                  f"Translation catalog page {page}: "
+                  f"{len(translations)} resources"
+              )
+
+              for item in translations:
+                  if item.get("id") == TARGET_RESOURCE_ID:
+                      resource = item
+                      break
+
+              if resource is not None:
+                  break
+
+              pagination = data.get("pagination")
+
+              if not isinstance(pagination, dict):
+                  break
+
+              next_page = pagination.get("next_page")
+
+              if next_page is None:
+                  break
+
+              page = next_page
+
+          print("Translation resource request: SUCCESS")
 
           # -------------------------------------------------
-          # 3. Find resource 131
+          # 3. Verify the exact approved translation
           # -------------------------------------------------
-
-          resource = next(
-              (
-                  item
-                  for item in translations
-                  if item.get("id") == 131
-              ),
-              None,
-          )
 
           if resource is None:
               raise SystemExit(
-                  "Expected translation resource 131 "
-                  "was not returned."
+                  "Required translation resource 131 "
+                  "was not found in the complete catalog."
               )
 
           print()
           print("Translation resource found:")
           print("ID:", resource.get("id"))
           print("Name:", resource.get("name"))
-          print(
-              "Author:",
-              resource.get("author_name")
-          )
-          print(
-              "Language:",
-              resource.get("language_name")
-          )
+          print("Author:", resource.get("author_name"))
+          print("Language:", resource.get("language_name"))
           print("Slug:", resource.get("slug"))
 
           # -------------------------------------------------
-          # 4. Integrity checks
+          # 4. Strict identity checks
           # -------------------------------------------------
 
-          if resource.get("id") != 131:
+          if resource.get("id") != TARGET_RESOURCE_ID:
               raise SystemExit(
                   "Translation ID integrity check failed."
               )
 
-          if resource.get("language_name") != "english":
+          if resource.get("name") != TARGET_NAME:
               raise SystemExit(
-                  "Translation language is not English."
+                  "Translation name integrity check failed."
               )
 
-          if not resource.get("name"):
+          if resource.get("author_name") != TARGET_AUTHOR:
               raise SystemExit(
-                  "Translation name is missing."
+                  "Translation author integrity check failed."
               )
 
-          if not resource.get("author_name"):
+          if resource.get("language_name") != TARGET_LANGUAGE:
               raise SystemExit(
-                  "Translation author is missing."
+                  "Translation language integrity check failed."
+              )
+
+          if not resource.get("slug"):
+              raise SystemExit(
+                  "Translation slug is missing."
               )
 
           print()
+          print("Translation identity verified.")
           print(
-              "TRANSLATION RESOURCE TEST: PASSED"
+              "Resource 131 matches the expected "
+              "Clear Quran translation."
           )
+
+          print()
+          print("TRANSLATION RESOURCE TEST: PASSED")
           PY
