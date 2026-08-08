@@ -2,26 +2,24 @@ name: Quran Production Pipeline
 
 on:
   workflow_dispatch:
-    inputs:
-      start_verse:
-        description: "Starting verse key"
-        required: true
-        default: "1:1"
-      verse_count:
-        description: "Number of verses"
-        required: true
-        default: "5"
 
 jobs:
   production-pipeline:
     runs-on: ubuntu-latest
+
     environment: Quran API
 
     steps:
+      # ------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install rendering dependencies
+      # ------------------------------------------------------------
+      # 2. Install dependencies
+      # ------------------------------------------------------------
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -32,47 +30,35 @@ jobs:
 
           python3 -m pip install --quiet requests
 
+          echo "Installed FFmpeg:"
+          ffmpeg -version | head -n 1
+
           echo "Arabic font:"
           fc-match "Noto Naskh Arabic"
 
-          echo "English font:"
-          fc-match "Noto Sans"
-
-      - name: Fetch verses and prepare production data
+      # ------------------------------------------------------------
+      # 3. Fetch real Quran verses + Saheeh International
+      # ------------------------------------------------------------
+      - name: Fetch Quran verses
         env:
           QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
           QF_ENV: ${{ secrets.QF_ENV }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          START_VERSE: ${{ inputs.start_verse }}
-          VERSE_COUNT: ${{ inputs.verse_count }}
         run: |
           python3 - <<'PY'
-          import os
-          import sys
-          import json
-          import re
           import html
+          import json
+          import os
+          import re
+          import sys
           import requests
-
-          start_verse = os.environ["START_VERSE"]
-          verse_count = int(os.environ["VERSE_COUNT"])
-
-          if verse_count < 1 or verse_count > 20:
-              print("ERROR: verse_count must be between 1 and 20.")
-              sys.exit(1)
 
           client_id = os.environ.get("QF_CLIENT_ID")
           client_secret = os.environ.get("QF_CLIENT_SECRET")
           qf_env = os.environ.get("QF_ENV", "").lower()
-          pexels_key = os.environ.get("PEXELS_API_KEY")
 
           if not client_id or not client_secret:
-              print("ERROR: Quran credentials are missing.")
-              sys.exit(1)
-
-          if not pexels_key:
-              print("ERROR: PEXELS_API_KEY is missing.")
+              print("ERROR: Quran Foundation credentials are missing.")
               sys.exit(1)
 
           if qf_env == "production":
@@ -85,10 +71,9 @@ jobs:
               print("ERROR: QF_ENV must be production or prelive.")
               sys.exit(1)
 
-          # --------------------------------------------------
+          # --------------------------------------------------------
           # Authenticate
-          # --------------------------------------------------
-
+          # --------------------------------------------------------
           token_response = requests.post(
               f"{oauth_base}/oauth2/token",
               data={
@@ -101,38 +86,37 @@ jobs:
 
           if not token_response.ok:
               print(
-                  f"ERROR: Quran authentication failed: "
+                  f"ERROR: Authentication failed: "
                   f"HTTP {token_response.status_code}"
               )
               sys.exit(1)
 
-          access_token = token_response.json().get("access_token")
+          token_data = token_response.json()
+          access_token = token_data.get("access_token")
 
           if not access_token:
-              print("ERROR: No Quran access token returned.")
+              print("ERROR: No access token returned.")
               sys.exit(1)
 
-          print("Quran authentication: SUCCESS")
+          print("Authentication: SUCCESS")
 
-          # --------------------------------------------------
-          # Parse starting verse
-          # --------------------------------------------------
-
-          try:
-              surah, ayah = map(int, start_verse.split(":"))
-          except ValueError:
-              print("ERROR: start_verse must look like 1:1")
-              sys.exit(1)
+          # --------------------------------------------------------
+          # Fetch verses 1:1 through 1:5.
+          #
+          # Translation resource 20 =
+          # Saheeh International.
+          # --------------------------------------------------------
+          verse_keys = [
+              "1:1",
+              "1:2",
+              "1:3",
+              "1:4",
+              "1:5",
+          ]
 
           verses = []
 
-          # --------------------------------------------------
-          # Fetch requested verses
-          # --------------------------------------------------
-
-          for offset in range(verse_count):
-
-              verse_key = f"{surah}:{ayah + offset}"
+          for verse_key in verse_keys:
 
               response = requests.get(
                   f"{api_base}/content/api/v4/verses/by_key/{verse_key}",
@@ -148,127 +132,131 @@ jobs:
               )
 
               print(
-                  f"Quran request {verse_key}: "
+                  f"Quran API {verse_key}: "
                   f"HTTP {response.status_code}"
               )
 
               if not response.ok:
                   print(
-                      f"ERROR: Could not fetch verse {verse_key}."
+                      f"ERROR: Quran API request failed for {verse_key}"
                   )
                   sys.exit(1)
 
-              verse = response.json().get("verse")
+              payload = response.json()
+              verse = payload.get("verse")
 
               if not isinstance(verse, dict):
-                  print(f"ERROR: Verse {verse_key} missing.")
+                  print(
+                      f"ERROR: No verse object returned for {verse_key}"
+                  )
                   sys.exit(1)
 
-              arabic = verse.get("text_uthmani")
+              returned_key = verse.get("verse_key")
 
-              if not isinstance(arabic, str) or not arabic.strip():
-                  print(f"ERROR: Arabic text missing for {verse_key}.")
+              if returned_key != verse_key:
+                  print(
+                      f"ERROR: Expected {verse_key}, "
+                      f"got {returned_key}"
+                  )
                   sys.exit(1)
 
-              translation = None
+              arabic_text = verse.get("text_uthmani")
 
-              for item in verse.get("translations", []):
-                  if str(item.get("resource_id")) == "20":
-                      translation = item
+              if not isinstance(arabic_text, str) or not arabic_text.strip():
+                  print(
+                      f"ERROR: No Arabic text for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              translations = verse.get("translations", [])
+
+              selected_translation = None
+
+              for translation in translations:
+                  if str(
+                      translation.get("resource_id")
+                  ) == "20":
+                      selected_translation = translation
                       break
 
-              if translation is None:
+              if selected_translation is None:
                   print(
                       f"ERROR: Translation resource 20 missing "
-                      f"for {verse_key}."
+                      f"for {verse_key}"
                   )
                   sys.exit(1)
 
-              english = translation.get("text")
+              raw_translation = selected_translation.get("text")
 
-              if not isinstance(english, str):
+              if (
+                  not isinstance(raw_translation, str)
+                  or not raw_translation.strip()
+              ):
                   print(
-                      f"ERROR: Translation missing for {verse_key}."
+                      f"ERROR: Translation 20 has no usable text "
+                      f"for {verse_key}"
                   )
                   sys.exit(1)
 
-              # Remove footnote tags AND their contents.
-              english = re.sub(
-                  r"<sup[^>]*>.*?</sup>",
+              # ----------------------------------------------------
+              # Remove HTML footnote markup.
+              #
+              # Example:
+              # <sup foot_note=227140>1</sup>
+              #
+              # becomes nothing, preventing ".2" etc. from appearing
+              # in the rendered translation.
+              # ----------------------------------------------------
+              clean_translation = re.sub(
+                  r"<sup\b[^>]*>.*?</sup>",
                   "",
-                  english,
+                  raw_translation,
                   flags=re.IGNORECASE | re.DOTALL,
               )
 
-              # Remove any remaining HTML.
-              english = re.sub(r"<[^>]+>", "", english)
+              clean_translation = re.sub(
+                  r"<[^>]+>",
+                  "",
+                  clean_translation,
+              )
 
-              english = html.unescape(english).strip()
+              clean_translation = html.unescape(
+                  clean_translation
+              )
 
-              if not english:
+              clean_translation = re.sub(
+                  r"\s+",
+                  " ",
+                  clean_translation,
+              ).strip()
+
+              if not clean_translation:
                   print(
-                      f"ERROR: Translation text empty for {verse_key}."
+                      f"ERROR: Cleaned translation is empty "
+                      f"for {verse_key}"
                   )
                   sys.exit(1)
 
               verses.append(
                   {
                       "verse_key": verse_key,
-                      "arabic_text": arabic.strip(),
-                      "translation_text": english,
+                      "arabic_text": arabic_text.strip(),
+                      "translation_resource_id": 20,
+                      "translation_text": clean_translation,
                   }
               )
 
-          # --------------------------------------------------
-          # Create output directory
-          # --------------------------------------------------
+              print(
+                  f"PASS {verse_key} | "
+                  f"resource=20 | "
+                  f"translation=received"
+              )
 
           os.makedirs("output", exist_ok=True)
 
-          # --------------------------------------------------
-          # Determine adaptive timing
-          # --------------------------------------------------
-
-          for verse in verses:
-
-              english = verse["translation_text"]
-
-              character_count = len(english)
-              word_count = len(english.split())
-
-              # Base duration.
-              duration = 5.0
-
-              # Give longer translations more reading time.
-              duration += word_count * 0.18
-
-              if character_count > 120:
-                  duration += 1.5
-
-              if character_count > 180:
-                  duration += 1.5
-
-              if character_count > 250:
-                  duration += 2.0
-
-              # Keep individual verse duration reasonable.
-              duration = max(5.0, min(duration, 14.0))
-
-              verse["duration"] = round(duration, 1)
-
-              print(
-                  f"{verse['verse_key']} | "
-                  f"{word_count} words | "
-                  f"{character_count} chars | "
-                  f"{verse['duration']} sec"
-              )
-
-          # --------------------------------------------------
-          # Create safe pipeline JSON
-          # --------------------------------------------------
-
-          pipeline = {
+          production_data = {
               "translation_resource_id": 20,
+              "translation_name": "Saheeh International",
               "verses": verses,
           }
 
@@ -278,24 +266,204 @@ jobs:
               encoding="utf-8",
           ) as f:
               json.dump(
-                  pipeline,
+                  production_data,
                   f,
                   ensure_ascii=False,
                   indent=2,
               )
 
           print("")
-          print("PRODUCTION DATA: CREATED")
-          print(f"Verses prepared: {len(verses)}")
-          print("Translation: Saheeh International / resource 20")
-          print("Credentials: NOT written to output")
+          print("QURAN DATA: PASSED")
+          print(f"Verses fetched: {len(verses)}")
+          print("Translation resource: 20")
+          print("Client secret: NOT PRINTED")
           PY
 
-      - name: Build adaptive subtitles
+      # ------------------------------------------------------------
+      # 4. Create visual query for every verse
+      # ------------------------------------------------------------
+      - name: Create visual plan
         run: |
           python3 - <<'PY'
           import json
-          import textwrap
+          import re
+
+          input_file = "output/production-pipeline.json"
+
+          with open(
+              input_file,
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          def choose_query(text):
+
+              text = text.lower()
+
+              rules = [
+                  (
+                      [
+                          "mercy",
+                          "merciful",
+                          "compassion",
+                          "forgive",
+                          "forgiveness",
+                      ],
+                      "peaceful nature dawn soft golden light",
+                  ),
+                  (
+                      [
+                          "guidance",
+                          "guide",
+                          "guided",
+                          "path",
+                          "straight",
+                      ],
+                      "peaceful path through nature sunrise",
+                  ),
+                  (
+                      [
+                          "light",
+                          "lights",
+                          "illumination",
+                      ],
+                      "golden sunlight through nature cinematic",
+                  ),
+                  (
+                      [
+                          "garden",
+                          "gardens",
+                          "paradise",
+                      ],
+                      "beautiful peaceful garden nature cinematic",
+                  ),
+                  (
+                      [
+                          "earth",
+                          "creation",
+                          "world",
+                      ],
+                      "cinematic natural landscape earth",
+                  ),
+                  (
+                      [
+                          "rain",
+                          "water",
+                          "river",
+                          "sea",
+                          "ocean",
+                      ],
+                      "peaceful water nature cinematic",
+                  ),
+                  (
+                      [
+                          "night",
+                          "darkness",
+                          "dark",
+                      ],
+                      "peaceful night sky stars cinematic",
+                  ),
+                  (
+                      [
+                          "day",
+                          "sun",
+                          "sunlight",
+                      ],
+                      "cinematic sunrise landscape",
+                  ),
+                  (
+                      [
+                          "mountain",
+                          "mountains",
+                      ],
+                      "cinematic mountains landscape",
+                  ),
+                  (
+                      [
+                          "peace",
+                          "peaceful",
+                          "calm",
+                      ],
+                      "peaceful cinematic landscape golden hour",
+                  ),
+                  (
+                      [
+                          "fear",
+                          "warning",
+                          "punishment",
+                      ],
+                      "dramatic clouds landscape cinematic",
+                  ),
+              ]
+
+              for keywords, query in rules:
+                  if any(
+                      word in text
+                      for word in keywords
+                  ):
+                      return query
+
+              return (
+                  "peaceful cinematic natural landscape "
+                  "soft atmospheric light"
+              )
+
+          for verse in data["verses"]:
+
+              query = choose_query(
+                  verse["translation_text"]
+              )
+
+              verse["visual_query"] = query
+
+              print(
+                  f"{verse['verse_key']} -> {query}"
+              )
+
+          with open(
+              input_file,
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  data,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("")
+          print("VISUAL PLAN: CREATED")
+          PY
+
+      # ------------------------------------------------------------
+      # 5. Download a real Pexels video for EACH verse
+      # ------------------------------------------------------------
+      - name: Download matching Pexels videos
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+          from pathlib import Path
+
+          api_key = os.environ.get("PEXELS_API_KEY")
+
+          if not api_key:
+              print("ERROR: PEXELS_API_KEY is missing.")
+              print(
+                  "Add PEXELS_API_KEY to the repository/environment "
+                  "secrets before running production."
+              )
+              sys.exit(1)
+
+          headers = {
+              "Authorization": api_key
+          }
 
           with open(
               "output/production-pipeline.json",
@@ -304,144 +472,737 @@ jobs:
           ) as f:
               data = json.load(f)
 
-          total_duration = 0.0
+          Path("output/clips").mkdir(
+              parents=True,
+              exist_ok=True,
+          )
+
+          for index, verse in enumerate(
+              data["verses"],
+              start=1,
+          ):
+
+              verse_key = verse["verse_key"]
+              query = verse["visual_query"]
+
+              print("")
+              print(
+                  f"Searching Pexels for {verse_key}: "
+                  f"{query}"
+              )
+
+              response = requests.get(
+                  "https://api.pexels.com/videos/search",
+                  headers=headers,
+                  params={
+                      "query": query,
+                      "orientation": "portrait",
+                      "size": "medium",
+                      "per_page": 15,
+                  },
+                  timeout=30,
+              )
+
+              if not response.ok:
+                  print(
+                      f"ERROR: Pexels API failed for "
+                      f"{verse_key}: HTTP "
+                      f"{response.status_code}"
+                  )
+                  sys.exit(1)
+
+              videos = response.json().get(
+                  "videos",
+                  [],
+              )
+
+              if not videos:
+                  print(
+                      f"ERROR: No Pexels videos found "
+                      f"for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              # Prefer actual vertical videos.
+              vertical = []
+
+              for video in videos:
+
+                  width = video.get("width", 0) or 0
+                  height = video.get("height", 0) or 0
+
+                  if width and height:
+                      ratio = height / width
+
+                      if ratio >= 1.40:
+                          vertical.append(video)
+
+              candidates = vertical or videos
+
+              selected = candidates[0]
+
+              files = selected.get(
+                  "video_files",
+                  [],
+              )
+
+              if not files:
+                  print(
+                      f"ERROR: Selected Pexels video has "
+                      f"no video files: {verse_key}"
+                  )
+                  sys.exit(1)
+
+              vertical_files = []
+
+              for video_file in files:
+
+                  width = video_file.get(
+                      "width",
+                      0,
+                  ) or 0
+
+                  height = video_file.get(
+                      "height",
+                      0,
+                  ) or 0
+
+                  if height >= width:
+                      vertical_files.append(video_file)
+
+              usable_files = (
+                  vertical_files
+                  if vertical_files
+                  else files
+              )
+
+              # Prefer approximately 720x1280.
+              usable_files.sort(
+                  key=lambda f: abs(
+                      (f.get("width", 0) or 0)
+                      - 720
+                  )
+                  + abs(
+                      (f.get("height", 0) or 0)
+                      - 1280
+                  )
+              )
+
+              selected_file = usable_files[0]
+
+              video_url = selected_file.get("link")
+
+              if not video_url:
+                  print(
+                      f"ERROR: No downloadable URL "
+                      f"for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              output_path = (
+                  f"output/clips/"
+                  f"verse-{index:03d}.mp4"
+              )
+
+              print(
+                  f"Selected Pexels video: "
+                  f"{selected.get('id')}"
+              )
+
+              print(
+                  f"Downloading video for {verse_key}"
+              )
+
+              with requests.get(
+                  video_url,
+                  stream=True,
+                  timeout=90,
+              ) as download:
+
+                  if not download.ok:
+                      print(
+                          f"ERROR: Video download failed "
+                          f"for {verse_key}"
+                      )
+                      sys.exit(1)
+
+                  with open(
+                      output_path,
+                      "wb",
+                  ) as output:
+
+                      for chunk in download.iter_content(
+                          chunk_size=1024 * 1024
+                      ):
+                          if chunk:
+                              output.write(chunk)
+
+              if not os.path.isfile(output_path):
+                  print(
+                      f"ERROR: Video file was not created "
+                      f"for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              if os.path.getsize(
+                  output_path
+              ) < 10000:
+
+                  print(
+                      f"ERROR: Downloaded video is too small "
+                      f"for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              verse["pexels_video_id"] = selected.get(
+                  "id"
+              )
+
+              verse["pexels_url"] = selected.get(
+                  "url"
+              )
+
+              print(
+                  f"Visual received: {verse_key}"
+              )
 
           with open(
-              "output/quran-production.ass",
+              "output/production-pipeline.json",
               "w",
               encoding="utf-8",
           ) as f:
-
-              f.write("""[Script Info]
-          ScriptType: v4.00+
-          PlayResX: 1080
-          PlayResY: 1920
-          WrapStyle: 2
-          ScaledBorderAndShadow: yes
-
-          [V4+ Styles]
-          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-          Style: Reference,Noto Sans,38,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,1,0,0,0,100,100,0,0,1,3,2,8,70,70,120,1
-          Style: Arabic,Noto Naskh Arabic,82,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,2,5,80,80,0,1
-          Style: English,Noto Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,2,5,110,110,0,1
-
-          [Events]
-          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-          """)
-
-              for verse in data["verses"]:
-
-                  duration = verse["duration"]
-
-                  start = total_duration
-                  end = total_duration + duration
-
-                  def ass_time(seconds):
-                      h = int(seconds // 3600)
-                      m = int((seconds % 3600) // 60)
-                      s = seconds % 60
-                      return f"{h}:{m:02d}:{s:05.2f}"
-
-                  start_time = ass_time(start)
-                  end_time = ass_time(end)
-
-                  arabic = verse["arabic_text"]
-                  english = verse["translation_text"]
-
-                  # Responsive English wrapping.
-                  if len(english) <= 100:
-                      width = 42
-                      font_size = 46
-                  elif len(english) <= 160:
-                      width = 38
-                      font_size = 42
-                  elif len(english) <= 220:
-                      width = 34
-                      font_size = 38
-                  else:
-                      width = 30
-                      font_size = 34
-
-                  lines = textwrap.wrap(
-                      english,
-                      width=width,
-                      break_long_words=False,
-                      break_on_hyphens=False,
-                  )
-
-                  # Never allow an uncontrolled subtitle block.
-                  if len(lines) > 5:
-                      print(
-                          f"ERROR: {verse['verse_key']} "
-                          f"requires more than 5 English lines."
-                      )
-                      raise SystemExit(1)
-
-                  english_display = r"\N".join(lines)
-
-                  f.write(
-                      f"Dialogue: 0,{start_time},{end_time},"
-                      f"Reference,,0,0,120,,"
-                      f"VERSE {verse['verse_key']}\n"
-                  )
-
-                  f.write(
-                      f"Dialogue: 0,{start_time},{end_time},"
-                      f"Arabic,,0,0,0,,"
-                      f"{arabic}\n"
-                  )
-
-                  f.write(
-                      f"Dialogue: 0,{start_time},{end_time},"
-                      f"English,,0,0,0,,"
-                      f"{{\\fs{font_size}}}{english_display}\n"
-                  )
-
-                  print(
-                      f"Subtitle {verse['verse_key']}: "
-                      f"{duration}s | "
-                      f"{len(lines)} English lines | "
-                      f"font {font_size}"
-                  )
-
-                  total_duration = end
+              json.dump(
+                  data,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
 
           print("")
-          print(f"TOTAL VIDEO DURATION: {total_duration:.1f}s")
-          print("ADAPTIVE SUBTITLES: CREATED")
+          print("PEXELS VISUAL DOWNLOAD: PASSED")
+          print(
+              f"Videos downloaded: "
+              f"{len(data['verses'])}"
+          )
           PY
 
-      - name: Create production background
+      # ------------------------------------------------------------
+      # 6. Prepare every video to 1080x1920
+      # ------------------------------------------------------------
+      - name: Prepare verse videos
         run: |
           python3 - <<'PY'
           import json
           import os
-          import sys
-          import requests
+          import subprocess
 
-          key = os.environ["PEXELS_API_KEY"]
+          with open(
+              "output/production-pipeline.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          os.makedirs(
+              "output/prepared",
+              exist_ok=True,
+          )
+
+          # Temporary production-test timing.
+          #
+          # Each verse gets enough time to comfortably read.
+          # This will later be replaced by automatic timing
+          # based on translation length.
+          def verse_duration(text):
+
+              words = len(text.split())
+
+              seconds = max(
+                  4.0,
+                  min(
+                      9.0,
+                      2.5 + words * 0.38
+                  )
+              )
+
+              return round(
+                  seconds,
+                  2
+              )
+
+          for index, verse in enumerate(
+              data["verses"],
+              start=1,
+          ):
+
+              duration = verse_duration(
+                  verse["translation_text"]
+              )
+
+              verse["duration"] = duration
+
+              source = (
+                  f"output/clips/"
+                  f"verse-{index:03d}.mp4"
+              )
+
+              output = (
+                  f"output/prepared/"
+                  f"verse-{index:03d}.mp4"
+              )
+
+              command = [
+                  "ffmpeg",
+                  "-y",
+                  "-stream_loop",
+                  "-1",
+                  "-i",
+                  source,
+                  "-t",
+                  str(duration),
+                  "-vf",
+                  (
+                      "scale=1080:1920:"
+                      "force_original_aspect_ratio=increase,"
+                      "crop=1080:1920"
+                  ),
+                  "-an",
+                  "-c:v",
+                  "libx264",
+                  "-preset",
+                  "veryfast",
+                  "-pix_fmt",
+                  "yuv420p",
+                  output,
+              ]
+
+              subprocess.run(
+                  command,
+                  check=True,
+              )
+
+              print(
+                  f"Prepared {verse['verse_key']} "
+                  f"| duration={duration}s"
+              )
+
+          with open(
+              "output/production-pipeline.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  data,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("")
+          print("VERSE VIDEO PREPARATION: PASSED")
           PY
-        env:
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
 
-      - name: Render production video
+      # ------------------------------------------------------------
+      # 7. Create adaptive subtitles for each verse
+      # ------------------------------------------------------------
+      - name: Create adaptive subtitles
         run: |
-          ffmpeg \
-            -y \
-            -f lavfi \
-            -i "color=c=0x101820:s=1080x1920:r=30" \
-            -vf "subtitles=output/quran-production.ass:fontsdir=/usr/share/fonts/truetype/noto" \
-            -t 60 \
-            -an \
-            -c:v libx264 \
-            -preset veryfast \
-            -pix_fmt yuv420p \
-            -movflags +faststart \
-            output/quran-production.mp4
+          python3 - <<'PY'
+          import json
+          import os
+          import re
 
-      - name: Verify production render
+          with open(
+              "output/production-pipeline.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          os.makedirs(
+              "output/subtitles",
+              exist_ok=True,
+          )
+
+          def ass_escape(text):
+              text = text.replace(
+                  "\\",
+                  "\\\\"
+              )
+              text = text.replace(
+                  "{",
+                  "\\{"
+              )
+              text = text.replace(
+                  "}",
+                  "\\}"
+              )
+              return text
+
+          def wrap_text(text, max_chars):
+
+              words = text.split()
+
+              lines = []
+              current = ""
+
+              for word in words:
+
+                  candidate = (
+                      word
+                      if not current
+                      else current + " " + word
+                  )
+
+                  if len(candidate) <= max_chars:
+                      current = candidate
+                  else:
+                      if current:
+                          lines.append(current)
+
+                      current = word
+
+              if current:
+                  lines.append(current)
+
+              return "\\N".join(lines)
+
+          for index, verse in enumerate(
+              data["verses"],
+              start=1,
+          ):
+
+              duration = verse["duration"]
+
+              # Slightly smaller English text when the
+              # translation is longer.
+              english_length = len(
+                  verse["translation_text"]
+              )
+
+              if english_length > 115:
+                  english_size = 42
+                  max_chars = 48
+              elif english_length > 85:
+                  english_size = 46
+                  max_chars = 54
+              elif english_length > 60:
+                  english_size = 50
+                  max_chars = 60
+              else:
+                  english_size = 54
+                  max_chars = 66
+
+              english = wrap_text(
+                  verse["translation_text"],
+                  max_chars,
+              )
+
+              arabic = ass_escape(
+                  verse["arabic_text"]
+              )
+
+              english = ass_escape(
+                  english
+              )
+
+              ass_path = (
+                  f"output/subtitles/"
+                  f"verse-{index:03d}.ass"
+              )
+
+              end_seconds = duration
+
+              end_h = int(
+                  end_seconds // 3600
+              )
+
+              end_m = int(
+                  (end_seconds % 3600) // 60
+              )
+
+              end_s = (
+                  end_seconds
+                  % 60
+              )
+
+              end_time = (
+                  f"{end_h}:"
+                  f"{end_m:02d}:"
+                  f"{end_s:05.2f}"
+              )
+
+              with open(
+                  ass_path,
+                  "w",
+                  encoding="utf-8",
+              ) as f:
+
+                  f.write(
+                      "[Script Info]\n"
+                  )
+                  f.write(
+                      "ScriptType: v4.00+\n"
+                  )
+                  f.write(
+                      "PlayResX: 1080\n"
+                  )
+                  f.write(
+                      "PlayResY: 1920\n"
+                  )
+                  f.write(
+                      "WrapStyle: 2\n"
+                  )
+                  f.write(
+                      "ScaledBorderAndShadow: yes\n"
+                  )
+                  f.write("\n")
+
+                  f.write(
+                      "[V4+ Styles]\n"
+                  )
+                  f.write(
+                      "Format: Name, Fontname, "
+                      "Fontsize, PrimaryColour, "
+                      "SecondaryColour, "
+                      "OutlineColour, BackColour, "
+                      "Bold, Italic, Underline, "
+                      "StrikeOut, ScaleX, ScaleY, "
+                      "Spacing, Angle, BorderStyle, "
+                      "Outline, Shadow, Alignment, "
+                      "MarginL, MarginR, MarginV, Encoding\n"
+                  )
+
+                  f.write(
+                      "Style: Arabic,"
+                      "Noto Naskh Arabic,"
+                      "68,"
+                      "&H00FFFFFF,"
+                      "&H00FFFFFF,"
+                      "&H00101010,"
+                      "&H90000000,"
+                      "0,0,0,0,100,100,0,0,1,"
+                      "3,1,5,80,80,0,1\n"
+                  )
+
+                  f.write(
+                      f"Style: English,"
+                      f"Noto Sans,"
+                      f"{english_size},"
+                      "&H00FFFFFF,"
+                      "&H00FFFFFF,"
+                      "&H00101010,"
+                      "&H90000000,"
+                      "0,0,0,0,100,100,0,0,1,"
+                      "3,1,5,80,80,0,1\n"
+                  )
+
+                  f.write(
+                      "Style: Reference,"
+                      "Noto Sans,"
+                      "38,"
+                      "&H00FFFFFF,"
+                      "&H00FFFFFF,"
+                      "&H00101010,"
+                      "&H90000000,"
+                      "1,0,0,0,100,100,0,0,1,"
+                      "2,1,8,60,60,100,1\n"
+                  )
+
+                  f.write("\n")
+
+                  f.write(
+                      "[Events]\n"
+                  )
+
+                  f.write(
+                      "Format: Layer, Start, End, "
+                      "Style, Name, MarginL, "
+                      "MarginR, MarginV, Effect, Text\n"
+                  )
+
+                  f.write(
+                      f"Dialogue: 0,0:00:00.00,"
+                      f"{end_time},Reference,,"
+                      f"0,0,100,,"
+                      f"VERSE {verse['verse_key']}\n"
+                  )
+
+                  f.write(
+                      f"Dialogue: 0,0:00:00.00,"
+                      f"{end_time},Arabic,,"
+                      f"0,0,0,,"
+                      f"{arabic}\n"
+                  )
+
+                  f.write(
+                      f"Dialogue: 0,0:00:00.00,"
+                      f"{end_time},English,,"
+                      f"0,0,0,,"
+                      f"{english}\n"
+                  )
+
+              print(
+                  f"Subtitle created: "
+                  f"{verse['verse_key']} "
+                  f"| English chars={english_length} "
+                  f"| font={english_size}"
+              )
+
+          print("")
+          print("ADAPTIVE SUBTITLES: PASSED")
+          PY
+
+      # ------------------------------------------------------------
+      # 8. Render each verse with its own visual + subtitles
+      # ------------------------------------------------------------
+      - name: Render individual verses
+        run: |
+          mkdir -p output/rendered
+
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          with open(
+              "output/production-pipeline.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          for index, verse in enumerate(
+              data["verses"],
+              start=1,
+          ):
+
+              video = (
+                  f"output/prepared/"
+                  f"verse-{index:03d}.mp4"
+              )
+
+              subtitle = (
+                  f"output/subtitles/"
+                  f"verse-{index:03d}.ass"
+              )
+
+              output = (
+                  f"output/rendered/"
+                  f"verse-{index:03d}.mp4"
+              )
+
+              subprocess.run(
+                  [
+                      "ffmpeg",
+                      "-y",
+                      "-i",
+                      video,
+                      "-vf",
+                      (
+                          f"subtitles={subtitle}:"
+                          "fontsdir="
+                          "/usr/share/fonts/truetype/noto"
+                      ),
+                      "-an",
+                      "-c:v",
+                      "libx264",
+                      "-preset",
+                      "veryfast",
+                      "-pix_fmt",
+                      "yuv420p",
+                      "-movflags",
+                      "+faststart",
+                      output,
+                  ],
+                  check=True,
+              )
+
+              print(
+                  f"Rendered {verse['verse_key']}"
+              )
+
+          print("")
+          print("INDIVIDUAL VERSE RENDER: PASSED")
+          PY
+
+      # ------------------------------------------------------------
+      # 9. Join verses in Quran order
+      # ------------------------------------------------------------
+      - name: Assemble final Quran video
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          with open(
+              "output/production-pipeline.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          concat_file = "output/concat.txt"
+
+          with open(
+              concat_file,
+              "w",
+              encoding="utf-8",
+          ) as f:
+
+              for index, verse in enumerate(
+                  data["verses"],
+                  start=1,
+              ):
+
+                  filename = os.path.abspath(
+                      f"output/rendered/"
+                      f"verse-{index:03d}.mp4"
+                  )
+
+                  f.write(
+                      f"file '{filename}'\n"
+                  )
+
+          subprocess.run(
+              [
+                  "ffmpeg",
+                  "-y",
+                  "-f",
+                  "concat",
+                  "-safe",
+                  "0",
+                  "-i",
+                  concat_file,
+                  "-c",
+                  "copy",
+                  "-movflags",
+                  "+faststart",
+                  "output/quran-production.mp4",
+              ],
+              check=True,
+          )
+
+          print("")
+          print("FINAL VIDEO: CREATED")
+          print(
+              "Verse order: "
+              + ", ".join(
+                  v["verse_key"]
+                  for v in data["verses"]
+              )
+          )
+          PY
+
+      # ------------------------------------------------------------
+      # 10. Verify final video
+      # ------------------------------------------------------------
+      - name: Verify final production video
         run: |
           test -s output/quran-production.mp4
+
+          echo "FINAL VIDEO METADATA"
 
           ffprobe \
             -v error \
@@ -450,14 +1211,17 @@ jobs:
             -of default=noprint_wrappers=1 \
             output/quran-production.mp4
 
-          echo "STEP 34: PRODUCTION PIPELINE PASSED"
+          echo ""
+          echo "STEP 35: REAL PRODUCTION PIPELINE PASSED"
 
-      - name: Upload production test
+      # ------------------------------------------------------------
+      # 11. Upload production artifact
+      # ------------------------------------------------------------
+      - name: Upload production video
         uses: actions/upload-artifact@v4
         with:
           name: quran-production-test
           path: |
             output/quran-production.mp4
             output/production-pipeline.json
-            output/quran-production.ass
-          retention-days: 1
+          retention-days: 3
