@@ -1,0 +1,63 @@
+name: Manifest Validator Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validator-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check Python
+        run: |
+          python3 --version
+
+      - name: Validate correct test manifest
+        run: |
+          python3 08_automation/validate_manifest.py \
+            02_quran/test_manifest.json
+
+      - name: Create deliberately broken manifest
+        run: |
+          python3 - <<'PY'
+          import json
+
+          source = "02_quran/test_manifest.json"
+          destination = "/tmp/broken_manifest.json"
+
+          with open(source, "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          # Deliberately break the sequence:
+          # 999:1
+          # 999:3
+          # 999:2
+          # 999:4
+
+          data["ayahs"][1], data["ayahs"][2] = (
+              data["ayahs"][2],
+              data["ayahs"][1],
+          )
+
+          with open(destination, "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          PY
+
+      - name: Confirm broken manifest is rejected
+        run: |
+          set +e
+
+          python3 08_automation/validate_manifest.py \
+            /tmp/broken_manifest.json
+
+          EXIT_CODE=$?
+
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            echo "ERROR: Broken manifest was incorrectly accepted."
+            exit 1
+          fi
+
+          echo "SUCCESS: Broken manifest was correctly rejected."
