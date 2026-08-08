@@ -1,0 +1,949 @@
+name: Quran Production Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      sections:
+        description: "How many sections to render in this run"
+        required: false
+        default: "1"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core fonts-noto-extra fontconfig
+          python3 -m pip install --quiet requests
+
+      - name: Build next Quran production section
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          SECTIONS: ${{ inputs.sections }}
+        run: |
+          python3 - <<'PY'
+          import html
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          import requests
+
+          ROOT = Path.cwd()
+          DATA = ROOT / "data"
+          WORK = ROOT / "output" / "production"
+          DATA.mkdir(exist_ok=True)
+          WORK.mkdir(parents=True, exist_ok=True)
+
+          QF_CLIENT_ID = os.environ.get("QF_CLIENT_ID")
+          QF_CLIENT_SECRET = os.environ.get("QF_CLIENT_SECRET")
+          QF_ENV = os.environ.get("QF_ENV", "").lower()
+          PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")
+
+          if not QF_CLIENT_ID or not QF_CLIENT_SECRET:
+              raise SystemExit("ERROR: QF_CLIENT_ID/QF_CLIENT_SECRET are missing.")
+          if not PEXELS_API_KEY:
+              raise SystemExit("ERROR: PEXELS_API_KEY is missing.")
+
+          if QF_ENV == "production":
+              OAUTH_BASE = "https://oauth2.quran.foundation"
+              API_BASE = "https://apis.quran.foundation"
+          elif QF_ENV == "prelive":
+              OAUTH_BASE = "https://prelive-oauth2.quran.foundation"
+              API_BASE = "https://apis-prelive.quran.foundation"
+          else:
+              raise SystemExit("ERROR: QF_ENV must be production or prelive.")
+
+          HEADERS = {}
+
+          def qf_get(path, params=None, timeout=60):
+              r = requests.get(
+                  API_BASE + path,
+                  params=params or {},
+                  headers=HEADERS,
+                  timeout=timeout,
+              )
+              if not r.ok:
+                  raise RuntimeError(
+                      f"Quran API HTTP {r.status_code} for {path}: {r.text[:500]}"
+                  )
+              return r.json()
+
+          def authenticate():
+              r = requests.post(
+                  f"{OAUTH_BASE}/oauth2/token",
+                  data={"grant_type": "client_credentials", "scope": "content"},
+                  auth=(QF_CLIENT_ID, QF_CLIENT_SECRET),
+                  timeout=30,
+              )
+              if not r.ok:
+                  raise RuntimeError(
+                      f"Quran authentication failed: HTTP {r.status_code}: {r.text[:500]}"
+                  )
+
+              token = r.json().get("access_token")
+              if not token:
+                  raise RuntimeError("Quran authentication returned no access_token.")
+
+              HEADERS.update({
+                  "x-auth-token": token,
+                  "x-client-id": QF_CLIENT_ID,
+              })
+              print("Quran Foundation authentication: SUCCESS")
+
+          def clean_translation(text):
+              text = html.unescape(text or "")
+              text = re.sub(r"<sup[^>]*>.*?</sup>", "", text, flags=re.I | re.S)
+              text = re.sub(r"<foot_note[^>]*>.*?</foot_note>", "", text, flags=re.I | re.S)
+              text = re.sub(r"<[^>]+>", "", text)
+              text = re.sub(r"\s*/\s*", "\n", text)
+              text = re.sub(r"[ \t]+", " ", text)
+              text = re.sub(r" *\n *", "\n", text)
+              return text.strip()
+
+          def wrap_text(text, width=44):
+              words = text.split()
+              lines = []
+              line = ""
+
+              for word in words:
+                  candidate = word if not line else line + " " + word
+                  if len(candidate) <= width:
+                      line = candidate
+                  else:
+                      if line:
+                          lines.append(line)
+                      line = word
+
+              if line:
+                  lines.append(line)
+
+              return "\n".join(lines)
+
+          def get_chapters():
+              data = qf_get("/content/api/v4/chapters", {"language": "en"})
+              return sorted(data["chapters"], key=lambda x: int(x["id"]))
+
+          def get_chapter_verses(chapter_id):
+              verses = []
+              page = 1
+
+              while True:
+                  data = qf_get(
+                      f"/content/api/v4/verses/by_chapter/{chapter_id}",
+                      {
+                          "translations": "20",
+                          "fields": "text_uthmani,verse_key,verse_number,juz_number,hizb_number,ruku_number,page_number",
+                          "translation_fields": "resource_id,text",
+                          "page": page,
+                          "per_page": 50,
+                      },
+                  )
+
+                  verses.extend(data.get("verses", []))
+                  pagination = data.get("pagination", {})
+                  next_page = pagination.get("next_page")
+
+                  if not next_page:
+                      break
+
+                  page = int(next_page)
+
+              return verses
+
+          def get_saad_audio(chapter_id):
+              data = qf_get(
+                  f"/content/api/v4/chapter_recitations/13/{chapter_id}",
+                  {"segments": "false"},
+              )
+
+              audio_file = data.get("audio_file") or {}
+              timestamps = audio_file.get("timestamps") or []
+
+              if not audio_file.get("audio_url"):
+                  raise RuntimeError(
+                      f"No Saad Al-Ghamdi audio returned for chapter {chapter_id}."
+                  )
+
+              if not timestamps:
+                  raise RuntimeError(
+                      f"No Saad Al-Ghamdi verse timestamps returned for chapter {chapter_id}."
+                  )
+
+              return audio_file
+
+          def load_progress():
+              path = DATA / "progress.json"
+
+              if not path.exists():
+                  return {
+                      "cycle": 1,
+                      "used_verses": [],
+                      "published_sections": [],
+                  }
+
+              try:
+                  return json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  print("WARNING: progress.json is invalid; starting clean.")
+                  return {
+                      "cycle": 1,
+                      "used_verses": [],
+                      "published_sections": [],
+                  }
+
+          def save_progress(progress):
+              (DATA / "progress.json").write_text(
+                  json.dumps(progress, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8",
+              )
+
+          def semantic_query(text):
+              # Conservative meaning-to-visual mapping for the first production build.
+              # It deliberately avoids people, prophets, sacred figures and invented
+              # religious scenes.
+              t = text.lower()
+
+              categories = [
+                  (["mercy", "merciful", "compassion", "forgive", "forgiveness"],
+                   "peaceful dawn nature"),
+                  (["guidance", "guide", "guided", "path", "straight path"],
+                   "quiet path through nature"),
+                  (["creation", "created", "heavens", "earth", "sky", "sun", "moon", "stars"],
+                   "beautiful sky landscape"),
+                  (["night", "darkness", "light", "morning", "day"],
+                   "calm dawn landscape"),
+                  (["rain", "water", "river", "garden", "gardens", "fruit"],
+                   "rain and lush nature"),
+                  (["mountain", "mountains", "sea", "ocean"],
+                   "mountains and ocean nature"),
+                  (["patience", "patient", "steadfast"],
+                   "peaceful flowing landscape"),
+                  (["prayer", "worship", "remember", "remembrance"],
+                   "quiet peaceful nature"),
+                  (["gratitude", "grateful", "thankful", "thanks"],
+                   "golden sunrise nature"),
+                  (["paradise", "garden", "gardens"],
+                   "lush peaceful garden nature"),
+                  (["justice", "just", "truth"],
+                   "calm balanced landscape"),
+                  (["knowledge", "learn", "wisdom"],
+                   "quiet contemplative landscape"),
+                  (["fear", "warning", "punishment", "hell", "wrongdoers"],
+                   "dramatic storm clouds landscape"),
+              ]
+
+              for words, query in categories:
+                  if any(word in t for word in words):
+                      return query
+
+              return "peaceful cinematic nature landscape"
+
+          def choose_pexels_video(query, target_seconds):
+              r = requests.get(
+                  "https://api.pexels.com/v1/videos/search",
+                  headers={"Authorization": PEXELS_API_KEY},
+                  params={
+                      "query": query,
+                      "orientation": "portrait",
+                      "size": "medium",
+                      "per_page": 15,
+                  },
+                  timeout=45,
+              )
+
+              if not r.ok:
+                  raise RuntimeError(
+                      f"Pexels search failed: HTTP {r.status_code}: {r.text[:500]}"
+                  )
+
+              videos = r.json().get("videos", [])
+
+              if not videos:
+                  raise RuntimeError(
+                      f"No Pexels portrait videos found for: {query}"
+                  )
+
+              candidates = []
+
+              for video in videos:
+                  files = video.get("video_files", [])
+
+                  portrait_files = [
+                      f for f in files
+                      if f.get("width") and f.get("height")
+                      and f["height"] >= f["width"]
+                  ]
+
+                  files = portrait_files or files
+
+                  if not files:
+                      continue
+
+                  def file_score(f):
+                      w = int(f.get("width", 0))
+                      h = int(f.get("height", 0))
+                      ratio = h / w if w else 0
+
+                      portrait_bonus = 2 if 1.45 <= ratio <= 1.9 else 0
+                      hd_bonus = 2 if h >= 1280 else (1 if h >= 720 else 0)
+
+                      return portrait_bonus + hd_bonus + h / 10000.0
+
+                  best = max(files, key=file_score)
+                  duration = float(video.get("duration") or 0)
+
+                  candidates.append(
+                      (duration, file_score(best), video, best)
+                  )
+
+              if not candidates:
+                  raise RuntimeError(
+                      "Pexels returned videos but no usable video file."
+                  )
+
+              long_enough = [
+                  item for item in candidates
+                  if item[0] >= target_seconds
+              ]
+
+              pool = long_enough or candidates
+
+              duration, _, video, video_file = max(
+                  pool,
+                  key=lambda item: (
+                      item[0] >= target_seconds,
+                      item[1],
+                      min(item[0], target_seconds),
+                  ),
+              )
+
+              return {
+                  "id": video.get("id"),
+                  "page": video.get("url"),
+                  "duration": duration,
+                  "width": video_file.get("width"),
+                  "height": video_file.get("height"),
+                  "video_url": video_file.get("link"),
+                  "query": query,
+              }
+
+          def download(url, path):
+              with requests.get(
+                  url,
+                  stream=True,
+                  timeout=120,
+              ) as r:
+                  if not r.ok:
+                      raise RuntimeError(
+                          f"Download failed HTTP {r.status_code}: {url}"
+                      )
+
+                  with open(path, "wb") as f:
+                      for chunk in r.iter_content(
+                          chunk_size=1024 * 1024
+                      ):
+                          if chunk:
+                              f.write(chunk)
+
+          def run(cmd):
+              print("$", " ".join(str(x) for x in cmd))
+              result = subprocess.run(cmd)
+
+              if result.returncode:
+                  raise SystemExit(result.returncode)
+
+          def timestamp_map(timestamps):
+              return {
+                  item["verse_key"]: item
+                  for item in timestamps
+                  if item.get("verse_key")
+              }
+
+          def build_ruku_groups(verses):
+              groups = []
+              current = []
+              current_ruku = None
+
+              for verse in verses:
+                  ruku = verse.get("ruku_number")
+
+                  if ruku is None:
+                      ruku = f"verse-{verse['verse_key']}"
+
+                  if current and ruku != current_ruku:
+                      groups.append(current)
+                      current = []
+
+                  current_ruku = ruku
+                  current.append(verse)
+
+              if current:
+                  groups.append(current)
+
+              return groups
+
+          def split_group(group, timestamps, max_seconds=48.0, min_seconds=15.0):
+              chunks = []
+              current = []
+              start_ms = None
+              end_ms = None
+
+              for verse in group:
+                  timing = timestamps.get(verse["verse_key"])
+
+                  if not timing:
+                      continue
+
+                  verse_start = int(timing["timestamp_from"])
+                  verse_end = int(timing["timestamp_to"])
+
+                  if not current:
+                      current = [verse]
+                      start_ms = verse_start
+                      end_ms = verse_end
+                      continue
+
+                  proposed = (verse_end - start_ms) / 1000.0
+
+                  if proposed > max_seconds:
+                      chunks.append(
+                          (current, start_ms, end_ms)
+                      )
+                      current = [verse]
+                      start_ms = verse_start
+                      end_ms = verse_end
+                  else:
+                      current.append(verse)
+                      end_ms = verse_end
+
+              if current:
+                  chunks.append(
+                      (current, start_ms, end_ms)
+                  )
+
+              # Merge tiny trailing chunks when the merged result remains reasonable.
+              merged = []
+
+              for chunk in chunks:
+                  if merged:
+                      previous = merged[-1]
+                      tiny = (chunk[2] - chunk[1]) / 1000.0 < min_seconds
+                      merged_duration = (chunk[2] - previous[1]) / 1000.0
+
+                      if tiny and merged_duration <= max_seconds:
+                          merged[-1] = (
+                              previous[0] + chunk[0],
+                              previous[1],
+                              chunk[2],
+                          )
+                          continue
+
+                  merged.append(chunk)
+
+              return merged
+
+          def ass_time(ms):
+              centiseconds = int(round(ms / 10.0))
+              hours = centiseconds // 360000
+              centiseconds %= 360000
+              minutes = centiseconds // 6000
+              centiseconds %= 6000
+              seconds = centiseconds // 100
+              centiseconds %= 100
+
+              return (
+                  f"{hours}:{minutes:02d}:"
+                  f"{seconds:02d}.{centiseconds:02d}"
+              )
+
+          def ass_escape(text):
+              return (
+                  text
+                  .replace("\\", r"\\")
+                  .replace("{", r"\{")
+                  .replace("}", r"\}")
+              )
+
+          authenticate()
+
+          progress = load_progress()
+          used = set(progress.get("used_verses", []))
+          chapters = get_chapters()
+
+          selected = None
+
+          # Sequential Quran coverage:
+          # find the first unfinished ruku, then take a coherent time-bounded chunk.
+          for chapter in chapters:
+              chapter_id = int(chapter["id"])
+              verses = get_chapter_verses(chapter_id)
+              audio_file = get_saad_audio(chapter_id)
+              timestamps = timestamp_map(audio_file["timestamps"])
+
+              groups = build_ruku_groups(verses)
+
+              for group in groups:
+                  unused = [
+                      verse
+                      for verse in group
+                      if verse["verse_key"] not in used
+                  ]
+
+                  if not unused:
+                      continue
+
+                  first_unused_index = next(
+                      index
+                      for index, verse in enumerate(group)
+                      if verse["verse_key"] not in used
+                  )
+
+                  remaining = group[first_unused_index:]
+                  chunks = split_group(remaining, timestamps)
+
+                  if not chunks:
+                      continue
+
+                  selected_verses, start_ms, end_ms = chunks[0]
+
+                  selected = {
+                      "chapter": chapter,
+                      "verses": selected_verses,
+                      "start_ms": start_ms,
+                      "end_ms": end_ms,
+                      "audio_url": audio_file["audio_url"],
+                      "timestamps": timestamps,
+                  }
+
+                  break
+
+              if selected:
+                  break
+
+          if not selected:
+              # Entire Quran completed: reset for a new cycle.
+              progress["cycle"] = int(progress.get("cycle", 1)) + 1
+              progress["used_verses"] = []
+              progress["published_sections"] = []
+              save_progress(progress)
+
+              print(
+                  f"QURAN CYCLE {progress['cycle']} STARTED"
+              )
+
+              raise SystemExit(
+                  "Previous Quran cycle is complete. "
+                  "Progress was reset; rerun the workflow for the new cycle."
+              )
+
+          chapter = selected["chapter"]
+          verses = selected["verses"]
+          start_ms = selected["start_ms"]
+          end_ms = selected["end_ms"]
+          duration = (end_ms - start_ms) / 1000.0
+
+          translations = []
+
+          for verse in verses:
+              selected_translation = ""
+
+              for translation in verse.get("translations", []):
+                  if str(translation.get("resource_id")) == "20":
+                      selected_translation = clean_translation(
+                          translation.get("text", "")
+                      )
+                      break
+
+              translations.append(selected_translation)
+
+          arabic = "\n".join(
+              verse.get("text_uthmani", "").strip()
+              for verse in verses
+          )
+
+          translation_text = " ".join(
+              text for text in translations if text
+          )
+
+          english = wrap_text(
+              translation_text,
+              44,
+          )
+
+          visual_query = semantic_query(
+              translation_text
+          )
+
+          print("")
+          print("==========================================")
+          print("NEXT REAL QURAN PRODUCTION SECTION")
+          print("==========================================")
+          print(
+              f"Cycle: {progress.get('cycle', 1)}"
+          )
+          print(
+              f"Surah: {chapter['id']} - "
+              f"{chapter['name_simple']}"
+          )
+          print(
+              "Verses: "
+              + ", ".join(
+                  verse["verse_key"]
+                  for verse in verses
+              )
+          )
+          print(
+              f"Saad Al-Ghamdi duration: "
+              f"{duration:.2f}s"
+          )
+          print(
+              f"Visual search: {visual_query}"
+          )
+          print("==========================================")
+
+          section_id = (
+              f"cycle-{progress.get('cycle', 1)}-"
+              f"{verses[0]['verse_key'].replace(':', '-')}-"
+              f"{verses[-1]['verse_key'].replace(':', '-')}"
+          )
+
+          section_dir = WORK / section_id
+          section_dir.mkdir(
+              parents=True,
+              exist_ok=True,
+          )
+
+          audio_full = (
+              section_dir /
+              "saad-al-ghamdi-chapter.mp3"
+          )
+          audio_clip = (
+              section_dir /
+              "saad-al-ghamdi-section.mp3"
+          )
+          background = (
+              section_dir /
+              "background.mp4"
+          )
+          subtitles = (
+              section_dir /
+              "subtitles.ass"
+          )
+          final_video = (
+              section_dir /
+              "quran-section.mp4"
+          )
+
+          if not audio_full.exists():
+              download(
+                  selected["audio_url"],
+                  audio_full,
+              )
+
+          # Extract the exact verse range from the chapter recitation.
+          run([
+              "ffmpeg",
+              "-y",
+              "-ss",
+              f"{start_ms / 1000:.3f}",
+              "-to",
+              f"{end_ms / 1000:.3f}",
+              "-i",
+              str(audio_full),
+              "-vn",
+              "-c:a",
+              "aac",
+              "-b:a",
+              "192k",
+              str(audio_clip),
+          ])
+
+          pexels = choose_pexels_video(
+              visual_query,
+              duration,
+          )
+
+          print(
+              "Selected Pexels video:",
+              json.dumps(
+                  pexels,
+                  indent=2,
+              ),
+          )
+
+          pexels_source = (
+              section_dir /
+              "pexels-source.mp4"
+          )
+
+          download(
+              pexels["video_url"],
+              pexels_source,
+          )
+
+          # One video for the whole meaningful section.
+          # Loop if shorter than the recitation and crop to 9:16.
+          run([
+              "ffmpeg",
+              "-y",
+              "-stream_loop",
+              "-1",
+              "-i",
+              str(pexels_source),
+              "-t",
+              f"{duration:.3f}",
+              "-vf",
+              (
+                  "scale=1080:1920:"
+                  "force_original_aspect_ratio=increase,"
+                  "crop=1080:1920,"
+                  "fps=30,"
+                  "format=yuv420p"
+              ),
+              "-an",
+              "-c:v",
+              "libx264",
+              "-preset",
+              "veryfast",
+              "-movflags",
+              "+faststart",
+              str(background),
+          ])
+
+          events = []
+
+          for index, verse in enumerate(verses):
+              timing = selected["timestamps"][
+                  verse["verse_key"]
+              ]
+
+              local_start = max(
+                  0,
+                  int(timing["timestamp_from"]) - start_ms,
+              )
+
+              local_end = max(
+                  local_start + 250,
+                  int(timing["timestamp_to"]) - start_ms,
+              )
+
+              events.append(
+                  "Dialogue: "
+                  f"0,{ass_time(local_start)},"
+                  f"{ass_time(local_end)},Ref,,"
+                  "0,0,90,,"
+                  f"VERSE {ass_escape(verse['verse_key'])}"
+              )
+
+              events.append(
+                  "Dialogue: "
+                  f"1,{ass_time(local_start)},"
+                  f"{ass_time(local_end)},Arabic,,"
+                  "0,0,210,,"
+                  f"{ass_escape(verse.get('text_uthmani', '').strip())}"
+              )
+
+              events.append(
+                  "Dialogue: "
+                  f"2,{ass_time(local_start)},"
+                  f"{ass_time(local_end)},English,,"
+                  "0,0,300,,"
+                  f"{ass_escape(translations[index])}"
+              )
+
+          subtitles.write_text(
+              """[Script Info]
+          ScriptType: v4.00+
+          PlayResX: 1080
+          PlayResY: 1920
+          WrapStyle: 2
+          ScaledBorderAndShadow: yes
+
+          [V4+ Styles]
+          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+          Style: Ref,Noto Sans,34,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,1,0,0,0,100,100,0,0,1,2,1,8,70,70,90,1
+          Style: Arabic,Noto Naskh Arabic,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,90,90,210,1
+          Style: English,Noto Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,2,1,2,100,100,300,1
+
+          [Events]
+          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+          """
+              + "\n".join(events)
+              + "\n",
+              encoding="utf-8",
+          )
+
+          # Final render: exact Saad audio + one matching visual + subtitles.
+          run([
+              "ffmpeg",
+              "-y",
+              "-i",
+              str(background),
+              "-i",
+              str(audio_clip),
+              "-vf",
+              f"subtitles={subtitles}:"
+              "/usr/share/fonts/truetype/noto",
+              "-map",
+              "0:v:0",
+              "-map",
+              "1:a:0",
+              "-c:v",
+              "libx264",
+              "-preset",
+              "veryfast",
+              "-pix_fmt",
+              "yuv420p",
+              "-c:a",
+              "aac",
+              "-b:a",
+              "192k",
+              "-shortest",
+              "-movflags",
+              "+faststart",
+              str(final_video),
+          ])
+
+          metadata = {
+              "cycle": progress.get("cycle", 1),
+              "chapter": chapter["id"],
+              "chapter_name": chapter["name_simple"],
+              "verse_keys": [
+                  verse["verse_key"]
+                  for verse in verses
+              ],
+              "audio_reciter": "Saad Al-Ghamdi",
+              "chapter_reciter_id": 13,
+              "translation_resource_id": 20,
+              "duration_seconds": round(
+                  duration,
+                  3,
+              ),
+              "visual_query": visual_query,
+              "visual_provider": "Pexels",
+              "pexels": pexels,
+          }
+
+          (
+              section_dir /
+              "metadata.json"
+          ).write_text(
+              json.dumps(
+                  metadata,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+
+          (
+              section_dir /
+              "arabic.txt"
+          ).write_text(
+              arabic + "\n",
+              encoding="utf-8",
+          )
+
+          (
+              section_dir /
+              "translation.txt"
+          ).write_text(
+              english + "\n",
+              encoding="utf-8",
+          )
+
+          if (
+              not final_video.exists()
+              or final_video.stat().st_size < 10000
+          ):
+              raise SystemExit(
+                  "ERROR: final MP4 was not created correctly."
+              )
+
+          # IMPORTANT:
+          # verses are marked used only after the final MP4 exists.
+          progress.setdefault(
+              "used_verses",
+              [],
+          )
+
+          progress["used_verses"].extend(
+              verse["verse_key"]
+              for verse in verses
+          )
+
+          progress["used_verses"] = list(
+              dict.fromkeys(
+                  progress["used_verses"]
+              )
+          )
+
+          progress.setdefault(
+              "published_sections",
+              [],
+          )
+
+          progress[
+              "published_sections"
+          ].append(metadata)
+
+          save_progress(progress)
+
+          print("")
+          print("PRODUCTION SECTION: PASSED")
+          print(
+              f"Final video: {final_video}"
+          )
+          print(
+              "Verses marked complete: "
+              + ", ".join(
+                  verse["verse_key"]
+                  for verse in verses
+              )
+          )
+          PY
+
+      - name: Verify final production video
+        run: |
+          set -e
+          VIDEO="$(find output/production -name 'quran-section.mp4' -type f | head -n 1)"
+          test -n "$VIDEO"
+
+          ffprobe -v error \
+            -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            "$VIDEO"
+
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-production-section
+          path: output/production/
+          retention-days: 7
+
+      - name: Commit production progress
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/progress.json
+          git diff --cached --quiet || git commit -m "Track Quran production progress"
+          git push
