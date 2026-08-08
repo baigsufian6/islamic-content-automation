@@ -1,0 +1,152 @@
+name: Quran Translation Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  translation-test:
+    runs-on: ubuntu-latest
+
+    environment: Quran API
+
+    steps:
+      - name: Set up job
+        uses: actions/checkout@v4
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --quiet requests
+
+      - name: Verify Saheeh International translation
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "production").lower()
+
+          if not client_id or not client_secret:
+              print("ERROR: QF_CLIENT_ID or QF_CLIENT_SECRET is missing.")
+              sys.exit(1)
+
+          if qf_env not in ("production", "prelive"):
+              print("ERROR: QF_ENV must be 'production' or 'prelive'.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          else:
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+
+          # ---------------------------------------------------------
+          # 1. Get an access token
+          # ---------------------------------------------------------
+          token_response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not token_response.ok:
+              print(
+                  f"Authentication failed: HTTP {token_response.status_code}"
+              )
+              sys.exit(1)
+
+          token_data = token_response.json()
+          access_token = token_data.get("access_token")
+
+          if not access_token:
+              print("Authentication succeeded but no access token was returned.")
+              sys.exit(1)
+
+          print("Authentication: SUCCESS")
+
+          # ---------------------------------------------------------
+          # 2. Request Saheeh International (resource ID 20)
+          #    using verse 1:1 as a small verification request.
+          # ---------------------------------------------------------
+          response = requests.get(
+              f"{api_base}/content/api/v4/verses/by_key/1:1",
+              params={
+                  "translations": "20",
+              },
+              headers={
+                  "x-auth-token": access_token,
+                  "x-client-id": client_id,
+              },
+              timeout=30,
+          )
+
+          print(f"Translation request HTTP status: {response.status_code}")
+
+          if not response.ok:
+              print("Translation request failed.")
+              print(f"Response: {response.text[:500]}")
+              sys.exit(1)
+
+          data = response.json()
+
+          verses = data.get("verse") or data.get("verses")
+
+          if not verses:
+              print("ERROR: API returned no verse data.")
+              sys.exit(1)
+
+          # The single-verse endpoint may return an object or a list.
+          if isinstance(verses, dict):
+              verse = verses
+          else:
+              if len(verses) == 0:
+                  print("ERROR: Empty verse response.")
+                  sys.exit(1)
+              verse = verses[0]
+
+          translations = verse.get("translations", [])
+
+          if not isinstance(translations, list) or not translations:
+              print("ERROR: No translations were returned.")
+              sys.exit(1)
+
+          # Find resource ID 20 specifically.
+          selected = None
+
+          for translation in translations:
+              if str(translation.get("resource_id")) == "20":
+                  selected = translation
+                  break
+
+          if selected is None:
+              print("ERROR: Saheeh International resource ID 20 was not returned.")
+              sys.exit(1)
+
+          text = selected.get("text")
+
+          if not isinstance(text, str) or not text.strip():
+              print("ERROR: Translation resource 20 returned no usable text.")
+              sys.exit(1)
+
+          # ---------------------------------------------------------
+          # 3. Safe verification output
+          # ---------------------------------------------------------
+          print("Translation resource: 20")
+          print(f"Verse: {verse.get('verse_key', '1:1')}")
+          print("Translation text received: YES")
+          print(f"Translation text preview: {text[:200]}")
+
+          print("")
+          print("SAHEEH INTERNATIONAL TRANSLATION TEST: PASSED")
+          PY
