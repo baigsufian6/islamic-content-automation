@@ -1,0 +1,52 @@
+name: Cloud Render Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  render-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Create synthetic test video
+        run: |
+          mkdir -p output
+
+          ffmpeg \
+            -y \
+            -f lavfi \
+            -i "testsrc2=size=1080x1920:rate=30" \
+            -f lavfi \
+            -i "sine=frequency=440:duration=5" \
+            -t 5 \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 128k \
+            -movflags +faststart \
+            output/cloud-render-test.mp4
+
+      - name: Verify rendered video
+        run: |
+          ffprobe \
+            -v error \
+            -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            output/cloud-render-test.mp4
+
+      - name: Upload temporary test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-render-test
+          path: output/cloud-render-test.mp4
+          retention-days: 1
