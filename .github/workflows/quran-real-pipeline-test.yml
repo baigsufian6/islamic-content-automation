@@ -1,0 +1,412 @@
+name: Quran Real Pipeline Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  real-pipeline-test:
+    runs-on: ubuntu-latest
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core fonts-noto-extra fontconfig
+          python3 -m pip install --quiet requests
+
+      - name: Fetch Quran verse and matching background
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import json
+          import re
+          import html
+          import requests
+
+          # --------------------------------------------------
+          # Configuration
+          # --------------------------------------------------
+
+          VERSE_KEY = "1:1"
+          TRANSLATION_ID = "20"
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+          pexels_key = os.environ.get("PEXELS_API_KEY")
+
+          if not client_id or not client_secret:
+              print("ERROR: Quran Foundation credentials are missing.")
+              sys.exit(1)
+
+          if not pexels_key:
+              print("ERROR: PEXELS_API_KEY is missing.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: QF_ENV must be production or prelive.")
+              sys.exit(1)
+
+          # --------------------------------------------------
+          # 1. Authenticate with Quran Foundation
+          # --------------------------------------------------
+
+          token_response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not token_response.ok:
+              print(
+                  f"ERROR: Quran authentication failed: "
+                  f"HTTP {token_response.status_code}"
+              )
+              sys.exit(1)
+
+          token_data = token_response.json()
+          access_token = token_data.get("access_token")
+
+          if not access_token:
+              print("ERROR: No Quran access token returned.")
+              sys.exit(1)
+
+          print("Quran authentication: SUCCESS")
+
+          # --------------------------------------------------
+          # 2. Fetch real Quran verse + translation 20
+          # --------------------------------------------------
+
+          response = requests.get(
+              f"{api_base}/content/api/v4/verses/by_key/{VERSE_KEY}",
+              params={
+                  "translations": TRANSLATION_ID,
+                  "fields": "text_uthmani",
+              },
+              headers={
+                  "x-auth-token": access_token,
+                  "x-client-id": client_id,
+              },
+              timeout=30,
+          )
+
+          print(f"Quran API request: HTTP {response.status_code}")
+
+          if not response.ok:
+              print("ERROR: Quran API request failed.")
+              sys.exit(1)
+
+          data = response.json()
+          verse = data.get("verse")
+
+          if not isinstance(verse, dict):
+              print("ERROR: Verse object missing.")
+              sys.exit(1)
+
+          verse_key = verse.get("verse_key")
+          arabic_text = verse.get("text_uthmani")
+
+          if verse_key != VERSE_KEY:
+              print(f"ERROR: Expected {VERSE_KEY}, got {verse_key}")
+              sys.exit(1)
+
+          if not isinstance(arabic_text, str) or not arabic_text.strip():
+              print("ERROR: Arabic text missing.")
+              sys.exit(1)
+
+          translations = verse.get("translations", [])
+
+          selected_translation = None
+
+          for item in translations:
+              if str(item.get("resource_id")) == TRANSLATION_ID:
+                  selected_translation = item
+                  break
+
+          if selected_translation is None:
+              print("ERROR: Translation resource 20 missing.")
+              sys.exit(1)
+
+          translation_text = selected_translation.get("text")
+
+          if not isinstance(translation_text, str):
+              print("ERROR: Translation text missing.")
+              sys.exit(1)
+
+          # Remove HTML tags such as <sup foot_note=...>
+          translation_text = re.sub(
+              r"<[^>]+>",
+              "",
+              translation_text
+          )
+
+          translation_text = html.unescape(translation_text).strip()
+
+          if not translation_text:
+              print("ERROR: Translation contains no usable text.")
+              sys.exit(1)
+
+          print(f"Quran verse: {verse_key}")
+          print("Arabic text: received")
+          print("Saheeh International: received")
+          print(f"Translation characters: {len(translation_text)}")
+
+          # --------------------------------------------------
+          # 3. Search Pexels for a matching background
+          #
+          # For now this is a controlled first production test.
+          # Later the search query will be generated from the
+          # verse/theme automatically.
+          # --------------------------------------------------
+
+          search_query = "peaceful nature dawn landscape"
+
+          pexels_response = requests.get(
+              "https://api.pexels.com/v1/videos/search",
+              headers={
+                  "Authorization": pexels_key,
+              },
+              params={
+                  "query": search_query,
+                  "orientation": "portrait",
+                  "size": "medium",
+                  "per_page": 10,
+              },
+              timeout=30,
+          )
+
+          print(
+              f"Pexels API request: HTTP "
+              f"{pexels_response.status_code}"
+          )
+
+          if not pexels_response.ok:
+              print("ERROR: Pexels API request failed.")
+              sys.exit(1)
+
+          pexels_data = pexels_response.json()
+          videos = pexels_data.get("videos", [])
+
+          if not videos:
+              print("ERROR: Pexels returned no suitable videos.")
+              sys.exit(1)
+
+          # --------------------------------------------------
+          # 4. Select a usable portrait MP4
+          # --------------------------------------------------
+
+          selected_video = None
+          selected_file = None
+
+          for video in videos:
+              files = video.get("video_files", [])
+
+              candidates = [
+                  f for f in files
+                  if f.get("file_type") == "video/mp4"
+                  and f.get("width")
+                  and f.get("height")
+              ]
+
+              # Prefer portrait files.
+              portrait = [
+                  f for f in candidates
+                  if f["height"] >= f["width"]
+              ]
+
+              if portrait:
+                  selected_video = video
+                  selected_file = max(
+                      portrait,
+                      key=lambda f: f["width"] * f["height"]
+                  )
+                  break
+
+          if selected_video is None or selected_file is None:
+              print("ERROR: No usable portrait MP4 found.")
+              sys.exit(1)
+
+          video_id = selected_video.get("id")
+          video_url = selected_video.get("url")
+          download_url = selected_file.get("link")
+
+          if not download_url:
+              print("ERROR: Selected Pexels video has no download URL.")
+              sys.exit(1)
+
+          print(f"Pexels video ID: {video_id}")
+          print(f"Pexels video page: {video_url}")
+          print(
+              f"Selected video size: "
+              f"{selected_file.get('width')}x"
+              f"{selected_file.get('height')}"
+          )
+
+          # --------------------------------------------------
+          # 5. Download real background video
+          # --------------------------------------------------
+
+          os.makedirs("output", exist_ok=True)
+
+          video_response = requests.get(
+              download_url,
+              stream=True,
+              timeout=60,
+          )
+
+          if not video_response.ok:
+              print(
+                  f"ERROR: Background download failed: "
+                  f"HTTP {video_response.status_code}"
+              )
+              sys.exit(1)
+
+          with open("output/background.mp4", "wb") as f:
+              for chunk in video_response.iter_content(chunk_size=1024 * 1024):
+                  if chunk:
+                      f.write(chunk)
+
+          if os.path.getsize("output/background.mp4") < 10000:
+              print("ERROR: Downloaded video is unexpectedly small.")
+              sys.exit(1)
+
+          print("Pexels background: DOWNLOADED")
+
+          # --------------------------------------------------
+          # 6. Save safe metadata for the renderer
+          # --------------------------------------------------
+
+          pipeline = {
+              "verse_key": verse_key,
+              "arabic_text": arabic_text,
+              "translation": {
+                  "resource_id": int(TRANSLATION_ID),
+                  "text": translation_text,
+              },
+              "background": {
+                  "provider": "pexels",
+                  "video_id": video_id,
+                  "video_page": video_url,
+                  "search_query": search_query,
+              },
+          }
+
+          with open(
+              "output/pipeline.json",
+              "w",
+              encoding="utf-8"
+          ) as f:
+              json.dump(
+                  pipeline,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("Pipeline metadata: CREATED")
+          print("STEP 32: PASSED")
+          PY
+
+      - name: Create subtitles
+        run: |
+          python3 - <<'PY'
+          import json
+          import html
+          import re
+
+          with open("output/pipeline.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          arabic = data["arabic_text"]
+          english = data["translation"]["text"]
+
+          english = re.sub(r"<[^>]+>", "", english)
+          english = html.unescape(english).strip()
+
+          with open("output/test.ass", "w", encoding="utf-8") as f:
+              f.write("""[Script Info]
+          ScriptType: v4.00+
+          PlayResX: 1080
+          PlayResY: 1920
+          WrapStyle: 2
+          ScaledBorderAndShadow: yes
+
+          [V4+ Styles]
+          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+          Style: Reference,Noto Sans,44,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,1,0,0,0,100,100,0,0,1,3,1,8,70,70,120,1
+          Style: Arabic,Noto Naskh Arabic,78,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,5,70,70,0,1
+          Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,5,70,70,0,1
+
+          [Events]
+          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+          """)
+
+              f.write(
+                  f"Dialogue: 0,0:00:00.00,0:00:08.00,Reference,,0,0,120,,VERSE {data['verse_key']}\n"
+              )
+              f.write(
+                  f"Dialogue: 0,0:00:00.00,0:00:08.00,Arabic,,0,0,0,,{arabic}\n"
+              )
+              f.write(
+                  f"Dialogue: 0,0:00:00.00,0:00:08.00,English,,0,0,0,,{english}\n"
+              )
+
+          print("Subtitles: CREATED")
+          PY
+
+      - name: Render real Quran video
+        run: |
+          ffmpeg \
+            -y \
+            -stream_loop -1 \
+            -i output/background.mp4 \
+            -t 8 \
+            -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles=output/test.ass:fontsdir=/usr/share/fonts/truetype/noto" \
+            -an \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            -movflags +faststart \
+            output/quran-real-pipeline.mp4
+
+      - name: Verify final video
+        run: |
+          ffprobe \
+            -v error \
+            -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            output/quran-real-pipeline.mp4
+
+          test -s output/quran-real-pipeline.mp4
+
+          echo "STEP 32 FINAL RENDER: PASSED"
+
+      - name: Upload real render
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-real-pipeline
+          path: |
+            output/quran-real-pipeline.mp4
+            output/pipeline.json
+          retention-days: 1
