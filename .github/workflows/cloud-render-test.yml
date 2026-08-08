@@ -45,7 +45,7 @@ jobs:
             output/cloud-render-test.mp4
 
       - name: Upload temporary test artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cloud-render-test
           path: output/cloud-render-test.mp4
