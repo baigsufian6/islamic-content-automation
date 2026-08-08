@@ -197,16 +197,7 @@ jobs:
                           index.append({
                               "id": int(verse["id"]),
                               "verse_key": verse["verse_key"],
-                              # Some verse-list responses omit chapter_id even though
-                              # the endpoint itself is scoped to this chapter. Use the
-                              # authoritative chapter id from the request as fallback.
-                              "chapter_id": int(verse.get("chapter_id") or cid),
-                              "chapter_name": (
-                                  chapter.get("name_simple")
-                                  or chapter.get("name_complex")
-                                  or chapter.get("name_arabic")
-                                  or f"Chapter {cid}"
-                              ),
+                              "chapter_id": int(verse["chapter_id"]),
                               "verse_number": int(verse["verse_number"]),
                               "juz_number": verse.get("juz_number"),
                               "hizb_number": verse.get("hizb_number"),
@@ -557,9 +548,12 @@ jobs:
               subtitles = section_dir / "subtitles.ass"
               final_video = section_dir / "quran-section.mp4"
 
-              # Keep source audio in the temporary build directory only.
-              # We do not copy every ayah MP3 into the production artifact.
-              stable_audio = [(verse, audio_path, dur) for verse, audio_path, dur in candidates]
+              # Copy selected ayah files to stable paths for artifact/debugging.
+              stable_audio = []
+              for verse, audio_path, dur in candidates:
+                  dest = section_dir / f"{verse['verse_key'].replace(':', '-')}.mp3"
+                  dest.write_bytes(audio_path.read_bytes())
+                  stable_audio.append((verse, dest, dur))
 
               concat_lines = []
               for _, path, _ in stable_audio:
@@ -742,10 +736,9 @@ jobs:
                       .replace("}", r"\}")
                   )
 
-              def wrap_english(text, max_chars):
-                  """Wrap without dropping any translation text."""
+              def wrap_english(text, max_chars=52, max_lines=4):
                   paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
-                  lines = []
+                  out = []
                   for paragraph in paragraphs:
                       words = paragraph.split()
                       line = ""
@@ -755,88 +748,74 @@ jobs:
                               line = candidate
                           else:
                               if line:
-                                  lines.append(line)
+                                  out.append(line)
                               line = word
                       if line:
-                          lines.append(line)
-                  return "\n".join(lines)
-
-              def english_layout(text):
-                  """Fit the complete translation into a portrait-safe 4-line block."""
-                  candidates = [
-                      (46, 48),
-                      (42, 50),
-                      (38, 52),
-                      (34, 55),
-                      (30, 58),
-                      (27, 61),
-                      (24, 64),
-                  ]
-                  for size, chars in candidates:
-                      wrapped = wrap_english(text, chars)
-                      if len(wrapped.split("\n")) <= 4:
-                          return size, wrapped
-                  # Extremely long translations are still never truncated.
-                  return 24, wrap_english(text, 68)
-
-              chapter_name = selected[0].get("chapter_name", f"Chapter {selected[0]['chapter_id']}")
+                          out.append(line)
+                  if len(out) > max_lines:
+                      # Reduce font rather than silently deleting Quran translation.
+                      return "\n".join(out), True
+                  return "\n".join(out), False
 
               for verse, _, dur in stable_audio:
                   start = cursor
                   end = cursor + dur
                   arabic = verse["arabic_text"]
                   english = verse["translation"]
-                  english_size, english_display = english_layout(english)
 
-                  arabic_size = 88
-                  if len(arabic) > 60:
-                      arabic_size = 82
-                  if len(arabic) > 90:
+                  # Keep each ayah on its own timing window. This guarantees
+                  # the text changes at the same boundary as the recitation.
+                  english_display, too_long = wrap_english(english)
+                  if too_long:
+                      english_display, _ = wrap_english(english, max_chars=60, max_lines=5)
+
+                  arabic_size = 84
+                  if len(arabic) > 80:
                       arabic_size = 76
-                  if len(arabic) > 120:
-                      arabic_size = 70
+                  if len(arabic) > 110:
+                      arabic_size = 68
 
-                  # Elegant, stable portrait-safe placement:
-                  # chapter title at top, current ayah below it, Arabic above
-                  # the lower third, translation beneath it. Every element is
-                  # centered and has a subtle translucent panel for readability.
+                  english_size = 44
+                  if len(english) > 110:
+                      english_size = 40
+                  if len(english) > 180:
+                      english_size = 36
+                  if len(english) > 260:
+                      english_size = 32
+
+                  # Reference stays at top; Arabic and English stay comfortably
+                  # inside the safe portrait area.
                   events.append(
-                      f"Dialogue: 0,{ass_time(start)},{ass_time(end)},Header,,"
-                      f"0,0,0,,{{\\an8\\pos(540,82)}}{ass_escape('SURAH ' + chapter_name.upper())}"
-                  )
-                  events.append(
-                      f"Dialogue: 0,{ass_time(start)},{ass_time(end)},SubHeader,,"
-                      f"0,0,0,,{{\\an8\\pos(540,128)}}CHAPTER {verse['chapter_id']}  •  AYAH {verse['verse_number']}"
+                      f"Dialogue: 0,{ass_time(start)},{ass_time(end)},Reference,,"
+                      f"0,0,110,,VERSE {ass_escape(verse['verse_key'])}"
                   )
                   events.append(
                       f"Dialogue: 1,{ass_time(start)},{ass_time(end)},Arabic,,"
-                      f"0,0,0,,{{\\an5\\pos(540,820)}}{ass_escape(arabic)}"
+                      f"0,0,230,,{ass_escape(arabic)}"
                   )
                   events.append(
                       f"Dialogue: 2,{ass_time(start)},{ass_time(end)},English,,"
-                      f"0,0,0,,{{\\an2\\pos(540,1535)}}{ass_escape(english_display)}"
+                      f"0,0,390,,{ass_escape(english_display)}"
                   )
 
                   cursor = end
 
               ass = """[Script Info]
-              ScriptType: v4.00+
-              PlayResX: 1080
-              PlayResY: 1920
-              WrapStyle: 2
-              ScaledBorderAndShadow: yes
+          ScriptType: v4.00+
+          PlayResX: 1080
+          PlayResY: 1920
+          WrapStyle: 2
+          ScaledBorderAndShadow: yes
 
-              [V4+ Styles]
-              Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-              Style: Header,Noto Sans,38,&H00F4E4B0,&H00F4E4B0,&H00101010,&H90000000,1,0,0,0,100,100,0,0,3,1,1,8,50,50,0,1
-              Style: SubHeader,Noto Sans,25,&H00FFFFFF,&H00FFFFFF,&H00101010,&HA0000000,0,0,0,0,100,100,0,0,3,1,1,8,50,50,0,1
-              Style: Arabic,Noto Naskh Arabic,88,&H00F7E8B5,&H00F7E8B5,&H00101010,&H88000000,0,0,0,0,100,100,0,0,3,2,1,5,70,70,0,1
-              Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H98000000,0,0,0,0,100,100,0,0,3,2,1,2,80,80,0,1
+          [V4+ Styles]
+          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+          Style: Reference,Noto Sans,38,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,1,0,0,0,100,100,0,0,1,2,1,8,70,70,110,1
+          Style: Arabic,Noto Naskh Arabic,84,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,80,80,230,1
+          Style: English,Noto Sans,44,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,2,1,2,90,90,390,1
 
-              [Events]
-              Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-              """ + "\n".join(events) + "\n"
-
+          [Events]
+          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+          """ + "\n".join(events) + "\n"
 
               subtitles.write_text(ass, encoding="utf-8")
 
@@ -964,21 +943,6 @@ jobs:
                   encoding="utf-8",
               )
 
-              # Clean publication package: only the finished MP4 and a small
-              # metadata JSON leave the build directory. Source MP3s, the
-              # Pexels download, intermediate video, ASS and concat files stay
-              # temporary and are never uploaded as the production artifact.
-              PUBLISH = ROOT / "publish"
-              PUBLISH.mkdir(parents=True, exist_ok=True)
-              safe_chapter = re.sub(r"[^A-Za-z0-9]+", "-", chapter_name).strip("-")
-              publish_name = f"{safe_chapter}-Chapter-{selected[0]['chapter_id']}-Ayah-{selected[0]['verse_number']}-to-{selected[-1]['verse_number']}.mp4"
-              publish_video = PUBLISH / publish_name
-              publish_video.write_bytes(final_video.read_bytes())
-              (PUBLISH / (publish_video.stem + ".json")).write_text(
-                  json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
-                  encoding="utf-8",
-              )
-
               # ----------------------------------------------------------
               # Commit progress ONLY after final verification succeeded.
               # ----------------------------------------------------------
@@ -1019,7 +983,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: quran-production
-          path: publish/
+          path: output/production/
           retention-days: 7
 
       - name: Commit Quran progress and index
