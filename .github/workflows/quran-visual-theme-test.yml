@@ -1,0 +1,222 @@
+name: Quran Visual Theme Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  visual-theme-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --quiet requests
+
+      - name: Generate visual brief from Quran verse
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+          import sys
+
+          # --------------------------------------------------
+          # Test input from our verified Quran pipeline.
+          # In the production pipeline this will come directly
+          # from quran-pipeline-input.json.
+          # --------------------------------------------------
+
+          input_data = {
+              "verse_key": "1:1",
+              "arabic_text": "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+              "translation": {
+                  "resource_id": 20,
+                  "text": (
+                      "In the name of Allāh, "
+                      "the Entirely Merciful, "
+                      "the Especially Merciful."
+                  )
+              }
+          }
+
+          verse_key = input_data["verse_key"]
+          translation = input_data["translation"]["text"]
+
+          if not verse_key:
+              print("ERROR: Missing verse key.")
+              sys.exit(1)
+
+          if not translation.strip():
+              print("ERROR: Missing translation text.")
+              sys.exit(1)
+
+          # Remove HTML tags such as <sup ...> if present.
+          clean_translation = re.sub(
+              r"<[^>]+>",
+              "",
+              translation
+          ).strip()
+
+          lower_text = clean_translation.lower()
+
+          # --------------------------------------------------
+          # Initial deterministic theme mapping.
+          #
+          # This is intentionally simple for Step 30.
+          # Later this layer can use an AI classifier.
+          # --------------------------------------------------
+
+          if (
+              "merciful" in lower_text
+              or "mercy" in lower_text
+              or "compassion" in lower_text
+          ):
+              theme = "mercy_and_compassion"
+              mood = "peaceful"
+              visual_direction = (
+                  "peaceful natural landscape at dawn, "
+                  "soft warm light, subtle atmosphere, "
+                  "cinematic and contemplative"
+              )
+
+          elif (
+              "creation" in lower_text
+              or "heavens" in lower_text
+              or "earth" in lower_text
+          ):
+              theme = "creation"
+              mood = "awe"
+              visual_direction = (
+                  "vast natural landscape or celestial sky, "
+                  "sense of scale and wonder, cinematic"
+              )
+
+          elif (
+              "paradise" in lower_text
+              or "garden" in lower_text
+          ):
+              theme = "paradise"
+              mood = "peaceful"
+              visual_direction = (
+                  "lush garden landscape with flowing water, "
+                  "soft natural light, serene cinematic atmosphere"
+              )
+
+          elif (
+              "judgment" in lower_text
+              or "punishment" in lower_text
+              or "warning" in lower_text
+          ):
+              theme = "warning_and_judgment"
+              mood = "serious"
+              visual_direction = (
+                  "dramatic natural landscape, "
+                  "deep shadows and atmospheric sky, "
+                  "serious cinematic mood"
+              )
+
+          else:
+              theme = "reflection"
+              mood = "contemplative"
+              visual_direction = (
+                  "cinematic natural landscape, "
+                  "subtle movement, peaceful atmosphere"
+              )
+
+          # --------------------------------------------------
+          # Safety constraints for visual generation.
+          # --------------------------------------------------
+
+          avoid = [
+              "depictions of Allah",
+              "depictions of prophets",
+              "literal portrayals of sacred figures",
+              "invented historical religious scenes",
+              "graphic violence",
+              "sexual content",
+              "text generated inside the background image"
+          ]
+
+          visual_brief = {
+              "verse_key": verse_key,
+              "translation_resource_id": 20,
+              "theme": theme,
+              "mood": mood,
+              "visual_direction": visual_direction,
+              "avoid": avoid
+          }
+
+          with open(
+              "visual-brief.json",
+              "w",
+              encoding="utf-8"
+          ) as f:
+              json.dump(
+                  visual_brief,
+                  f,
+                  ensure_ascii=False,
+                  indent=2
+              )
+
+          print("QURAN VISUAL THEME TEST")
+          print("------------------------")
+          print(f"Verse: {verse_key}")
+          print("Translation resource: 20")
+          print(f"Theme: {theme}")
+          print(f"Mood: {mood}")
+          print(f"Visual direction: {visual_direction}")
+          print("")
+          print("VISUAL THEME TEST: PASSED")
+          print("Visual brief: visual-brief.json")
+          PY
+
+      - name: Verify visual brief
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+
+          with open(
+              "visual-brief.json",
+              "r",
+              encoding="utf-8"
+          ) as f:
+              brief = json.load(f)
+
+          required = [
+              "verse_key",
+              "translation_resource_id",
+              "theme",
+              "mood",
+              "visual_direction",
+              "avoid"
+          ]
+
+          for field in required:
+              if field not in brief:
+                  print(f"ERROR: Missing field: {field}")
+                  sys.exit(1)
+
+          if brief["translation_resource_id"] != 20:
+              print("ERROR: Unexpected translation resource.")
+              sys.exit(1)
+
+          if not brief["visual_direction"].strip():
+              print("ERROR: Empty visual direction.")
+              sys.exit(1)
+
+          if not isinstance(brief["avoid"], list):
+              print("ERROR: Safety constraints are invalid.")
+              sys.exit(1)
+
+          print("Visual brief validation: PASSED")
+          PY
+
+      - name: Upload visual brief
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-visual-brief
+          path: visual-brief.json
+          retention-days: 1
