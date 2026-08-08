@@ -1,0 +1,80 @@
+{
+  "manifest_id": "test-quran-999-1-4",
+  "content_type": "quran",
+  "manifest_version": 1,
+  "status": "DRAFT",
+  "test_data": true,
+
+  "quran_range": {
+    "surah_number": 999,
+    "surah_name": "TEST SURAH",
+    "start_ayah": 1,
+    "end_ayah": 4
+  },
+
+  "ayahs": [
+    {
+      "verse_key": "999:1",
+      "surah_number": 999,
+      "ayah_number": 1,
+      "sequence_index": 1
+    },
+    {
+      "verse_key": "999:2",
+      "surah_number": 999,
+      "ayah_number": 2,
+      "sequence_index": 2
+    },
+    {
+      "verse_key": "999:3",
+      "surah_number": 999,
+      "ayah_number": 3,
+      "sequence_index": 3
+    },
+    {
+      "verse_key": "999:4",
+      "surah_number": 999,
+      "ayah_number": 4,
+      "sequence_index": 4
+    }
+  ],
+
+  "audio": {
+    "reciter": "TEST AUDIO",
+    "source": "TEST SOURCE",
+    "rights_status": "TEST_ONLY"
+  },
+
+  "visuals": {
+    "human_presence": "none",
+    "faces": "prohibited",
+    "religious_figure_depiction": "prohibited"
+  },
+
+  "video": {
+    "aspect_ratio": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "frame_rate": 30,
+    "video_codec": "H.264",
+    "audio_codec": "AAC"
+  },
+
+  "text": {
+    "show_surah_reference": true,
+    "show_ayah_number": true,
+    "show_arabic": true,
+    "show_translation": true,
+    "same_frame": true
+  },
+
+  "verification": {
+    "arabic_verified": false,
+    "translation_verified": false,
+    "sequence_verified": false,
+    "audio_verified": false,
+    "audio_rights_verified": false,
+    "visuals_verified": false,
+    "human_approval": false
+  }
+}
