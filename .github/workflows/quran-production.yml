@@ -1,20 +1,18 @@
 name: Quran Production Pipeline
 
-on:
-  # Emergency/manual trigger. This has NO inputs:
-  # Surah, ayah, section count, reciter, and visual are all selected automatically.
-  workflow_dispatch:
+# Fully automatic production.
+# - Scheduled run: one new Quran section every day at 06:00 UTC.
+# - Manual run: optional emergency/recovery run with NO inputs.
+#   The worker itself chooses the next section, ayahs, visual, and timing.
 
-  # Fully automatic production: one new Quran video section per day.
-  # GitHub cron uses UTC.
+on:
+  workflow_dispatch:
   schedule:
     - cron: "0 6 * * *"
 
 permissions:
   contents: write
 
-# Never allow two production runs to consume the same Quran progress
-# at the same time.
 concurrency:
   group: quran-production
   cancel-in-progress: false
@@ -44,7 +42,10 @@ jobs:
           set -euo pipefail
 
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends             ffmpeg             fonts-noto-core             fonts-noto-extra
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg \
+            fonts-noto-core \
+            fonts-noto-extra
 
           fc-cache -f
 
@@ -61,9 +62,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           python -m pip install --upgrade pip
-          python -m pip install --disable-pip-version-check             requests             pillow
+          python -m pip install --disable-pip-version-check requests pillow
 
       - name: Validate production worker
         shell: bash
@@ -74,7 +74,7 @@ jobs:
           python -m py_compile production/quran_worker_wow.py
 
           echo "Production worker syntax check passed."
-          echo "No manual Surah/ayah/section parameters are being supplied."
+          echo "No manual Surah, ayah, section count, visual, or reciter inputs are used."
 
       - name: Validate required secrets
         shell: bash
@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p             data             publish             .cache/quran             .cache/audio             .cache/visuals
+          mkdir -p data publish output/production
 
           if [ ! -f data/progress.json ]; then
             printf '%s\n' '{}' > data/progress.json
@@ -118,46 +118,51 @@ jobs:
       - name: Run production brain
         shell: bash
         env:
-          # Quran Foundation
           QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
           QF_ENV: production
 
-          # Visual provider
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
 
-          # Production behaviour
+          # Critical: the GitHub runner is disposable. Persist and PUSH progress
+          # so tomorrow's run continues from today's completed ayahs.
           COMMIT_PROGRESS: "1"
-          ALLOW_VISUAL_REUSE: "0"
+          GIT_PUSH_PROGRESS: "1"
+          GIT_REMOTE: origin
+          GIT_BRANCH: main
+          GIT_PUSH_RETRIES: "3"
 
-          # Passage duration is selected automatically inside the worker.
+          # Production rules. No section-count input exists.
           QURAN_TARGET_MIN: "35"
           QURAN_TARGET_MAX: "65"
+          ALLOW_VISUAL_REUSE: "0"
 
-          # Cycle behaviour
-          QURAN_AUTO_CYCLE: "1"
-          QURAN_AUTO_SELECT: "1"
-
-          # Audio
+          # Verified production reciter/source.
           QURAN_RECITER: "Saad Al-Ghamdi"
+          QURAN_AUDIO_BASE: "https://everyayah.com/data/Ghamadi_40kbps"
 
-          # Translation / presentation
+          # Saheeh International resource used by the verified Quran index.
           QURAN_TRANSLATION_RESOURCE_ID: "20"
+          QURAN_TRANSLATION_NAME: "Saheeh International"
 
-          # Rendering
+          # Render format.
           QURAN_WIDTH: "1080"
           QURAN_HEIGHT: "1920"
           QURAN_FPS: "30"
-
-          # Keep logs useful without making Actions unreadable.
           QURAN_LOG_LEVEL: "INFO"
+
+          # Normal production run: use cached Quran index when valid.
+          QURAN_FORCE_REINDEX: "0"
+          QURAN_DRY_RUN: "0"
 
         run: |
           set -euo pipefail
 
-          echo "Starting automatic Quran production..."
-          echo "The worker will determine the next unconsumed passage."
-          echo "No Surah, ayah, section count, visual, or reciter is supplied manually."
+          echo "=========================================="
+          echo "STARTING AUTOMATIC QURAN PRODUCTION"
+          echo "=========================================="
+          echo "No Surah/ayah/section-count input is being requested."
+          echo "The worker will select the next unconsumed Quran passage."
 
           python production/quran_worker_wow.py
 
@@ -188,11 +193,26 @@ jobs:
           for video in "${videos[@]}"; do
             echo
             echo "=== $video ==="
-            ffprobe -v error               -show_entries stream=index,codec_type,codec_name,width,height,r_frame_rate               -show_entries format=duration               -of default=noprint_wrappers=1               "$video"
+            ffprobe -v error \
+              -show_entries stream=index,codec_type,codec_name,width,height,r_frame_rate \
+              -show_entries format=duration,size,format_name \
+              -of default=noprint_wrappers=1 \
+              "$video"
           done
 
           echo
           echo "Production output verification passed."
+
+      - name: Verify progress is committed and pushed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -f data/progress.json
+          git status --short
+          echo "Latest repository commit:"
+          git log -1 --oneline
+          echo "Persistent Quran progress exists and the worker was configured to push it."
 
       - name: Upload final video and metadata
         uses: actions/upload-artifact@v4
@@ -212,6 +232,7 @@ jobs:
           path: |
             data/progress.json
             data/quran_index.json
+            data/publish_queue.json
           if-no-files-found: ignore
           retention-days: 14
 
@@ -222,5 +243,5 @@ jobs:
           echo "QURAN PRODUCTION COMPLETED"
           echo "=========================================="
           echo "Run: ${{ github.run_number }}"
-          echo "The next run will continue from saved Quran progress."
-          echo "No manual verse/section selection was used."
+          echo "Next scheduled run will continue from the pushed progress state."
+          echo "No manual verse, Surah, or section selection was used."
