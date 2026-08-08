@@ -6,6 +6,7 @@ on:
 jobs:
   quran-api-test:
     runs-on: ubuntu-latest
+    environment: Quran API
 
     steps:
       - name: Checkout repository
