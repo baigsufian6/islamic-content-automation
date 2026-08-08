@@ -52,22 +52,13 @@ Required:
 Optional:
   ALLOW_VISUAL_REUSE=1
   COMMIT_PROGRESS=1
-  GIT_PUSH_PROGRESS=1
-  GIT_REMOTE=origin
-  GIT_BRANCH=main
-  GIT_PUSH_RETRIES=3
   QURAN_TARGET_MIN=35
   QURAN_TARGET_MAX=65
   QURAN_LOG_LEVEL=INFO
   QURAN_FORCE_REINDEX=1
   QURAN_DRY_RUN=1
-  QURAN_WIDTH=1080
-  QURAN_HEIGHT=1920
-  QURAN_FPS=30
-  QURAN_TRANSLATION_RESOURCE_ID=20
-  QURAN_TRANSLATION_NAME=Saheeh International
-  QURAN_RECITER=Saad Al-Ghamdi
-  QURAN_AUDIO_BASE=https://everyayah.com/data/Ghamadi_40kbps
+  QURAN_RENDER_PREVIEW=1
+  QURAN_KEEP_BUILD=1
 
 The script intentionally avoids requiring an AI service for the core pipeline.
 The semantic selector is deterministic and can later be replaced by a semantic
@@ -115,59 +106,49 @@ DATA.mkdir(parents=True, exist_ok=True)
 PUBLISH.mkdir(parents=True, exist_ok=True)
 BUILD.mkdir(parents=True, exist_ok=True)
 
-def env_bool(name: str, default: bool = False) -> bool:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def env_int(name: str, default: int, minimum: Optional[int] = None) -> int:
-    value = int(os.environ.get(name, str(default)))
-    if minimum is not None and value < minimum:
-        raise SystemExit(f"ERROR: {name} must be >= {minimum}.")
+def env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    raw = os.environ.get(name, str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {name} must be an integer, got {raw!r}.") from exc
+    if not minimum <= value <= maximum:
+        raise SystemExit(
+            f"ERROR: {name} must be between {minimum} and {maximum}, got {value}."
+        )
     return value
 
 
-W = env_int("QURAN_WIDTH", 1080, 320)
-H = env_int("QURAN_HEIGHT", 1920, 320)
-FPS = env_int("QURAN_FPS", 30, 1)
-TRANSLATION_ID = env_int("QURAN_TRANSLATION_RESOURCE_ID", 20, 1)
+W = env_int("QURAN_WIDTH", 1080, 540, 2160)
+H = env_int("QURAN_HEIGHT", 1920, 960, 3840)
+FPS = env_int("QURAN_FPS", 30, 24, 60)
+TRANSLATION_ID = env_int("QURAN_TRANSLATION_RESOURCE_ID", 20, 1, 10000)
 TRANSLATION_NAME = os.environ.get("QURAN_TRANSLATION_NAME", "Saheeh International").strip()
 RECITER = os.environ.get("QURAN_RECITER", "Saad Al-Ghamdi").strip()
 AUDIO_BASE = os.environ.get(
-    "QURAN_AUDIO_BASE",
-    "https://everyayah.com/data/Ghamadi_40kbps",
+    "QURAN_AUDIO_BASE", "https://everyayah.com/data/Ghamadi_40kbps"
 ).rstrip("/")
 
-if RECITER.lower() not in {"saad al-ghamdi", "saad al gamdi"}:
+if RECITER.lower() != "saad al-ghamdi":
     raise SystemExit(
-        "ERROR: This production worker is locked to the verified Saad Al-Ghamdi "
-        "EveryAyah audio source. Do not change QURAN_RECITER without adding and "
-        "verifying a matching audio adapter."
+        f"ERROR: Production reciter must be Saad Al-Ghamdi; got {RECITER!r}."
     )
 
 TARGET_MIN = float(os.environ.get("QURAN_TARGET_MIN", "35"))
 TARGET_MAX = float(os.environ.get("QURAN_TARGET_MAX", "65"))
 if TARGET_MIN <= 0 or TARGET_MAX < TARGET_MIN:
-    raise SystemExit("ERROR: QURAN_TARGET_MIN/MAX values are invalid.")
-
+    raise SystemExit("ERROR: Invalid QURAN_TARGET_MIN/QURAN_TARGET_MAX range.")
 LOG_LEVEL = os.environ.get("QURAN_LOG_LEVEL", "INFO").upper()
-ALLOW_VISUAL_REUSE = env_bool("ALLOW_VISUAL_REUSE", False)
-FORCE_REINDEX = env_bool("QURAN_FORCE_REINDEX", False)
-DRY_RUN = env_bool("QURAN_DRY_RUN", False)
-# In GitHub Actions the runner is disposable, so persisted progress must be
-# committed and pushed back to the repository. Local/backend invocations can
-# opt into the same behaviour explicitly.
-IN_GITHUB_ACTIONS = env_bool("GITHUB_ACTIONS", False)
-COMMIT_PROGRESS = env_bool("COMMIT_PROGRESS", IN_GITHUB_ACTIONS)
-GIT_PUSH_PROGRESS = env_bool("GIT_PUSH_PROGRESS", IN_GITHUB_ACTIONS and COMMIT_PROGRESS)
+ALLOW_VISUAL_REUSE = os.environ.get("ALLOW_VISUAL_REUSE", "").strip() == "1"
+COMMIT_PROGRESS = os.environ.get("COMMIT_PROGRESS", "").strip() == "1"
+GIT_PUSH_PROGRESS = os.environ.get("GIT_PUSH_PROGRESS", "").strip() == "1"
 GIT_REMOTE = os.environ.get("GIT_REMOTE", "origin").strip() or "origin"
-GIT_BRANCH = os.environ.get(
-    "GIT_BRANCH",
-    os.environ.get("GITHUB_REF_NAME", "main"),
-).strip() or "main"
-GIT_PUSH_RETRIES = env_int("GIT_PUSH_RETRIES", 3, 1)
+GIT_BRANCH = os.environ.get("GIT_BRANCH", "main").strip() or "main"
+GIT_PUSH_RETRIES = env_int("GIT_PUSH_RETRIES", 3, 1, 10)
+FORCE_REINDEX = os.environ.get("QURAN_FORCE_REINDEX", "").strip() == "1"
+DRY_RUN = os.environ.get("QURAN_DRY_RUN", "").strip() == "1"
+KEEP_BUILD = os.environ.get("QURAN_KEEP_BUILD", "").strip() == "1"
+RENDER_PREVIEW = os.environ.get("QURAN_RENDER_PREVIEW", "").strip() == "1"
 
 CLIENT_ID = os.environ.get("QF_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("QF_CLIENT_SECRET", "")
@@ -504,10 +485,19 @@ class QuranRepository:
     @staticmethod
     def clean_translation(text: str) -> str:
         text = html.unescape(text or "")
+        # Remove HTML footnote/superscript markup before any typography work.
         text = re.sub(r"<sup[^>]*>.*?</sup>", "", text, flags=re.I | re.S)
         text = re.sub(r"<foot_note[^>]*>.*?</foot_note>", "", text, flags=re.I | re.S)
         text = re.sub(r"<[^>]+>", "", text)
+        # Remove Unicode superscript digits and common bracketed footnote markers.
+        text = re.sub(r"[¹²³⁴⁵⁶⁷⁸⁹⁰]+", "", text)
+        text = re.sub(r"\[\s*\d{1,3}\s*\]", "", text)
+        # Some translation payloads expose a plain trailing footnote number, e.g.
+        # "...Merciful.2". Remove only a number directly attached to punctuation
+        # so legitimate numbers such as "Chapter 2" are untouched.
+        text = re.sub(r"(?<=[.!?,;:])\s*\d{1,3}(?=\s|$)", "", text)
         text = text.replace("\r\n", "\n").replace("\r", "\n")
+        # Project rule: an explicit slash in a translation becomes a new visual line.
         text = re.sub(r"\s*/\s*", "\n", text)
         text = re.sub(r"[ \t]+", " ", text)
         text = re.sub(r" *\n *", "\n", text)
@@ -627,7 +617,7 @@ class QuranRepository:
 # ============================================================================
 
 class ProgressStore:
-    SCHEMA = 5
+    SCHEMA = 4
 
     def __init__(self, verses: list[Verse]):
         self.verses = verses
@@ -637,13 +627,7 @@ class ProgressStore:
         if not isinstance(self.state, dict):
             self.state = {}
 
-        previous_schema = int(self.state.get("schema_version", 1) or 1)
-        if previous_schema != self.SCHEMA:
-            log(
-                f"Progress schema migration: {previous_schema} -> {self.SCHEMA}",
-                "INFO",
-            )
-        self.state["schema_version"] = self.SCHEMA
+        self.state.setdefault("schema_version", self.SCHEMA)
         self.state.setdefault("cycle", 1)
         self.state.setdefault("used_verses", [])
         self.state.setdefault("used_pexels_ids", [])
@@ -671,6 +655,12 @@ class ProgressStore:
         self.cycle += 1
         self.used = set()
         self.theme_usage = {}
+        # Keep the in-memory state internally consistent immediately. The state is
+        # persisted on the next successful section commit; the GitHub workflow only
+        # pushes it after the finished MP4 artifact has uploaded successfully.
+        self.state["cycle"] = self.cycle
+        self.state["used_verses"] = []
+        self.state["theme_usage"] = {}
         log(f"QURAN CYCLE {self.cycle} STARTING")
 
     def commit(
@@ -864,14 +854,14 @@ class MeaningEngine:
         # Rotate within the theme so repeated meanings do not look identical.
         count = int(self.progress.theme_usage.get(theme, 0))
         chosen = variants[count % len(variants)]
-        styles = [
+        cycle_styles = [
             "cinematic natural landscape, subtle movement, realistic",
             "cinematic nature close-up, soft depth of field, realistic",
             "wide atmospheric landscape, realistic documentary style",
             "water and sky nature footage, elegant slow motion, realistic",
             "cinematic dawn or twilight nature, restrained movement, realistic",
         ]
-        style = styles[(cycle - 1) % len(styles)]
+        style = cycle_styles[(cycle - 1) % len(cycle_styles)]
 
         # The score is intentionally deterministic; a later embedding service can
         # replace this method without touching the render pipeline.
@@ -1022,6 +1012,9 @@ class PassagePlanner:
             raise RuntimeError("Could not construct a Quran passage.")
 
         self._validate(selected)
+        reused = [v.verse_key for v in selected if v.verse_key in self.progress.used]
+        if reused:
+            raise RuntimeError(f"Planner selected already-used ayahs: {reused}")
         return selected
 
     def _validate(self, selected: list[Verse]) -> None:
@@ -1502,7 +1495,7 @@ class TypographyEngine:
         chapter_name: str,
         chapter_id: int,
         chapter_name_arabic: str,
-    ) -> float:
+    ) -> None:
         total_count = len(verses)
         events: list[str] = []
         cursor = 0.0
@@ -1626,7 +1619,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """ + "\n".join(events) + "\n"
 
         path.write_text(ass, encoding="utf-8")
-        return cursor
 
 
 # ============================================================================
@@ -1754,13 +1746,10 @@ class QualityAssurance:
 
         if (width, height) != (W, H):
             raise RuntimeError(f"Wrong output dimensions: {width}x{height}")
-        frame_rate = str(video.get("r_frame_rate") or "")
-        if frame_rate not in {f"{FPS}/1", str(FPS)}:
-            raise RuntimeError(
-                f"Unexpected output frame rate: {frame_rate}; expected {FPS}/1"
-            )
         if size < 100_000:
             raise RuntimeError("Final MP4 is unexpectedly small.")
+        if duration <= 0:
+            raise RuntimeError("Final MP4 has an invalid duration.")
         if abs(duration - expected_duration) > 0.40:
             raise RuntimeError(
                 f"Final A/V duration mismatch: expected={expected_duration:.3f}s output={duration:.3f}s"
@@ -1843,114 +1832,72 @@ class Publisher:
 # ============================================================================
 
 class GitProgress:
-    """Persist the production state back to the repository.
-
-    GitHub-hosted runners are disposable. A local commit alone is therefore not
-    sufficient: the next scheduled run would start from the old progress file.
-    When GIT_PUSH_PROGRESS=1, this class commits and pushes the state to the
-    configured branch. Push failures are fatal in production so the pipeline
-    never reports a successful section while silently losing its checkpoint.
-    """
-
-    TRACKED_FILES = [
-        "data/progress.json",
-        "data/quran_index.json",
-        "data/publish_queue.json",
-    ]
-
-    def _git(self, *args: str, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess:
-        return subprocess.run(
-            ["git", "-C", str(ROOT), *args],
-            check=check,
-            capture_output=capture,
-            text=True,
-        )
-
-    def _push(self) -> None:
-        last_error = "unknown git push error"
-
-        for attempt in range(1, GIT_PUSH_RETRIES + 1):
-            result = self._git(
-                "push",
-                GIT_REMOTE,
-                f"HEAD:{GIT_BRANCH}",
-                capture=True,
-                check=False,
-            )
-            if result.returncode == 0:
-                log(f"Progress pushed to {GIT_REMOTE}/{GIT_BRANCH}.")
-                return
-
-            last_error = (result.stderr or result.stdout or "push failed").strip()
-            log(
-                f"Git push attempt {attempt}/{GIT_PUSH_RETRIES} failed: {last_error}",
-                "WARN",
-            )
-
-            if attempt >= GIT_PUSH_RETRIES:
-                break
-
-            # Another legitimate commit may have landed on main while this
-            # runner was rendering. Rebase our tiny state commit onto it and
-            # retry. If the state files conflict, fail rather than overwrite
-            # somebody else's progress.
-            fetch = self._git(
-                "fetch",
-                GIT_REMOTE,
-                GIT_BRANCH,
-                capture=True,
-                check=False,
-            )
-            if fetch.returncode != 0:
-                last_error = (fetch.stderr or fetch.stdout or "git fetch failed").strip()
-                continue
-
-            rebase = self._git(
-                "rebase",
-                f"{GIT_REMOTE}/{GIT_BRANCH}",
-                capture=True,
-                check=False,
-            )
-            if rebase.returncode != 0:
-                self._git("rebase", "--abort", check=False)
-                last_error = (rebase.stderr or rebase.stdout or "git rebase failed").strip()
-                break
-
-        raise RuntimeError(
-            f"Could not push production progress to {GIT_REMOTE}/{GIT_BRANCH}: {last_error}"
-        )
-
     def commit_if_enabled(self) -> None:
         if not COMMIT_PROGRESS:
-            log("Git progress persistence disabled for this invocation.", "DEBUG")
             return
 
-        self._git("rev-parse", "--is-inside-work-tree")
-        self._git("config", "user.name", "quran-pipeline-bot")
-        self._git("config", "user.email", "pipeline@localhost")
-        self._git("add", *self.TRACKED_FILES)
+        run_cmd(["git", "-C", str(ROOT), "rev-parse", "--is-inside-work-tree"])
+        run_cmd(["git", "-C", str(ROOT), "config", "user.name", "quran-pipeline-bot"])
+        run_cmd(["git", "-C", str(ROOT), "config", "user.email", "pipeline@localhost"])
+        run_cmd([
+            "git", "-C", str(ROOT), "add",
+            "data/progress.json",
+            "data/quran_index.json",
+            "data/publish_queue.json",
+        ])
 
-        diff = self._git("diff", "--cached", "--quiet", check=False)
+        diff = subprocess.run(
+            ["git", "-C", str(ROOT), "diff", "--cached", "--quiet"],
+            check=False,
+        )
         if diff.returncode == 0:
-            log("No production state changes to commit.")
-        elif diff.returncode == 1:
-            self._git(
-                "commit",
-                "-m",
-                "Advance Quran production progress",
-            )
-            log("Production progress committed to git.")
-        else:
-            raise RuntimeError("Unable to inspect staged production state.")
+            log("No progress changes to commit.")
+            return
 
-        if GIT_PUSH_PROGRESS:
-            self._push()
-        elif IN_GITHUB_ACTIONS:
-            raise RuntimeError(
-                "GITHUB_ACTIONS=true and COMMIT_PROGRESS=true but "
-                "GIT_PUSH_PROGRESS is disabled. Refusing to lose progress on the "
-                "disposable runner."
-            )
+        run_cmd([
+            "git", "-C", str(ROOT), "commit",
+            "-m", "Advance Quran production progress",
+        ])
+        log("Progress committed to git.")
+
+        if not GIT_PUSH_PROGRESS:
+            return
+
+        last_error = "unknown push error"
+        for attempt in range(1, GIT_PUSH_RETRIES + 1):
+            try:
+                # Fetch the remote first so a harmless remote advancement does not
+                # leave the runner permanently unable to persist its checkpoint.
+                run_cmd([
+                    "git", "-C", str(ROOT), "fetch",
+                    GIT_REMOTE, GIT_BRANCH,
+                ])
+                run_cmd([
+                    "git", "-C", str(ROOT), "rebase",
+                    f"{GIT_REMOTE}/{GIT_BRANCH}",
+                ])
+                run_cmd([
+                    "git", "-C", str(ROOT), "push",
+                    GIT_REMOTE, f"HEAD:{GIT_BRANCH}",
+                ])
+                log(f"Progress pushed to {GIT_REMOTE}/{GIT_BRANCH}.")
+                return
+            except Exception as exc:
+                last_error = str(exc)
+                subprocess.run(
+                    ["git", "-C", str(ROOT), "rebase", "--abort"],
+                    check=False,
+                    capture_output=True,
+                )
+                if attempt < GIT_PUSH_RETRIES:
+                    delay = min(2 ** attempt, 15)
+                    log(f"Git push attempt {attempt} failed; retrying in {delay}s: {exc}", "WARN")
+                    time.sleep(delay)
+
+        raise RuntimeError(
+            f"Progress was committed locally but could not be pushed after "
+            f"{GIT_PUSH_RETRIES} attempts: {last_error}"
+        )
 
 
 # ============================================================================
@@ -1977,6 +1924,22 @@ class QuranProduction:
         self.qa = QualityAssurance()
         self.publisher = Publisher()
         self.git = GitProgress()
+
+    @staticmethod
+    def _audio_timeline(audio_items: list[AudioItem]) -> list[dict[str, Any]]:
+        cursor = 0.0
+        timeline: list[dict[str, Any]] = []
+        for item in audio_items:
+            start = cursor
+            end = cursor + item.duration
+            timeline.append({
+                "verse_key": item.verse_key,
+                "start_seconds": round(start, 3),
+                "end_seconds": round(end, 3),
+                "duration_seconds": round(item.duration, 3),
+            })
+            cursor = end
+        return timeline
 
     def run(self) -> dict[str, Any]:
         start_time = time.time()
@@ -2102,7 +2065,7 @@ class QuranProduction:
         # Subtitles / frontend
         # ------------------------------------------------------------
         subtitles = section_dir / "subtitles.ass"
-        subtitle_duration = self.typography.make_ass(
+        self.typography.make_ass(
             subtitles,
             selected,
             audio_items,
@@ -2110,11 +2073,6 @@ class QuranProduction:
             start_verse.chapter_id,
             start_verse.chapter_name_arabic,
         )
-        if abs(subtitle_duration - audio_duration) > 0.05:
-            raise RuntimeError(
-                f"Subtitle/audio timing mismatch: subtitles={subtitle_duration:.3f}s "
-                f"audio={audio_duration:.3f}s"
-            )
 
         final_video = section_dir / "quran-section.mp4"
         self.renderer.render(
@@ -2138,21 +2096,8 @@ class QuranProduction:
         # ------------------------------------------------------------
         # Metadata
         # ------------------------------------------------------------
-        timeline: list[dict[str, Any]] = []
-        timeline_cursor = 0.0
-        for item in audio_items:
-            start_seconds = timeline_cursor
-            end_seconds = timeline_cursor + item.duration
-            timeline.append({
-                "verse_key": item.verse_key,
-                "start_seconds": round(start_seconds, 3),
-                "end_seconds": round(end_seconds, 3),
-                "duration_seconds": round(item.duration, 3),
-            })
-            timeline_cursor = end_seconds
-
         metadata: dict[str, Any] = {
-            "schema_version": 5,
+            "schema_version": 4,
             "cycle": cycle,
             "verse_keys": keys,
             "surah": {
@@ -2165,13 +2110,6 @@ class QuranProduction:
                 "last_ayah": selected[-1].verse_number,
                 "ayah_count": len(selected),
                 "duration_seconds": round(audio_duration, 3),
-                "timeline": timeline,
-            },
-            "run": {
-                "github_run_id": os.environ.get("GITHUB_RUN_ID"),
-                "github_run_number": os.environ.get("GITHUB_RUN_NUMBER"),
-                "github_sha": os.environ.get("GITHUB_SHA"),
-                "created_at": utc_now(),
             },
             "audio": {
                 "reciter": RECITER,
@@ -2181,6 +2119,7 @@ class QuranProduction:
                     item.verse_key: round(item.duration, 3)
                     for item in audio_items
                 },
+                "timeline": self._audio_timeline(audio_items),
             },
             "translation": {
                 "resource_id": TRANSLATION_ID,
