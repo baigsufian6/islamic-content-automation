@@ -17,7 +17,7 @@ jobs:
         run: |
           python3 -m pip install --quiet requests
 
-      - name: Create visual brief for test
+      - name: Create visual brief
         run: |
           cat > visual-brief.json <<'EOF'
           {
@@ -29,7 +29,7 @@ jobs:
           }
           EOF
 
-      - name: Search Pexels for matching vertical video
+      - name: Search Pexels for vertical video
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
@@ -75,64 +75,40 @@ jobs:
           videos = data.get("videos", [])
 
           if not videos:
-              print("ERROR: No suitable Pexels videos returned.")
+              print("ERROR: No Pexels videos returned.")
               sys.exit(1)
 
           selected = None
 
           for video in videos:
-              video_files = video.get("video_files", [])
-
-              if not video_files:
-                  continue
-
-              # Prefer a portrait/vertical file.
-              portrait_file = None
-
-              for file in video_files:
-                  width = file.get("width")
-                  height = file.get("height")
+              for video_file in video.get("video_files", []):
+                  width = video_file.get("width")
+                  height = video_file.get("height")
+                  link = video_file.get("link")
 
                   if (
                       isinstance(width, int)
                       and isinstance(height, int)
                       and height > width
+                      and link
                   ):
-                      portrait_file = file
+                      selected = {
+                          "id": video.get("id"),
+                          "pexels_url": video.get("url"),
+                          "photographer": video.get("user", {}).get("name"),
+                          "duration": video.get("duration"),
+                          "width": width,
+                          "height": height,
+                          "video_url": link
+                      }
                       break
 
-              if portrait_file:
-                  selected = {
-                      "id": video.get("id"),
-                      "pexels_url": video.get("url"),
-                      "photographer": video.get("user", {}).get("name"),
-                      "duration": video.get("duration"),
-                      "width": portrait_file.get("width"),
-                      "height": portrait_file.get("height"),
-                      "video_url": portrait_file.get("link")
-                  }
+              if selected:
                   break
 
           if selected is None:
               print("ERROR: No portrait video file found.")
               sys.exit(1)
-
-          # Never print the API key.
-          print("")
-          print("PEXELS VISUAL PROVIDER: CONNECTED")
-          print(f"Verse: {brief['verse_key']}")
-          print(f"Theme: {brief['theme']}")
-          print(f"Search query: {query}")
-          print(f"Video ID: {selected['id']}")
-          print(f"Photographer: {selected['photographer']}")
-          print(f"Duration: {selected['duration']} seconds")
-          print(
-              f"Dimensions: "
-              f"{selected['width']}x{selected['height']}"
-          )
-          print("Portrait video: YES")
-          print("")
-          print("STEP 31A: PASSED")
 
           with open(
               "visual-asset.json",
@@ -145,11 +121,121 @@ jobs:
                   ensure_ascii=False,
                   indent=2
               )
+
+          print("")
+          print("PEXELS VISUAL PROVIDER: CONNECTED")
+          print(f"Verse: {brief['verse_key']}")
+          print(f"Theme: {brief['theme']}")
+          print(f"Video ID: {selected['id']}")
+          print(f"Photographer: {selected['photographer']}")
+          print(f"Duration: {selected['duration']} seconds")
+          print(
+              f"Dimensions: "
+              f"{selected['width']}x{selected['height']}"
+          )
+          print("Portrait video: YES")
           PY
 
-      - name: Upload visual asset metadata
+      - name: Download selected Pexels video
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          import requests
+
+          with open(
+              "visual-asset.json",
+              "r",
+              encoding="utf-8"
+          ) as f:
+              asset = json.load(f)
+
+          video_url = asset.get("video_url")
+
+          if not video_url:
+              print("ERROR: No video URL found.")
+              sys.exit(1)
+
+          print("Downloading selected Pexels video...")
+
+          response = requests.get(
+              video_url,
+              stream=True,
+              timeout=60
+          )
+
+          print(
+              f"Video download request: "
+              f"HTTP {response.status_code}"
+          )
+
+          if not response.ok:
+              print("ERROR: Video download failed.")
+              sys.exit(1)
+
+          content_type = response.headers.get(
+              "content-type",
+              ""
+          ).lower()
+
+          print(f"Content-Type: {content_type}")
+
+          if "video" not in content_type:
+              print(
+                  "ERROR: Downloaded resource is not "
+                  "identified as video."
+              )
+              sys.exit(1)
+
+          total_bytes = 0
+
+          with open(
+              "pexels-background.mp4",
+              "wb"
+          ) as output:
+              for chunk in response.iter_content(
+                  chunk_size=1024 * 1024
+              ):
+                  if chunk:
+                      output.write(chunk)
+                      total_bytes += len(chunk)
+
+          if total_bytes == 0:
+              print("ERROR: Downloaded video is empty.")
+              sys.exit(1)
+
+          print(
+              f"Downloaded video size: "
+              f"{total_bytes / (1024 * 1024):.2f} MB"
+          )
+
+          print("VIDEO DOWNLOAD: PASSED")
+          PY
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Verify downloaded video
+        run: |
+          ffprobe \
+            -v error \
+            -show_entries \
+            format=duration,size \
+            -show_entries \
+            stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            pexels-background.mp4
+
+          echo ""
+          echo "STEP 31B: PASSED"
+
+      - name: Upload visual asset
         uses: actions/upload-artifact@v4
         with:
           name: quran-visual-asset
-          path: visual-asset.json
+          path: |
+            visual-asset.json
+            pexels-background.mp4
           retention-days: 1
