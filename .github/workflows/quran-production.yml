@@ -197,7 +197,10 @@ jobs:
                           index.append({
                               "id": int(verse["id"]),
                               "verse_key": verse["verse_key"],
-                              "chapter_id": int(verse["chapter_id"]),
+                              # Some verse-list responses omit chapter_id even though
+                              # the endpoint itself is scoped to this chapter. Use the
+                              # authoritative chapter id from the request as fallback.
+                              "chapter_id": int(verse.get("chapter_id") or cid),
                               "verse_number": int(verse["verse_number"]),
                               "juz_number": verse.get("juz_number"),
                               "hizb_number": verse.get("hizb_number"),
