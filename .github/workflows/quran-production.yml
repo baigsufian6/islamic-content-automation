@@ -25,16 +25,22 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          cache: pip
+
+      - name: Verify Python runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version
+          python -m pip --version
 
       - name: Install FFmpeg and Arabic fonts
         shell: bash
@@ -215,7 +221,7 @@ jobs:
           echo "Persistent Quran progress exists and the worker was configured to push it."
 
       - name: Upload final video and metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quran-production-${{ github.run_number }}
           path: |
@@ -226,7 +232,7 @@ jobs:
 
       - name: Upload production state for debugging
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quran-production-state-${{ github.run_number }}
           path: |
