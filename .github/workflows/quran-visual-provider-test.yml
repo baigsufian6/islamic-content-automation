@@ -1,0 +1,155 @@
+name: Quran Visual Provider Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  visual-provider-test:
+    runs-on: ubuntu-latest
+
+    environment: Visual API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --quiet requests
+
+      - name: Create visual brief for test
+        run: |
+          cat > visual-brief.json <<'EOF'
+          {
+            "verse_key": "1:1",
+            "translation_resource_id": 20,
+            "theme": "mercy_and_compassion",
+            "mood": "peaceful",
+            "visual_direction": "peaceful natural landscape at dawn, soft warm light, subtle atmosphere, cinematic and contemplative"
+          }
+          EOF
+
+      - name: Search Pexels for matching vertical video
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+
+          api_key = os.environ.get("PEXELS_API_KEY")
+
+          if not api_key:
+              print("ERROR: PEXELS_API_KEY is missing.")
+              sys.exit(1)
+
+          with open("visual-brief.json", "r", encoding="utf-8") as f:
+              brief = json.load(f)
+
+          query = "peaceful nature landscape dawn"
+
+          response = requests.get(
+              "https://api.pexels.com/v1/videos/search",
+              headers={
+                  "Authorization": api_key
+              },
+              params={
+                  "query": query,
+                  "orientation": "portrait",
+                  "size": "medium",
+                  "per_page": 5
+              },
+              timeout=30
+          )
+
+          print(f"Pexels API request: HTTP {response.status_code}")
+
+          if not response.ok:
+              print("ERROR: Pexels API request failed.")
+              print(response.text[:500])
+              sys.exit(1)
+
+          data = response.json()
+          videos = data.get("videos", [])
+
+          if not videos:
+              print("ERROR: No suitable Pexels videos returned.")
+              sys.exit(1)
+
+          selected = None
+
+          for video in videos:
+              video_files = video.get("video_files", [])
+
+              if not video_files:
+                  continue
+
+              # Prefer a portrait/vertical file.
+              portrait_file = None
+
+              for file in video_files:
+                  width = file.get("width")
+                  height = file.get("height")
+
+                  if (
+                      isinstance(width, int)
+                      and isinstance(height, int)
+                      and height > width
+                  ):
+                      portrait_file = file
+                      break
+
+              if portrait_file:
+                  selected = {
+                      "id": video.get("id"),
+                      "pexels_url": video.get("url"),
+                      "photographer": video.get("user", {}).get("name"),
+                      "duration": video.get("duration"),
+                      "width": portrait_file.get("width"),
+                      "height": portrait_file.get("height"),
+                      "video_url": portrait_file.get("link")
+                  }
+                  break
+
+          if selected is None:
+              print("ERROR: No portrait video file found.")
+              sys.exit(1)
+
+          # Never print the API key.
+          print("")
+          print("PEXELS VISUAL PROVIDER: CONNECTED")
+          print(f"Verse: {brief['verse_key']}")
+          print(f"Theme: {brief['theme']}")
+          print(f"Search query: {query}")
+          print(f"Video ID: {selected['id']}")
+          print(f"Photographer: {selected['photographer']}")
+          print(f"Duration: {selected['duration']} seconds")
+          print(
+              f"Dimensions: "
+              f"{selected['width']}x{selected['height']}"
+          )
+          print("Portrait video: YES")
+          print("")
+          print("STEP 31A: PASSED")
+
+          with open(
+              "visual-asset.json",
+              "w",
+              encoding="utf-8"
+          ) as f:
+              json.dump(
+                  selected,
+                  f,
+                  ensure_ascii=False,
+                  indent=2
+              )
+          PY
+
+      - name: Upload visual asset metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-visual-asset
+          path: visual-asset.json
+          retention-days: 1
