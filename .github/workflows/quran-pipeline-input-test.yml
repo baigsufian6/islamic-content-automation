@@ -1,0 +1,177 @@
+name: Quran Pipeline Input Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  quran-pipeline-input:
+    runs-on: ubuntu-latest
+
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --quiet requests
+
+      - name: Fetch one Quran verse for pipeline
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import json
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+
+          if not client_id or not client_secret:
+              print("ERROR: Quran Foundation credentials are missing.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: QF_ENV must be production or prelive.")
+              sys.exit(1)
+
+          # --------------------------------------------------
+          # 1. Authenticate
+          # --------------------------------------------------
+          token_response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not token_response.ok:
+              print(
+                  f"Authentication failed: HTTP "
+                  f"{token_response.status_code}"
+              )
+              sys.exit(1)
+
+          token_data = token_response.json()
+          access_token = token_data.get("access_token")
+
+          if not access_token:
+              print("ERROR: No access token returned.")
+              sys.exit(1)
+
+          print("Authentication: SUCCESS")
+
+          # --------------------------------------------------
+          # 2. Fetch ONE verse.
+          #
+          # 1:1 = first ayah of Al-Fatihah.
+          # Translation 20 = Saheeh International.
+          # --------------------------------------------------
+          response = requests.get(
+              f"{api_base}/content/api/v4/verses/by_key/1:1",
+              params={
+                  "translations": "20",
+                  "fields": "text_uthmani",
+              },
+              headers={
+                  "x-auth-token": access_token,
+                  "x-client-id": client_id,
+              },
+              timeout=30,
+          )
+
+          print(f"Quran API request: HTTP {response.status_code}")
+
+          if not response.ok:
+              print("ERROR: Quran API request failed.")
+              print(response.text[:500])
+              sys.exit(1)
+
+          data = response.json()
+          verse = data.get("verse")
+
+          if not isinstance(verse, dict):
+              print("ERROR: No verse object returned.")
+              sys.exit(1)
+
+          verse_key = verse.get("verse_key")
+          arabic_text = verse.get("text_uthmani")
+          translations = verse.get("translations", [])
+
+          if verse_key != "1:1":
+              print(f"ERROR: Expected verse 1:1, got {verse_key}")
+              sys.exit(1)
+
+          if not isinstance(arabic_text, str) or not arabic_text.strip():
+              print("ERROR: Arabic Quran text was not returned.")
+              sys.exit(1)
+
+          selected_translation = None
+
+          for translation in translations:
+              if str(translation.get("resource_id")) == "20":
+                  selected_translation = translation
+                  break
+
+          if selected_translation is None:
+              print("ERROR: Translation resource 20 was not returned.")
+              sys.exit(1)
+
+          english_text = selected_translation.get("text")
+
+          if not isinstance(english_text, str) or not english_text.strip():
+              print("ERROR: Translation 20 contains no usable text.")
+              sys.exit(1)
+
+          # --------------------------------------------------
+          # 3. Create a SAFE pipeline input file.
+          #
+          # No credentials or access tokens are written here.
+          # --------------------------------------------------
+          pipeline_input = {
+              "verse_key": verse_key,
+              "arabic_text": arabic_text,
+              "translation": {
+                  "resource_id": 20,
+                  "text": english_text,
+              },
+          }
+
+          with open("quran-pipeline-input.json", "w", encoding="utf-8") as f:
+              json.dump(
+                  pipeline_input,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("")
+          print("QURAN PIPELINE INPUT: CREATED")
+          print(f"Verse: {verse_key}")
+          print("Arabic text: received")
+          print("Saheeh International (resource 20): received")
+          print("Pipeline input file: quran-pipeline-input.json")
+          print("")
+          print("STEP 26A: PASSED")
+          PY
+
+      - name: Upload pipeline input
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-pipeline-input
+          path: quran-pipeline-input.json
