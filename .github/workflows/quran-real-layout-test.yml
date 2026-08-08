@@ -1,0 +1,151 @@
+name: Quran Real Layout Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  real-layout-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ffmpeg \
+            fonts-noto-core \
+            fonts-noto-extra \
+            fontconfig
+
+          echo "Arabic font:"
+          fc-match "Noto Naskh Arabic"
+
+      - name: Create verified Quran input
+        run: |
+          cat > quran-render-input.json <<'JSON'
+          {
+            "verse_key": "1:1",
+            "arabic_text": "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+            "translation": {
+              "resource_id": 20,
+              "text": "In the name of Allāh,<sup foot_note=227140>1</sup> the Entirely Merciful, the Especially Merciful.<sup foot_note=227141>2</sup>"
+            }
+          }
+          JSON
+
+      - name: Create production-style subtitle layout
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+
+          with open("quran-render-input.json", encoding="utf-8") as f:
+              data = json.load(f)
+
+          verse_key = data["verse_key"]
+          arabic = data["arabic_text"]
+          translation = data["translation"]
+
+          if translation["resource_id"] != 20:
+              raise SystemExit("ERROR: Expected translation resource 20.")
+
+          english = translation["text"]
+
+          if not arabic.strip():
+              raise SystemExit("ERROR: Arabic text is empty.")
+
+          if not english.strip():
+              raise SystemExit("ERROR: Translation text is empty.")
+
+          # Remove API HTML footnote tags for video rendering.
+          english = re.sub(r"<[^>]+>", "", english)
+
+          with open("output.ass", "w", encoding="utf-8") as f:
+              f.write("""[Script Info]
+          ScriptType: v4.00+
+          PlayResX: 1080
+          PlayResY: 1920
+          WrapStyle: 2
+          ScaledBorderAndShadow: yes
+
+          [V4+ Styles]
+          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+          Style: Header,Noto Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,1,0,0,0,100,100,0,0,1,2,1,8,70,70,180,1
+          Style: Arabic,Noto Naskh Arabic,82,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,70,70,0,1
+          Style: English,Noto Sans,48,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,90,90,0,1
+          Style: Footer,Noto Sans,28,&H00CCCCCC,&H00CCCCCC,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,2,1,2,70,70,90,1
+
+          [Events]
+          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+          """)
+
+              f.write(
+                  f"Dialogue: 0,0:00:00.00,0:00:08.00,Header,,0,0,0,,VERSE {verse_key}\n"
+              )
+              f.write(
+                  f"Dialogue: 0,0:00:00.00,0:00:08.00,Arabic,,0,0,0,,{arabic}\n"
+              )
+              f.write(
+                  f"Dialogue: 0,0:00:00.00,0:00:08.00,English,,0,0,0,,{english}\n"
+              )
+              f.write(
+                  "Dialogue: 0,0:00:00.00,0:00:08.00,Footer,,0,0,0,,Saheeh International • Resource 20\n"
+              )
+
+          print("LAYOUT INPUT: VALID")
+          print(f"Verse: {verse_key}")
+          print("Arabic: received")
+          print("Translation: Saheeh International")
+          print("Resource ID: 20")
+          print("Credentials: not used")
+          print("Credentials: not written")
+          PY
+
+      - name: Create clean vertical background
+        run: |
+          mkdir -p output
+
+          ffmpeg \
+            -y \
+            -f lavfi \
+            -i "color=c=0x10151f:s=1080x1920:r=30" \
+            -t 8 \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            output/background.mp4
+
+      - name: Render production-style Quran video
+        run: |
+          ffmpeg \
+            -y \
+            -i output/background.mp4 \
+            -vf "subtitles=output.ass:fontsdir=/usr/share/fonts/truetype/noto" \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            -movflags +faststart \
+            output/quran-real-layout-test.mp4
+
+      - name: Verify final video
+        run: |
+          ffprobe \
+            -v error \
+            -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            output/quran-real-layout-test.mp4
+
+          test -s output/quran-real-layout-test.mp4
+
+          echo "STEP 29A: PASSED"
+
+      - name: Upload temporary layout test
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-real-layout-test
+          path: output/quran-real-layout-test.mp4
+          retention-days: 1
