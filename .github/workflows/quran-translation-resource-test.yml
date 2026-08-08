@@ -17,7 +17,7 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install requests
 
-      - name: Inspect translation catalog safely
+      - name: Identify available English translations
         env:
           QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
@@ -29,8 +29,6 @@ jobs:
 
           AUTH_URL = "https://oauth2.quran.foundation"
           API_URL = "https://apis.quran.foundation"
-
-          TARGET_ID = 131
 
           client_id = os.environ["QF_CLIENT_ID"]
           client_secret = os.environ["QF_CLIENT_SECRET"]
@@ -62,31 +60,27 @@ jobs:
 
           print("Authentication: SUCCESS")
 
-          headers = {
-              "x-auth-token": access_token,
-              "x-client-id": client_id,
-          }
-
           # -------------------------------------------------
-          # 2. Request translation catalog
+          # 2. Get available translation resources
           # -------------------------------------------------
 
           response = requests.get(
               f"{API_URL}/content/api/v4/resources/translations",
-              headers=headers,
+              headers={
+                  "x-auth-token": access_token,
+                  "x-client-id": client_id,
+              },
               timeout=30,
           )
 
           response.raise_for_status()
 
           data = response.json()
-
           translations = data.get("translations")
 
           if not isinstance(translations, list):
               raise SystemExit(
-                  "Translation catalog did not return "
-                  "a translations array."
+                  "Invalid translation catalog response."
               )
 
           print(
@@ -94,90 +88,72 @@ jobs:
           )
 
           print(
-              "Resources returned:",
+              "Total resources returned:",
               len(translations)
           )
 
           # -------------------------------------------------
-          # 3. Inspect IDs safely
+          # 3. Show ONLY English resources
+          #
+          # No translation text is downloaded/displayed.
           # -------------------------------------------------
 
-          found = None
+          english = []
 
           for item in translations:
 
-              raw_id = item.get("id")
+              language = str(
+                  item.get("language_name", "")
+              ).strip().lower()
 
-              raw_resource_id = item.get(
-                  "resource_id"
-              )
+              if language == "english":
+                  english.append(item)
 
-              # Compare as strings so that
-              # 131 and "131" are treated identically.
-              if (
-                  str(raw_id) == str(TARGET_ID)
-                  or
-                  str(raw_resource_id) == str(TARGET_ID)
-              ):
-                  found = item
-                  break
+          print()
+          print(
+              "ENGLISH TRANSLATIONS AVAILABLE:"
+          )
 
-          # -------------------------------------------------
-          # 4. Report only metadata
-          # -------------------------------------------------
+          print(
+              "Count:",
+              len(english)
+          )
 
-          if found is None:
-              print()
-              print(
-                  "Resource 131 was NOT found "
-                  "in the returned catalog."
-              )
-
-              print()
-              print(
-                  "First 20 catalog IDs:"
-              )
-
-              for item in translations[:20]:
-                  print(
-                      "id=",
-                      repr(item.get("id")),
-                      "resource_id=",
-                      repr(item.get("resource_id")),
-                  )
-
+          if not english:
               raise SystemExit(
-                  "Translation resource 131 "
-                  "is not present in this catalog response."
+                  "No English translation resources "
+                  "were returned by the production API."
+              )
+
+          print()
+
+          for item in english:
+              print(
+                  "ID:",
+                  item.get("id")
+              )
+
+              print(
+                  "Name:",
+                  item.get("name")
+              )
+
+              print(
+                  "Author:",
+                  item.get("author_name")
+              )
+
+              print(
+                  "Language:",
+                  item.get("language_name")
+              )
+
+              print(
+                  "---"
               )
 
           print()
           print(
-              "Resource 131 FOUND."
-          )
-
-          print(
-              "id:",
-              repr(found.get("id"))
-          )
-
-          print(
-              "resource_id:",
-              repr(found.get("resource_id"))
-          )
-
-          print(
-              "resource_name:",
-              repr(found.get("resource_name"))
-          )
-
-          print(
-              "language_name:",
-              repr(found.get("language_name"))
-          )
-
-          print()
-          print(
-              "TRANSLATION CATALOG TEST: PASSED"
+              "ENGLISH TRANSLATION CATALOG TEST: PASSED"
           )
           PY
