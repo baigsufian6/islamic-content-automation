@@ -1,0 +1,1030 @@
+name: Quran Audio Section Render
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audio-section:
+    runs-on: ubuntu-latest
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ffmpeg \
+            fonts-noto-core \
+            fonts-noto-extra \
+            fontconfig
+
+          python3 -m pip install --quiet requests
+
+          echo "Arabic font:"
+          fc-match "Noto Naskh Arabic"
+
+      # ----------------------------------------------------------
+      # 1. Authenticate and discover an ayah-by-ayah recitation
+      # ----------------------------------------------------------
+      - name: Discover Quran recitation
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+
+          if not client_id or not client_secret:
+              print("ERROR: Quran credentials are missing.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: QF_ENV must be production or prelive.")
+              sys.exit(1)
+
+          token_response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not token_response.ok:
+              print(
+                  f"ERROR: Authentication failed: "
+                  f"HTTP {token_response.status_code}"
+              )
+              sys.exit(1)
+
+          access_token = token_response.json().get(
+              "access_token"
+          )
+
+          if not access_token:
+              print("ERROR: No access token returned.")
+              sys.exit(1)
+
+          headers = {
+              "x-auth-token": access_token,
+              "x-client-id": client_id,
+          }
+
+          # ------------------------------------------------------
+          # Ask Quran Foundation for available ayah-by-ayah
+          # recitations. We intentionally do NOT hard-code an ID.
+          # ------------------------------------------------------
+
+          response = requests.get(
+              f"{api_base}/content/api/v4/resources/recitations",
+              params={
+                  "language": "en",
+              },
+              headers=headers,
+              timeout=30,
+          )
+
+          print(
+              f"Recitation discovery: HTTP "
+              f"{response.status_code}"
+          )
+
+          if not response.ok:
+              print("ERROR: Could not retrieve recitations.")
+              sys.exit(1)
+
+          payload = response.json()
+
+          recitations = payload.get(
+              "recitations",
+              []
+          )
+
+          if not recitations:
+              print("ERROR: No ayah-by-ayah recitations returned.")
+              sys.exit(1)
+
+          # Prefer a Murattal-style recitation when available.
+          selected = None
+
+          for item in recitations:
+              style = str(
+                  item.get("style", "")
+              ).lower()
+
+              if "murattal" in style:
+                  selected = item
+                  break
+
+          if selected is None:
+              selected = recitations[0]
+
+          recitation_id = selected.get("id")
+          reciter_name = selected.get(
+              "reciter_name",
+              "Unknown",
+          )
+          style = selected.get(
+              "style",
+              "",
+          )
+
+          if not recitation_id:
+              print(
+                  "ERROR: Selected recitation has no ID."
+              )
+              sys.exit(1)
+
+          print("Recitation selected:")
+          print(f"Name: {reciter_name}")
+          print(f"Style: {style}")
+          print(f"ID: {recitation_id}")
+
+          os.makedirs(
+              "output",
+              exist_ok=True,
+          )
+
+          with open(
+              "output/recitation.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  {
+                      "recitation_id": recitation_id,
+                      "reciter_name": reciter_name,
+                      "style": style,
+                  },
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("RECITATION DISCOVERY: PASSED")
+          PY
+
+      # ----------------------------------------------------------
+      # 2. Fetch actual ayah audio + duration metadata
+      # ----------------------------------------------------------
+      - name: Fetch ayah audio metadata
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: Invalid QF_ENV.")
+              sys.exit(1)
+
+          token_response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not token_response.ok:
+              print("ERROR: Authentication failed.")
+              sys.exit(1)
+
+          access_token = token_response.json().get(
+              "access_token"
+          )
+
+          if not access_token:
+              print("ERROR: No access token.")
+              sys.exit(1)
+
+          headers = {
+              "x-auth-token": access_token,
+              "x-client-id": client_id,
+          }
+
+          with open(
+              "output/recitation.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              recitation = json.load(f)
+
+          recitation_id = recitation[
+              "recitation_id"
+          ]
+
+          # Small sample only for this integration run.
+          verse_keys = [
+              "1:1",
+              "1:2",
+              "1:3",
+              "1:4",
+              "1:5",
+          ]
+
+          audio_files = []
+
+          for verse_key in verse_keys:
+
+              response = requests.get(
+                  f"{api_base}/content/api/v4/"
+                  f"recitations/{recitation_id}",
+                  params={
+                      "verse_key": verse_key,
+                      "fields": (
+                          "verse_key,url,duration,"
+                          "segments"
+                      ),
+                  },
+                  headers=headers,
+                  timeout=30,
+              )
+
+              print(
+                  f"Audio metadata {verse_key}: "
+                  f"HTTP {response.status_code}"
+              )
+
+              if not response.ok:
+                  print(
+                      f"ERROR: Audio metadata failed "
+                      f"for {verse_key}"
+                  )
+                  print(response.text[:500])
+                  sys.exit(1)
+
+              payload = response.json()
+
+              files = payload.get(
+                  "audio_files",
+                  []
+              )
+
+              if not files:
+                  print(
+                      f"ERROR: No audio returned "
+                      f"for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              selected = None
+
+              for item in files:
+                  if item.get(
+                      "verse_key"
+                  ) == verse_key:
+                      selected = item
+                      break
+
+              if selected is None:
+                  selected = files[0]
+
+              url = selected.get("url")
+              duration = selected.get("duration")
+
+              if not url:
+                  print(
+                      f"ERROR: No audio URL "
+                      f"for {verse_key}"
+                  )
+                  sys.exit(1)
+
+              # Duration is expected in milliseconds when
+              # supplied by the audio metadata.
+              if duration is not None:
+                  duration_seconds = (
+                      float(duration) / 1000.0
+                  )
+              else:
+                  duration_seconds = None
+
+              audio_files.append(
+                  {
+                      "verse_key": verse_key,
+                      "url": url,
+                      "duration_ms": duration,
+                      "duration_seconds": (
+                          duration_seconds
+                      ),
+                      "segments": selected.get(
+                          "segments"
+                      ),
+                  }
+              )
+
+              print(
+                  f"{verse_key}: "
+                  f"{duration_seconds}s"
+              )
+
+          with open(
+              "output/audio-metadata.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  {
+                      "recitation": recitation,
+                      "audio_files": audio_files,
+                  },
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("")
+          print("AYAH AUDIO METADATA: PASSED")
+          print(
+              f"Ayahs with audio: "
+              f"{len(audio_files)}"
+          )
+          PY
+
+      # ----------------------------------------------------------
+      # 3. Download the real recitations
+      # ----------------------------------------------------------
+      - name: Download recitation audio
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+
+          with open(
+              "output/audio-metadata.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          os.makedirs(
+              "output/audio",
+              exist_ok=True,
+          )
+
+          for index, item in enumerate(
+              data["audio_files"],
+              start=1,
+          ):
+
+              url = item["url"]
+
+              output = (
+                  f"output/audio/"
+                  f"ayah-{index:03d}.mp3"
+              )
+
+              print(
+                  f"Downloading {item['verse_key']}"
+              )
+
+              response = requests.get(
+                  url,
+                  stream=True,
+                  timeout=90,
+              )
+
+              if not response.ok:
+                  print(
+                      f"ERROR: Audio download failed "
+                      f"for {item['verse_key']}"
+                  )
+                  sys.exit(1)
+
+              with open(
+                  output,
+                  "wb",
+              ) as f:
+
+                  for chunk in response.iter_content(
+                      chunk_size=1024 * 1024
+                  ):
+                      if chunk:
+                          f.write(chunk)
+
+              if (
+                  not os.path.isfile(output)
+                  or os.path.getsize(output) < 1000
+              ):
+                  print(
+                      f"ERROR: Invalid audio file "
+                      f"for {item['verse_key']}"
+                  )
+                  sys.exit(1)
+
+          print("")
+          print("RECITATION DOWNLOAD: PASSED")
+          PY
+
+      # ----------------------------------------------------------
+      # 4. Measure actual audio duration with FFprobe
+      #
+      # The downloaded file is the authoritative fallback.
+      # ----------------------------------------------------------
+      - name: Verify audio timing
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          with open(
+              "output/audio-metadata.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          for index, item in enumerate(
+              data["audio_files"],
+              start=1,
+          ):
+
+              path = (
+                  f"output/audio/"
+                  f"ayah-{index:03d}.mp3"
+              )
+
+              result = subprocess.run(
+                  [
+                      "ffprobe",
+                      "-v",
+                      "error",
+                      "-show_entries",
+                      "format=duration",
+                      "-of",
+                      "default=noprint_wrappers=1:"
+                      "nokey=1",
+                      path,
+                  ],
+                  capture_output=True,
+                  text=True,
+                  check=True,
+              )
+
+              duration = float(
+                  result.stdout.strip()
+              )
+
+              if duration <= 0:
+                  print(
+                      f"ERROR: Invalid duration "
+                      f"for {item['verse_key']}"
+                  )
+                  sys.exit(1)
+
+              item[
+                  "measured_duration_seconds"
+              ] = round(
+                  duration,
+                  3,
+              )
+
+              print(
+                  f"{item['verse_key']}: "
+                  f"{duration:.3f}s"
+              )
+
+          with open(
+              "output/audio-metadata.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  data,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          print("")
+          print("ACTUAL AUDIO TIMING: PASSED")
+          PY
+
+      # ----------------------------------------------------------
+      # 5. Build subtitles using actual audio timing
+      # ----------------------------------------------------------
+      - name: Build audio-synchronized subtitles
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open(
+              "output/audio-metadata.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              audio = json.load(f)
+
+          # For this integration test we use the same verse text
+          # already validated by the Quran pipeline.
+          #
+          # In the final engine this file will be generated by
+          # the automatic content-discovery layer.
+
+          verse_text = {
+              "1:1": {
+                  "arabic": "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+                  "english": (
+                      "In the name of Allah, "
+                      "the Entirely Merciful, "
+                      "the Especially Merciful."
+                  ),
+              },
+              "1:2": {
+                  "arabic": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+                  "english": (
+                      "All praise is due to Allah, "
+                      "Lord of the worlds."
+                  ),
+              },
+              "1:3": {
+                  "arabic": "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+                  "english": (
+                      "The Entirely Merciful, "
+                      "the Especially Merciful."
+                  ),
+              },
+              "1:4": {
+                  "arabic": "مَـٰلِكِ يَوْمِ ٱلدِّينِ",
+                  "english": (
+                      "Sovereign of the Day of Recompense."
+                  ),
+              },
+              "1:5": {
+                  "arabic": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",
+                  "english": (
+                      "It is You we worship and You we ask for help."
+                  ),
+              },
+          }
+
+          def ass_time(seconds):
+
+              h = int(seconds // 3600)
+              m = int(
+                  (seconds % 3600) // 60
+              )
+              s = seconds % 60
+
+              return (
+                  f"{h}:"
+                  f"{m:02d}:"
+                  f"{s:05.2f}"
+              )
+
+          def wrap_text(text, limit):
+
+              words = text.split()
+
+              lines = []
+              current = ""
+
+              for word in words:
+
+                  candidate = (
+                      word
+                      if not current
+                      else current + " " + word
+                  )
+
+                  if len(candidate) <= limit:
+                      current = candidate
+                  else:
+                      if current:
+                          lines.append(
+                              current
+                          )
+                      current = word
+
+              if current:
+                  lines.append(current)
+
+              # IMPORTANT:
+              # Keep \N as a REAL ASS line-break.
+              # Do not escape it.
+              return r"\N".join(lines)
+
+          def escape_ass(text):
+
+              # Escape ASS braces only.
+              # Backslash is deliberately NOT escaped because
+              # \N is the actual ASS line-break command.
+              return (
+                  text
+                  .replace("{", "\\{")
+                  .replace("}", "\\}")
+              )
+
+          os.makedirs(
+              "output",
+              exist_ok=True,
+          )
+
+          with open(
+              "output/quran-audio.ass",
+              "w",
+              encoding="utf-8",
+          ) as f:
+
+              f.write(
+                  """[Script Info]
+          ScriptType: v4.00+
+          PlayResX: 1080
+          PlayResY: 1920
+          WrapStyle: 2
+          ScaledBorderAndShadow: yes
+
+          [V4+ Styles]
+          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+          Style: Reference,Noto Sans,34,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,1,0,0,0,100,100,0,0,1,2,1,8,70,70,110,1
+          Style: Arabic,Noto Naskh Arabic,82,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,70,70,0,1
+          Style: English,Noto Sans,44,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,90,90,0,1
+
+          [Events]
+          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+          """
+              )
+
+              current = 0.0
+
+              for item in audio["audio_files"]:
+
+                  key = item["verse_key"]
+
+                  if key not in verse_text:
+                      print(
+                          f"ERROR: Missing text for {key}"
+                      )
+                      raise SystemExit(1)
+
+                  duration = item[
+                      "measured_duration_seconds"
+                  ]
+
+                  start = current
+                  end = current + duration
+
+                  arabic = escape_ass(
+                      verse_text[key]["arabic"]
+                  )
+
+                  english_raw = (
+                      verse_text[key]["english"]
+                  )
+
+                  english = escape_ass(
+                      wrap_text(
+                          english_raw,
+                          50,
+                      )
+                  )
+
+                  f.write(
+                      f"Dialogue: 0,"
+                      f"{ass_time(start)},"
+                      f"{ass_time(end)},"
+                      f"Reference,,"
+                      f"0,0,110,,"
+                      f"VERSE {key}\n"
+                  )
+
+                  f.write(
+                      f"Dialogue: 0,"
+                      f"{ass_time(start)},"
+                      f"{ass_time(end)},"
+                      f"Arabic,,"
+                      f"0,0,0,,"
+                      f"{arabic}\n"
+                  )
+
+                  f.write(
+                      f"Dialogue: 0,"
+                      f"{ass_time(start)},"
+                      f"{ass_time(end)},"
+                      f"English,,"
+                      f"0,0,0,,"
+                      f"{english}\n"
+                  )
+
+                  current = end
+
+          with open(
+              "output/audio-timing.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+
+              json.dump(
+                  {
+                      "total_duration": current,
+                      "source": "measured_recitation_audio",
+                  },
+                  f,
+                  indent=2,
+              )
+
+          print("")
+          print(
+              f"TOTAL AUDIO DURATION: "
+              f"{current:.3f}s"
+          )
+          print(
+              "AUDIO-SYNCHRONIZED SUBTITLES: PASSED"
+          )
+          PY
+
+      # ----------------------------------------------------------
+      # 6. Create one continuous cinematic background
+      # ----------------------------------------------------------
+      - name: Download section visual
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          api_key = os.environ.get(
+              "PEXELS_API_KEY"
+          )
+
+          if not api_key:
+              print(
+                  "ERROR: PEXELS_API_KEY is missing."
+              )
+              sys.exit(1)
+
+          query = (
+              "peaceful cinematic nature "
+              "dawn soft golden light landscape"
+          )
+
+          response = requests.get(
+              "https://api.pexels.com/videos/search",
+              headers={
+                  "Authorization": api_key
+              },
+              params={
+                  "query": query,
+                  "orientation": "portrait",
+                  "size": "medium",
+                  "per_page": 10,
+              },
+              timeout=30,
+          )
+
+          if not response.ok:
+              print(
+                  f"ERROR: Pexels failed: "
+                  f"HTTP {response.status_code}"
+              )
+              sys.exit(1)
+
+          videos = response.json().get(
+              "videos",
+              []
+          )
+
+          if not videos:
+              print(
+                  "ERROR: No Pexels videos found."
+              )
+              sys.exit(1)
+
+          selected_file = None
+          selected_video = None
+
+          for video in videos:
+
+              files = video.get(
+                  "video_files",
+                  []
+              )
+
+              vertical = [
+                  f for f in files
+                  if (
+                      f.get("link")
+                      and f.get("height", 0)
+                      >= f.get("width", 0)
+                  )
+              ]
+
+              if vertical:
+                  selected_video = video
+                  selected_file = vertical[0]
+                  break
+
+          if not selected_file:
+              print(
+                  "ERROR: No portrait Pexels file."
+              )
+              sys.exit(1)
+
+          download = requests.get(
+              selected_file["link"],
+              stream=True,
+              timeout=90,
+          )
+
+          if not download.ok:
+              print(
+                  "ERROR: Background download failed."
+              )
+              sys.exit(1)
+
+          with open(
+              "output/background.mp4",
+              "wb",
+          ) as f:
+
+              for chunk in download.iter_content(
+                  chunk_size=1024 * 1024
+              ):
+                  if chunk:
+                      f.write(chunk)
+
+          if os.path.getsize(
+              "output/background.mp4"
+          ) < 10000:
+              print(
+                  "ERROR: Background is invalid."
+              )
+              sys.exit(1)
+
+          print(
+              f"Pexels video: "
+              f"{selected_video.get('id')}"
+          )
+          print(
+              "SECTION BACKGROUND: DOWNLOADED"
+          )
+          PY
+
+      # ----------------------------------------------------------
+      # 7. Prepare background for exact audio duration
+      # ----------------------------------------------------------
+      - name: Prepare background
+        run: |
+          DURATION=$(python3 -c \
+            'import json; print(json.load(open("output/audio-timing.json"))["total_duration"])')
+
+          ffmpeg \
+            -y \
+            -stream_loop -1 \
+            -i output/background.mp4 \
+            -t "$DURATION" \
+            -vf \
+              "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920" \
+            -an \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            output/background-prepared.mp4
+
+      # ----------------------------------------------------------
+      # 8. Combine the individual ayah audio files
+      # ----------------------------------------------------------
+      - name: Combine recitation audio
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          with open(
+              "output/audio-metadata.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              data = json.load(f)
+
+          with open(
+              "output/audio-concat.txt",
+              "w",
+              encoding="utf-8",
+          ) as f:
+
+              for index, item in enumerate(
+                  data["audio_files"],
+                  start=1,
+              ):
+
+                  path = os.path.abspath(
+                      f"output/audio/"
+                      f"ayah-{index:03d}.mp3"
+                  )
+
+                  f.write(
+                      f"file '{path}'\n"
+                  )
+
+          print(
+              "Audio concat list created."
+          )
+          PY
+
+          ffmpeg \
+            -y \
+            -f concat \
+            -safe 0 \
+            -i output/audio-concat.txt \
+            -c:a libmp3lame \
+            -b:a 192k \
+            output/recitation.mp3
+
+      # ----------------------------------------------------------
+      # 9. Final video render
+      # ----------------------------------------------------------
+      - name: Render audio synchronized video
+        run: |
+          ffmpeg \
+            -y \
+            -i output/background-prepared.mp4 \
+            -i output/recitation.mp3 \
+            -vf \
+              "subtitles=output/quran-audio.ass:fontsdir=/usr/share/fonts/truetype/noto" \
+            -map 0:v:0 \
+            -map 1:a:0 \
+            -c:v libx264 \
+            -preset veryfast \
+            -pix_fmt yuv420p \
+            -c:a aac \
+            -b:a 192k \
+            -shortest \
+            -movflags +faststart \
+            output/quran-audio-section.mp4
+
+      # ----------------------------------------------------------
+      # 10. Validate
+      # ----------------------------------------------------------
+      - name: Validate final video
+        run: |
+          test -s output/quran-audio-section.mp4
+
+          ffprobe \
+            -v error \
+            -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 \
+            output/quran-audio-section.mp4
+
+          echo ""
+          echo "STEP 37: AUDIO PIPELINE PASSED"
+
+      # ----------------------------------------------------------
+      # 11. Upload
+      # ----------------------------------------------------------
+      - name: Upload audio section render
+        uses: actions/upload-artifact@v4
+        with:
+          name: quran-audio-section
+          path: |
+            output/quran-audio-section.mp4
+            output/recitation.json
+            output/audio-metadata.json
+            output/audio-timing.json
+            output/quran-audio.ass
+          retention-days: 3
