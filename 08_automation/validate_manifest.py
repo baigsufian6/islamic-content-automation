@@ -269,6 +269,9 @@ def main():
     # ---------------------------------------------------------
 
     if manifest["test_data"] is True:
+        if errors:
+            return fail(errors)
+
         print("MANIFEST VALIDATION: STRUCTURALLY VALID")
         print()
         print("STATUS: TEST DATA")
