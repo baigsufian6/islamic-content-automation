@@ -1,0 +1,290 @@
+name: Quran Saad Al-Ghamdi Audio Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  saad-audio-test:
+    runs-on: ubuntu-latest
+    environment: Quran API
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --quiet requests
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Authenticate with Quran Foundation
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
+          QF_ENV: ${{ secrets.QF_ENV }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          client_id = os.environ.get("QF_CLIENT_ID")
+          client_secret = os.environ.get("QF_CLIENT_SECRET")
+          qf_env = os.environ.get("QF_ENV", "").lower()
+
+          if not client_id or not client_secret:
+              print("ERROR: Quran Foundation credentials are missing.")
+              sys.exit(1)
+
+          if qf_env == "production":
+              oauth_base = "https://oauth2.quran.foundation"
+              api_base = "https://apis.quran.foundation"
+          elif qf_env == "prelive":
+              oauth_base = "https://prelive-oauth2.quran.foundation"
+              api_base = "https://apis-prelive.quran.foundation"
+          else:
+              print("ERROR: QF_ENV must be production or prelive.")
+              sys.exit(1)
+
+          response = requests.post(
+              f"{oauth_base}/oauth2/token",
+              data={
+                  "grant_type": "client_credentials",
+                  "scope": "content",
+              },
+              auth=(client_id, client_secret),
+              timeout=30,
+          )
+
+          if not response.ok:
+              print(f"Authentication failed: HTTP {response.status_code}")
+              sys.exit(1)
+
+          token = response.json().get("access_token")
+
+          if not token:
+              print("ERROR: No access token returned.")
+              sys.exit(1)
+
+          print("Authentication: SUCCESS")
+
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"QF_API_BASE={api_base}\n")
+              f.write(f"QF_ACCESS_TOKEN={token}\n")
+          PY
+
+      - name: Fetch Saad Al-Ghamdi chapter audio
+        env:
+          QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
+          QF_API_BASE: ${{ env.QF_API_BASE }}
+          QF_ACCESS_TOKEN: ${{ env.QF_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import json
+          import requests
+
+          api_base = os.environ["QF_API_BASE"]
+          token = os.environ["QF_ACCESS_TOKEN"]
+          client_id = os.environ["QF_CLIENT_ID"]
+
+          # Confirmed from the live reciter catalog.
+          RECITER_ID = 13
+          CHAPTER_NUMBER = 1
+
+          url = (
+              f"{api_base}/content/api/v4/"
+              f"chapter_recitations/{RECITER_ID}/{CHAPTER_NUMBER}"
+          )
+
+          response = requests.get(
+              url,
+              params={"segments": "true"},
+              headers={
+                  "x-auth-token": token,
+                  "x-client-id": client_id,
+              },
+              timeout=30,
+          )
+
+          print(
+              f"Saad Al-Ghamdi audio metadata: "
+              f"HTTP {response.status_code}"
+          )
+
+          if not response.ok:
+              print("ERROR: Saad Al-Ghamdi audio request failed.")
+              print(response.text[:500])
+              sys.exit(1)
+
+          data = response.json()
+          audio_file = data.get("audio_file")
+
+          if not isinstance(audio_file, dict):
+              print("ERROR: No audio_file object returned.")
+              sys.exit(1)
+
+          audio_url = audio_file.get("audio_url")
+          audio_format = audio_file.get("format")
+          chapter_id = audio_file.get("chapter_id")
+          timestamps = audio_file.get("timestamps", [])
+
+          if not audio_url:
+              print("ERROR: No audio URL returned.")
+              sys.exit(1)
+
+          if chapter_id != CHAPTER_NUMBER:
+              print(
+                  f"ERROR: Expected chapter {CHAPTER_NUMBER}, "
+                  f"got {chapter_id}"
+              )
+              sys.exit(1)
+
+          if not timestamps:
+              print("ERROR: No verse timestamps returned.")
+              sys.exit(1)
+
+          print("Reciter: Saad al-Ghamdi")
+          print("Reciter ID: 13")
+          print(f"Chapter: {CHAPTER_NUMBER}")
+          print(f"Format: {audio_format}")
+          print(f"Verse timestamps: {len(timestamps)}")
+          print("Audio URL: received")
+
+          # Save safe metadata only.
+          safe_metadata = {
+              "reciter": "Saad al-Ghamdi",
+              "reciter_id": RECITER_ID,
+              "chapter": CHAPTER_NUMBER,
+              "format": audio_format,
+              "timestamp_count": len(timestamps),
+              "audio_url": audio_url,
+              "timestamps": timestamps,
+          }
+
+          os.makedirs("output", exist_ok=True)
+
+          with open(
+              "output/saad-audio-metadata.json",
+              "w",
+              encoding="utf-8",
+          ) as f:
+              json.dump(
+                  safe_metadata,
+                  f,
+                  ensure_ascii=False,
+                  indent=2,
+              )
+
+          # Keep the URL available to the next step.
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"SAAD_AUDIO_URL={audio_url}\n")
+
+          print("")
+          print("SAAD AUDIO METADATA: PASSED")
+          PY
+
+      - name: Download actual Saad Al-Ghamdi audio
+        env:
+          SAAD_AUDIO_URL: ${{ env.SAAD_AUDIO_URL }}
+        run: |
+          mkdir -p output
+
+          python3 - <<'PY'
+          import os
+          import sys
+          import requests
+
+          url = os.environ.get("SAAD_AUDIO_URL")
+
+          if not url:
+              print("ERROR: Audio URL is missing.")
+              sys.exit(1)
+
+          response = requests.get(
+              url,
+              timeout=60,
+              stream=True,
+          )
+
+          print(f"Audio download request: HTTP {response.status_code}")
+
+          if not response.ok:
+              print("ERROR: Audio download failed.")
+              sys.exit(1)
+
+          content_type = response.headers.get(
+              "content-type",
+              ""
+          ).lower()
+
+          print(f"Content-Type: {content_type}")
+
+          if "audio" not in content_type and "mpeg" not in content_type:
+              print("ERROR: Downloaded resource is not audio.")
+              sys.exit(1)
+
+          with open(
+              "output/saad-al-ghamdi-al-fatihah.mp3",
+              "wb",
+          ) as f:
+              for chunk in response.iter_content(chunk_size=1024 * 1024):
+                  if chunk:
+                      f.write(chunk)
+
+          size = os.path.getsize(
+              "output/saad-al-ghamdi-al-fatihah.mp3"
+          )
+
+          if size < 10000:
+              print("ERROR: Audio file is unexpectedly small.")
+              sys.exit(1)
+
+          print(f"Downloaded audio bytes: {size}")
+          print("SAAD AUDIO DOWNLOAD: PASSED")
+          PY
+
+      - name: Verify actual audio with FFprobe
+        run: |
+          ffprobe \
+            -v error \
+            -show_entries \
+            format=duration,size,format_name \
+            -show_entries \
+            stream=codec_name,sample_rate,channels \
+            -of default=noprint_wrappers=1 \
+            output/saad-al-ghamdi-al-fatihah.mp3
+
+      - name: Verify audio is usable
+        run: |
+          duration="$(ffprobe \
+            -v error \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1:nokey=1 \
+            output/saad-al-ghamdi-al-fatihah.mp3)"
+
+          echo "Audio duration: ${duration}s"
+
+          python3 - "$duration" <<'PY'
+          import sys
+
+          duration = float(sys.argv[1])
+
+          if duration <= 0:
+              print("ERROR: Audio duration is invalid.")
+              sys.exit(1)
+
+          print("Audio duration: VALID")
+          print("SAAD AL-GHAMDI AUDIO TEST: PASSED")
+          PY
+
+      - name: Upload Saad audio test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: saad-al-ghamdi-audio-test
+          path: |
+            output/saad-al-ghamdi-al-fatihah.mp3
+            output/saad-audio-metadata.json
+          retention-days: 1
