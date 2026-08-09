@@ -29,7 +29,9 @@
     "2:19",
     "2:20",
     "2:21",
-    "2:22"
+    "2:22",
+    "2:23",
+    "2:24"
   ],
   "published_sections": [
     {
@@ -197,30 +199,32 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:21",
-      "2:22"
+      "2:23",
+      "2:24"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 44.46,
-    "visual_id": 11318637,
-    "theme": "creation",
-    "visual_query": "galaxy nebula deep space, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-21-to-22-Cycle-1.mp4",
-    "published_sha256": "3a8980566696bb0413e9c8ce217e5a76483f333cfe06d748bab509b4f1a5c163"
+    "duration_seconds": 41.326,
+    "visual_id": 28615722,
+    "theme": "justice",
+    "visual_query": "perfectly balanced mountains reflected in still water, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-23-to-24-Cycle-1.mp4",
+    "published_sha256": "3d98543e4cf767c051fae8115da01431e9314e59f18af3c48c19af9902a9fbf2"
   },
   "schema_version": 4,
   "used_pexels_ids": [
     11318637,
     13243682,
+    28615722,
     37127031
   ],
   "theme_usage": {
     "guidance": 2,
-    "creation": 1
+    "creation": 1,
+    "justice": 1
   },
   "completed_cycles": [],
-  "published_count": 3,
+  "published_count": 4,
   "history": [
     {
       "cycle": 1,
@@ -259,11 +263,25 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-21-to-22-Cycle-1.mp4",
       "published_sha256": "3a8980566696bb0413e9c8ce217e5a76483f333cfe06d748bab509b4f1a5c163",
       "created_at": "2026-08-09T13:06:02Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:23",
+        "2:24"
+      ],
+      "visual_id": 28615722,
+      "theme": "justice",
+      "visual_query": "perfectly balanced mountains reflected in still water, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-23-to-24-Cycle-1.mp4",
+      "published_sha256": "3d98543e4cf767c051fae8115da01431e9314e59f18af3c48c19af9902a9fbf2",
+      "created_at": "2026-08-09T15:31:03Z"
     }
   ],
   "visual_history": [
     13243682,
     37127031,
-    11318637
+    11318637,
+    28615722
   ]
 }
