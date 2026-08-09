@@ -1,15 +1,17 @@
 name: Quran Production Pipeline
 
-# No built-in schedule on purpose — you're driving timing from make.com
-# (or a Render background worker), not from GitHub.
-# - workflow_dispatch: manual runs from the Actions tab, for testing.
-# - repository_dispatch: lets make.com (or anything else) trigger a run via
-#   a plain HTTPS API call whenever IT decides it's time. See SETUP.md for
-#   the exact request make.com needs to send.
+# No built-in schedule on purpose — timing is driven from Make.com
+# (or another external worker), not from GitHub.
+#
+# - workflow_dispatch: manual runs from the Actions tab for testing.
+# - repository_dispatch: lets Make.com trigger a run through GitHub's API.
+
 on:
   workflow_dispatch: {}
+
   repository_dispatch:
-    types: [produce-quran-section]
+    types:
+      - produce-quran-section
 
 permissions:
   contents: write
@@ -25,11 +27,17 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      # ---------------------------------------------------------------
+      # Checkout
+      # ---------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ---------------------------------------------------------------
+      # Rendering dependencies
+      # ---------------------------------------------------------------
       - name: Install rendering dependencies
         run: |
           sudo apt-get update
@@ -38,13 +46,16 @@ jobs:
             fonts-noto-core \
             fonts-noto-extra \
             fontconfig
-          python3 -m pip install --quiet requests pillow
 
-      # The worker script is the ONLY place the pipeline logic lives.
-      # It builds/loads the Quran index, plans the next passage, fetches
-      # audio, picks a Pexels visual, renders, QA-validates, publishes to
-      # ./publish, and (because COMMIT_PROGRESS / GIT_PUSH_PROGRESS are set)
-      # commits + pushes data/progress.json itself. No duplicate logic here.
+          python3 -m pip install --quiet \
+            requests \
+            pillow
+
+      # ---------------------------------------------------------------
+      # Build / render / QA / publish
+      #
+      # The Python worker owns the actual Quran pipeline logic.
+      # ---------------------------------------------------------------
       - name: Build and render next Quran section
         id: build
         env:
@@ -52,36 +63,81 @@ jobs:
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
           QF_ENV: ${{ secrets.QF_ENV }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
           COMMIT_PROGRESS: "1"
           GIT_PUSH_PROGRESS: "1"
           GIT_REMOTE: origin
           GIT_BRANCH: ${{ github.ref_name }}
+
         run: |
           python3 production/quran_worker_wow.py
-          # The script writes run-result.json itself (pure JSON, no log
-          # lines mixed in). A nonzero exit here fails this step directly —
-          # nothing downstream runs on a bad build.
 
+      # ---------------------------------------------------------------
+      # Read worker result
+      # ---------------------------------------------------------------
       - name: Read run result
         id: meta
         run: |
-          FILE=$(python3 -c "import json;print(json.load(open('run-result.json'))['output'])")
-          NAME=$(basename "$FILE")
-          echo "video_path=$FILE" >> "$GITHUB_OUTPUT"
-          echo "video_name=$NAME" >> "$GITHUB_OUTPUT"
-          echo "tag_name=section-$(date +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
 
-      - name: Upload production artifact (backup / debugging)
+          path = Path("run-result.json")
+
+          if not path.exists():
+              raise SystemExit(
+                  "run-result.json was not created by the worker."
+              )
+
+          with path.open(
+              "r",
+              encoding="utf-8",
+          ) as fh:
+              meta = json.load(fh)
+
+          output = meta.get("output")
+
+          if not output:
+              raise SystemExit(
+                  "run-result.json does not contain an 'output' path."
+              )
+
+          name = Path(output).name
+          tag = "section-" + __import__("datetime").datetime.now(
+              __import__("datetime").timezone.utc
+          ).strftime("%Y%m%d-%H%M%S")
+
+          with open(
+              os.environ["GITHUB_OUTPUT"],
+              "a",
+              encoding="utf-8",
+          ) as fh:
+              fh.write(f"video_path={output}\n")
+              fh.write(f"video_name={name}\n")
+              fh.write(f"tag_name={tag}\n")
+          PY
+
+      # ---------------------------------------------------------------
+      # Backup artifact for debugging
+      # ---------------------------------------------------------------
+      - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
           name: quran-production-${{ steps.meta.outputs.tag_name }}
           path: publish/
           retention-days: 14
 
-      # A GitHub Release gives the finished MP4 a stable, public download
-      # URL (public repo) that make.com (or any webhook consumer) can fetch
-      # without any GitHub auth. This is what actually makes the "publish
-      # automatically" step possible.
+      # ---------------------------------------------------------------
+      # GitHub Release
+      #
+      # Publish:
+      #   MP4
+      #   JSON metadata
+      #   SRT subtitles
+      #
+      # Make.com can use the release URLs.
+      # ---------------------------------------------------------------
       - name: Publish finished video to a GitHub Release
         id: release
         uses: softprops/action-gh-release@v2
@@ -90,39 +146,95 @@ jobs:
           name: ${{ steps.meta.outputs.video_name }}
           body: |
             Automated Quran production section.
-            See the attached JSON for verse keys, reciter, translation, and theme.
+
+            The release contains:
+            - finished MP4
+            - Quran metadata JSON
+            - synchronized SRT subtitles
+
+            The JSON contains the section metadata, verse keys,
+            reciter, translation, theme, visual information,
+            and production details.
+
           files: |
             ${{ steps.meta.outputs.video_path }}
             publish/*.json
+            publish/*.srt
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Hands the finished video off to make.com (or Zapier / n8n / any
-      # webhook-based automation tool). Create a "Custom Webhook" trigger
-      # module in your make.com scenario, copy its URL into the
-      # MAKE_WEBHOOK_URL repository secret, and this step notifies it every
-      # run with the public video URL + metadata so it can auto-post to
-      # Instagram/TikTok/YouTube Shorts/etc.
+      # ---------------------------------------------------------------
+      # Notify Make.com
+      #
+      # Sends:
+      #   video_url
+      #   srt_url
+      #   all metadata from run-result.json
+      #
+      # Retries temporary webhook/network failures.
+      # ---------------------------------------------------------------
       - name: Notify make.com
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
+
         run: |
           if [ -z "$MAKE_WEBHOOK_URL" ]; then
             echo "MAKE_WEBHOOK_URL secret is not set; skipping make.com notification."
             exit 0
           fi
-          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag_name }}/${{ steps.meta.outputs.video_name }}"
+
+          VIDEO_NAME="${{ steps.meta.outputs.video_name }}"
+          TAG_NAME="${{ steps.meta.outputs.tag_name }}"
+
+          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/${VIDEO_NAME}"
+
+          SRT_NAME="${VIDEO_NAME%.mp4}.srt"
+
+          SRT_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/${SRT_NAME}"
+
           export ASSET_URL
+          export SRT_URL
+
           PAYLOAD=$(python3 - <<'PY'
           import json
           import os
+          from pathlib import Path
 
-          with open("run-result.json") as fh:
+          result_path = Path("run-result.json")
+
+          with result_path.open(
+              "r",
+              encoding="utf-8",
+          ) as fh:
               meta = json.load(fh)
+
           meta["video_url"] = os.environ["ASSET_URL"]
-          print(json.dumps(meta))
+          meta["srt_url"] = os.environ["SRT_URL"]
+
+          print(
+              json.dumps(
+                  meta,
+                  ensure_ascii=False,
+              )
+          )
           PY
           )
-          curl -sf -X POST "$MAKE_WEBHOOK_URL" \
+
+          echo "Sending completed Quran section to Make.com..."
+
+          curl \
+            --fail \
+            --show-error \
+            --silent \
+            --retry 5 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            --connect-timeout 15 \
+            --max-time 90 \
+            -X POST \
+            "$MAKE_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
+
+          echo "Make.com notification delivered successfully."
