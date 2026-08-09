@@ -104,7 +104,7 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import requests
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 
 
 # ============================================================================
@@ -2637,12 +2637,30 @@ class TypographyEngine:
     def make_overlay(self, path: Path) -> None:
         """Build the static PNG scrim + frame that sits over the background video.
 
-        v2: no flat "subtitle box" — a smoother feathered gradient, a soft
-        blurred wash behind the Arabic block only, and a subtle tiled
-        geometric watermark for a premium, designed feel.
+        v3 design pass (this fix):
+          - The readability gradient and the geometric watermark are now
+            strictly confined INSIDE the picture frame. Previously the
+            watermark tiles were placed on a raw 0..W / 0..H grid, so tiles
+            near the edges bled past the gold border into the outer margin
+            — that's the "going out of border" artifact. Everything below
+            is now clipped to the frame's inner rectangle before it is
+            composited, and the frame itself is drawn as a soft-glow double
+            line so it reads as a deliberate border rather than a thin flat
+            rule.
+          - The star motif is smaller, sparser, and lower-contrast so it
+            reads as a faint textile pattern instead of a busy grid, and it
+            fades out near the frame edges instead of being cut off hard.
         """
         image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
+
+        margin = 34
+        inner = margin + 10
+        # Content-safe rectangle: everything decorative (gradient wash,
+        # watermark) stays inside this box, comfortably clear of the frame
+        # lines themselves.
+        safe_left, safe_top = inner + 4, inner + 4
+        safe_right, safe_bottom = W - inner - 4, H - inner - 4
 
         # --- smoother multi-stop readability gradient (no hard box look) ---
         for y in range(H):
@@ -2657,7 +2675,10 @@ class TypographyEngine:
                 t = min((y - 1300) / (H - 1300), 1.0)
                 alpha = int(40 + 170 * (t ** 1.2))
             if alpha:
-                draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
+                draw.line(
+                    [(safe_left, y), (safe_right, y)],
+                    fill=(*PALETTE["scrim"], alpha),
+                )
 
         # Soft feathered wash behind the Arabic block only (no visible edge).
         verse_band = Image.new("RGBA", (W, 620), (0, 0, 0, 0))
@@ -2665,34 +2686,66 @@ class TypographyEngine:
         for y in range(620):
             d = min(y, 620 - y) / 310.0
             alpha = int(55 * (1 - d) ** 1.6)
-            band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], max(alpha, 0)))
+            band_draw.line(
+                [(safe_left, y), (safe_right, y)],
+                fill=(*PALETTE["scrim"], max(alpha, 0)),
+            )
         verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=40))
         image.alpha_composite(verse_band, (0, 280))
 
-        # --- subtle tiled geometric watermark (the "designed" signal) ------
-        star = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
+        # --- subtle geometric watermark, fully contained inside the frame ---
+        # Built on its own transparent layer, tiled only where a whole tile
+        # fits, then masked with a soft-edged rectangle so it fades near the
+        # frame instead of being sharply clipped or bleeding past it.
+        star_size = 130
+        star = Image.new("RGBA", (star_size, star_size), (0, 0, 0, 0))
         sd = ImageDraw.Draw(star)
-        cx, cy, r = 60, 60, 44
+        cx, cy, r = star_size / 2, star_size / 2, 38
         pts = []
         for k in range(8):
             ang = math.pi / 8 + k * math.pi / 4
             rr = r if k % 2 == 0 else r * 0.55
             pts.append((cx + rr * math.cos(ang), cy + rr * math.sin(ang)))
-        sd.polygon(pts, outline=(*PALETTE["gold"], 20), width=1)
-        for tx in range(0, W, 120):
-            for ty in range(420, 1200, 120):
-                image.alpha_composite(star, (tx, ty))
+        sd.polygon(pts, outline=(*PALETTE["gold"], 26), width=1)
 
-        # --- frame -----------------------------------------------------
-        margin = 34
-        inner = margin + 10
+        watermark = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        wm_top, wm_bottom = 430, 1160
+        wm_left, wm_right = safe_left + 20, safe_right - 20
+        for ty in range(wm_top, wm_bottom - star_size + 1, star_size):
+            for tx in range(wm_left, wm_right - star_size + 1, star_size):
+                watermark.alpha_composite(star, (tx, ty))
+
+        # Feathered mask keeps the watermark strictly inside the safe
+        # rectangle and fades it out near the edges rather than cutting it
+        # off — this is what stops any hint of it crossing the gold border.
+        wm_mask = Image.new("L", (W, H), 0)
+        mask_draw = ImageDraw.Draw(wm_mask)
+        mask_draw.rectangle(
+            [wm_left, wm_top, wm_right, wm_bottom], fill=255
+        )
+        wm_mask = wm_mask.filter(ImageFilter.GaussianBlur(radius=48))
+        watermark.putalpha(
+            ImageChops.multiply(watermark.getchannel("A"), wm_mask)
+        )
+        image.alpha_composite(watermark)
+
+        # --- frame: soft double-line with a faint outer glow -----------
+        glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        glow_draw = ImageDraw.Draw(glow)
+        glow_draw.rounded_rectangle(
+            [margin, margin, W - margin, H - margin],
+            radius=26, outline=(*PALETTE["gold"], 90), width=4,
+        )
+        glow = glow.filter(ImageFilter.GaussianBlur(radius=6))
+        image.alpha_composite(glow)
+
         draw.rounded_rectangle(
             [margin, margin, W - margin, H - margin],
-            radius=26, outline=(*PALETTE["gold"], 60), width=2,
+            radius=26, outline=(*PALETTE["gold"], 130), width=2,
         )
         draw.rounded_rectangle(
             [inner, inner, W - inner, H - inner],
-            radius=20, outline=(255, 255, 255, 18), width=1,
+            radius=20, outline=(255, 255, 255, 24), width=1,
         )
 
         # --- larger, clearer arabesque corner flourishes --------------------
@@ -2716,9 +2769,13 @@ class TypographyEngine:
         flourish(pad, H - pad, 1, -1)
         flourish(W - pad, H - pad, -1, -1)
 
-        # --- hairline zone dividers -----------------------------------------
-        draw.line([(150, 224), (W - 150, 224)], fill=(*PALETTE["gold"], 55), width=1)
-        draw.line([(150, 1745), (W - 150, 1745)], fill=(*PALETTE["gold"], 45), width=1)
+        # --- hairline zone dividers, inset so they never touch the frame ---
+        draw.line(
+            [(150, 224), (W - 150, 224)], fill=(*PALETTE["gold"], 55), width=1
+        )
+        draw.line(
+            [(150, 1745), (W - 150, 1745)], fill=(*PALETTE["gold"], 45), width=1
+        )
 
         image = image.filter(ImageFilter.GaussianBlur(radius=0.2))
         image.save(path)
