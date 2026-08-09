@@ -185,7 +185,11 @@ def log(message: str, level: str = "INFO") -> None:
     if _LEVELS.get(level, 20) < _LEVELS.get(LOG_LEVEL, 20):
         return
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    print(f"[{now}] [{level}] {message}", flush=True)
+    # Logs go to stderr, not stdout. stdout is reserved for the single final
+    # JSON result object main() prints on success, so anything reading this
+    # script's stdout (a CI step, a Node backend, etc.) never has to parse
+    # log lines mixed in with JSON.
+    print(f"[{now}] [{level}] {message}", file=sys.stderr, flush=True)
 
 
 def utc_now() -> str:
@@ -2317,15 +2321,26 @@ class QuranProduction:
 
 
 def main() -> int:
+    result_path = ROOT / "run-result.json"
     with ProductionLock(LOCK):
         try:
             production = QuranProduction()
             result = production.run()
+            # Written directly to disk so the workflow (or any other caller)
+            # never has to parse this script's stdout — stdout can carry
+            # logs, warnings, or nothing at all without breaking anything
+            # downstream.
+            atomic_write_json(result_path, result)
             print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
             return 0
         except Exception as exc:
             log(f"PRODUCTION FAILED: {exc}", "ERROR")
             traceback.print_exc()
+            atomic_write_json(result_path, {
+                "success": False,
+                "error": str(exc),
+                "failed_at": utc_now(),
+            })
             return 1
 
 
