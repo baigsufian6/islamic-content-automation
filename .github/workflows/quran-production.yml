@@ -1,7 +1,15 @@
 name: Quran Production Pipeline
 
+# No built-in schedule on purpose — you're driving timing from make.com
+# (or a Render background worker), not from GitHub.
+# - workflow_dispatch: manual runs from the Actions tab, for testing.
+# - repository_dispatch: lets make.com (or anything else) trigger a run via
+#   a plain HTTPS API call whenever IT decides it's time. See SETUP.md for
+#   the exact request make.com needs to send.
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
+  repository_dispatch:
+    types: [produce-quran-section]
 
 permissions:
   contents: write
@@ -14,6 +22,7 @@ jobs:
   production:
     runs-on: ubuntu-latest
     environment: Quran API
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -29,973 +38,88 @@ jobs:
             fonts-noto-core \
             fonts-noto-extra \
             fontconfig
-          python3 -m pip install --quiet requests
+          python3 -m pip install --quiet requests pillow
 
+      # The worker script is the ONLY place the pipeline logic lives.
+      # It builds/loads the Quran index, plans the next passage, fetches
+      # audio, picks a Pexels visual, renders, QA-validates, publishes to
+      # ./publish, and (because COMMIT_PROGRESS / GIT_PUSH_PROGRESS are set)
+      # commits + pushes data/progress.json itself. No duplicate logic here.
       - name: Build and render next Quran section
+        id: build
         env:
           QF_CLIENT_ID: ${{ secrets.QF_CLIENT_ID }}
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
           QF_ENV: ${{ secrets.QF_ENV }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          COMMIT_PROGRESS: "1"
+          GIT_PUSH_PROGRESS: "1"
+          GIT_REMOTE: origin
+          GIT_BRANCH: ${{ github.ref_name }}
         run: |
-          python3 - <<'PY'
-          import html
-          import json
-          import math
-          import os
-          import re
-          import subprocess
-          import tempfile
-          import time
-          from pathlib import Path
-
-          import requests
-
-          ROOT = Path.cwd()
-          DATA = ROOT / "data"
-          CACHE = DATA / "quran_index.json"
-          PROGRESS = DATA / "progress.json"
-          OUTPUT = ROOT / "output" / "production"
-          OUTPUT.mkdir(parents=True, exist_ok=True)
-          DATA.mkdir(parents=True, exist_ok=True)
-
-          QF_CLIENT_ID = os.environ.get("QF_CLIENT_ID", "")
-          QF_CLIENT_SECRET = os.environ.get("QF_CLIENT_SECRET", "")
-          QF_ENV = os.environ.get("QF_ENV", "").lower()
-          PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
-
-          if not QF_CLIENT_ID or not QF_CLIENT_SECRET:
-              raise SystemExit("ERROR: QF_CLIENT_ID/QF_CLIENT_SECRET are missing.")
-          if not PEXELS_API_KEY:
-              raise SystemExit("ERROR: PEXELS_API_KEY is missing.")
-
-          if QF_ENV == "production":
-              OAUTH_BASE = "https://oauth2.quran.foundation"
-              API_BASE = "https://apis.quran.foundation"
-          elif QF_ENV == "prelive":
-              OAUTH_BASE = "https://prelive-oauth2.quran.foundation"
-              API_BASE = "https://apis-prelive.quran.foundation"
-          else:
-              raise SystemExit("ERROR: QF_ENV must be production or prelive.")
-
-          session = requests.Session()
-          session.headers.update({"User-Agent": "quran-production-pipeline/1.0"})
-
-          def request_json(method, url, **kwargs):
-              last = None
-              for attempt in range(4):
-                  try:
-                      r = session.request(method, url, timeout=60, **kwargs)
-                      if r.status_code in (429, 500, 502, 503, 504):
-                          last = f"HTTP {r.status_code}: {r.text[:300]}"
-                          time.sleep(2 ** attempt)
-                          continue
-                      r.raise_for_status()
-                      return r.json()
-                  except Exception as exc:
-                      last = str(exc)
-                      if attempt == 3:
-                          break
-                      time.sleep(2 ** attempt)
-              raise RuntimeError(f"Request failed: {url} :: {last}")
-
-          # ------------------------------------------------------------
-          # Quran Foundation authentication.
-          # ------------------------------------------------------------
-          token_data = request_json(
-              "POST",
-              f"{OAUTH_BASE}/oauth2/token",
-              data={
-                  "grant_type": "client_credentials",
-                  "scope": "content",
-              },
-              auth=(QF_CLIENT_ID, QF_CLIENT_SECRET),
-          )
-          token = token_data.get("access_token")
-          if not token:
-              raise RuntimeError("Quran Foundation returned no access token.")
-
-          qf = requests.Session()
-          qf.headers.update({
-              "x-auth-token": token,
-              "x-client-id": QF_CLIENT_ID,
-              "User-Agent": "quran-production-pipeline/1.0",
-          })
-
-          def qf_get(path, params=None):
-              last = None
-              for attempt in range(4):
-                  try:
-                      r = qf.get(API_BASE + path, params=params or {}, timeout=60)
-                      if r.status_code in (429, 500, 502, 503, 504):
-                          last = f"HTTP {r.status_code}: {r.text[:300]}"
-                          time.sleep(2 ** attempt)
-                          continue
-                      if not r.ok:
-                          raise RuntimeError(
-                              f"Quran API HTTP {r.status_code}: {r.text[:500]}"
-                          )
-                      return r.json()
-                  except Exception as exc:
-                      last = str(exc)
-                      if attempt == 3:
-                          break
-                      time.sleep(2 ** attempt)
-              raise RuntimeError(f"Quran API request failed: {path} :: {last}")
-
-          # ------------------------------------------------------------
-          # Text normalization.
-          # ------------------------------------------------------------
-          def clean_translation(text):
-              text = html.unescape(text or "")
-              text = re.sub(r"<sup[^>]*>.*?</sup>", "", text, flags=re.I | re.S)
-              text = re.sub(r"<foot_note[^>]*>.*?</foot_note>", "", text, flags=re.I | re.S)
-              text = re.sub(r"<[^>]+>", "", text)
-              text = text.replace("\r\n", "\n").replace("\r", "\n")
-              # User requirement: slash-separated translation lines become
-              # separate subtitle lines, never a literal slash.
-              text = re.sub(r"\s*/\s*", "\n", text)
-              text = re.sub(r"[ \t]+", " ", text)
-              text = re.sub(r" *\n *", "\n", text)
-              return text.strip()
-
-          def get_translation(verse):
-              for item in verse.get("translations", []):
-                  if str(item.get("resource_id")) == "20":
-                      return clean_translation(item.get("text", ""))
-              return ""
-
-          # ------------------------------------------------------------
-          # Build a local Quran index once.  It keeps the production run
-          # deterministic and removes repeated API calls on every day.
-          # ------------------------------------------------------------
-          def build_index():
-              print("Building local Quran index...")
-              index = []
-              chapters = qf_get("/content/api/v4/chapters", {"language": "en"}).get("chapters", [])
-              chapters = sorted(chapters, key=lambda x: int(x["id"]))
-
-              for chapter in chapters:
-                  cid = int(chapter["id"])
-                  page = 1
-                  while True:
-                      payload = qf_get(
-                          f"/content/api/v4/verses/by_chapter/{cid}",
-                          {
-                              "translations": "20",
-                              "fields": (
-                                  "text_uthmani,verse_key,verse_number,"
-                                  "juz_number,hizb_number,ruku_number,"
-                                  "page_number"
-                              ),
-                              "translation_fields": "resource_id,text",
-                              "page": page,
-                              "per_page": 50,
-                          },
-                      )
-                      for verse in payload.get("verses", []):
-                          index.append({
-                              "id": int(verse["id"]),
-                              "verse_key": verse["verse_key"],
-                              "chapter_id": int(verse["chapter_id"]),
-                              "verse_number": int(verse["verse_number"]),
-                              "juz_number": verse.get("juz_number"),
-                              "hizb_number": verse.get("hizb_number"),
-                              "ruku_number": verse.get("ruku_number"),
-                              "page_number": verse.get("page_number"),
-                              "arabic_text": verse.get("text_uthmani", "").strip(),
-                              "translation": get_translation(verse),
-                          })
-                      pagination = payload.get("pagination", {})
-                      nxt = pagination.get("next_page")
-                      if not nxt:
-                          break
-                      page = int(nxt)
-
-              index.sort(key=lambda x: x["id"])
-              if len(index) < 6000:
-                  raise RuntimeError(
-                      f"Quran index looks incomplete: {len(index)} verses."
-                  )
-
-              CACHE.write_text(
-                  json.dumps(index, ensure_ascii=False, indent=2) + "\n",
-                  encoding="utf-8",
-              )
-              print(f"Quran index created: {len(index)} verses")
-              return index
-
-          if CACHE.exists():
-              index = json.loads(CACHE.read_text(encoding="utf-8"))
-              if len(index) < 6000:
-                  index = build_index()
-              else:
-                  print(f"Using cached Quran index: {len(index)} verses")
-          else:
-              index = build_index()
-
-          # ------------------------------------------------------------
-          # Progress model.
-          #
-          # cycle 1: canonical Quran order, every ayah exactly once.
-          # cycle 2+: meaning-first selection, but every ayah still gets
-          # used exactly once before the cycle can finish.
-          # ------------------------------------------------------------
-          if PROGRESS.exists():
-              progress = json.loads(PROGRESS.read_text(encoding="utf-8"))
-          else:
-              progress = {
-                  "cycle": 1,
-                  "used_verses": [],
-                  "published_sections": [],
-              }
-
-          cycle = int(progress.get("cycle", 1))
-          used = set(progress.get("used_verses", []))
-
-          if len(used) >= len(index):
-              cycle += 1
-              used = set()
-              progress = {
-                  "cycle": cycle,
-                  "used_verses": [],
-                  "published_sections": progress.get("published_sections", []),
-              }
-              print(f"QURAN CYCLE {cycle} STARTING")
-
-          # ------------------------------------------------------------
-          # Visual semantics.
-          #
-          # We never ask the visual provider to depict Allah, prophets,
-          # sacred figures, worship scenes, invented historical scenes,
-          # violence or sexual content.  Visuals remain metaphorical:
-          # landscapes, weather, light, water, plants, architecture,
-          # abstract natural atmosphere.
-          #
-          # Cycle 1 and later cycles deliberately use different visual
-          # palettes so the second pass is visually fresh.
-          # ------------------------------------------------------------
-          VISUALS = [
-              ("mercy", ["mercy", "merciful", "compassion", "forgive", "forgiveness", "gracious", "kind"],
-               "soft sunrise landscape warm light"),
-              ("guidance", ["guidance", "guide", "guided", "straight path", "path"],
-               "winding path through peaceful landscape morning"),
-              ("creation", ["created", "creation", "heavens", "earth", "sky", "sun", "moon", "stars"],
-               "vast sky mountains nature cinematic"),
-              ("water", ["rain", "water", "river", "rivers", "sea", "ocean", "spring"],
-               "flowing water river rain cinematic nature"),
-              ("garden", ["garden", "gardens", "fruit", "fruits", "green", "trees"],
-               "lush green garden leaves sunlight"),
-              ("light", ["light", "lights", "darkness", "dark", "night", "morning", "day"],
-               "sunlight through clouds calm cinematic landscape"),
-              ("patience", ["patience", "patient", "steadfast", "persevere"],
-               "slow ocean waves calm horizon contemplative"),
-              ("gratitude", ["grateful", "gratitude", "thankful", "thanks"],
-               "golden sunrise field peaceful cinematic"),
-              ("knowledge", ["knowledge", "wisdom", "learn", "understand", "signs"],
-               "quiet contemplative landscape dawn"),
-              ("justice", ["justice", "just", "truth", "truthful", "balance"],
-               "calm balanced landscape wide horizon"),
-              ("warning", ["warning", "punishment", "wrongdoers", "wrong", "evil", "fire"],
-               "dramatic clouds storm landscape no people"),
-              ("paradise", ["paradise", "bliss", "gardens", "rivers"],
-               "lush peaceful garden water sunlight"),
-          ]
-
-          CYCLE_STYLES = [
-              "cinematic natural landscape, subtle camera movement, realistic, peaceful",
-              "cinematic nature close-up, soft depth of field, realistic, contemplative",
-              "wide landscape, atmospheric light, realistic documentary style, serene",
-              "water and sky nature footage, elegant slow motion, realistic, minimal",
-          ]
-
-          def visual_profile(text, cycle_number):
-              t = text.lower()
-              scores = []
-              for name, words, query in VISUALS:
-                  score = 0
-                  for word in words:
-                      if word in t:
-                          score += 1
-                  scores.append((score, name, query))
-              scores.sort(reverse=True)
-              best_score, name, query = scores[0]
-              if best_score == 0:
-                  name = "reflection"
-                  query = "peaceful cinematic nature landscape soft light"
-              style = CYCLE_STYLES[(cycle_number - 1) % len(CYCLE_STYLES)]
-              return name, f"{query}, {style}"
-
-          # ------------------------------------------------------------
-          # Section selection.
-          #
-          # Target: normally 35-65 seconds.  A section is contiguous and
-          # starts at the next unused ayah.  Ruku boundaries are preferred
-          # when they fit, but a long ruku is safely split by duration.
-          # No user input is required.
-          # ------------------------------------------------------------
-          def ffprobe_duration(path):
-              result = subprocess.run(
-                  [
-                      "ffprobe", "-v", "error",
-                      "-show_entries", "format=duration",
-                      "-of", "default=noprint_wrappers=1:nokey=1",
-                      str(path),
-                  ],
-                  capture_output=True,
-                  text=True,
-                  check=True,
-              )
-              value = float(result.stdout.strip())
-              if value <= 0:
-                  raise RuntimeError(f"Invalid duration for {path}")
-              return value
-
-          AUDIO_BASE = "https://everyayah.com/data/Ghamadi_40kbps"
-
-          def ayah_audio_url(verse_key):
-              s, a = verse_key.split(":")
-              return f"{AUDIO_BASE}/{int(s):03d}{int(a):03d}.mp3"
-
-          def download_file(url, path):
-              if path.exists() and path.stat().st_size > 1000:
-                  return
-              tmp = path.with_suffix(path.suffix + ".part")
-              for attempt in range(4):
-                  try:
-                      with requests.get(
-                          url,
-                          stream=True,
-                          timeout=120,
-                          headers={"User-Agent": "quran-production-pipeline/1.0"},
-                      ) as r:
-                          if not r.ok:
-                              raise RuntimeError(
-                                  f"HTTP {r.status_code} while downloading {url}"
-                              )
-                          with open(tmp, "wb") as fh:
-                              for chunk in r.iter_content(chunk_size=1024 * 1024):
-                                  if chunk:
-                                      fh.write(chunk)
-                      if tmp.stat().st_size <= 1000:
-                          raise RuntimeError(f"Downloaded file too small: {url}")
-                      tmp.replace(path)
-                      return
-                  except Exception:
-                      if tmp.exists():
-                          tmp.unlink()
-                      if attempt == 3:
-                          raise
-                      time.sleep(2 ** attempt)
-
-          # Only probe the small number of ayahs needed to build the next
-          # section.  This avoids downloading the whole Quran.
-          # Fast lookup used for progress serialization.
-          id_by_key = {v["verse_key"]: v["id"] for v in index}
-
-          def choose_start_index():
-              unused_indices = [
-                  i for i, v in enumerate(index)
-                  if v["verse_key"] not in used
-              ]
-              if not unused_indices:
-                  return None
-
-              # Cycle 1 is deliberately chronological: every ayah is published
-              # exactly once in Quran order.
-              if cycle == 1:
-                  return unused_indices[0]
-
-              # Later cycles are message-first. We still never reuse an ayah
-              # before the current cycle is complete. Candidate windows are
-              # contiguous blocks within a ruku, so the selected passage has
-              # a coherent Quranic context.
-              groups = []
-              current = []
-              current_ruku = None
-              current_chapter = None
-
-              for i in unused_indices:
-                  v = index[i]
-                  ruku = v.get("ruku_number")
-                  chapter = v["chapter_id"]
-
-                  if current and (
-                      chapter != current_chapter or ruku != current_ruku
-                  ):
-                      groups.append(current)
-                      current = []
-
-                  current.append(i)
-                  current_chapter = chapter
-                  current_ruku = ruku
-
-              if current:
-                  groups.append(current)
-
-              keyword_weights = {
-                  "mercy": 5, "merciful": 5, "compassion": 5,
-                  "guidance": 5, "guided": 4, "straight path": 5,
-                  "patience": 5, "patient": 4, "steadfast": 4,
-                  "gratitude": 4, "grateful": 4, "thankful": 4,
-                  "forgive": 5, "forgiveness": 5, "kind": 4,
-                  "wisdom": 4, "knowledge": 4, "signs": 3,
-                  "creation": 4, "created": 3, "heavens": 3, "earth": 3,
-                  "paradise": 5, "gardens": 4, "garden": 4,
-                  "rivers": 3, "river": 3, "water": 3,
-                  "justice": 5, "truth": 4, "truthful": 4,
-                  "light": 3, "darkness": 2,
-                  "warning": 3, "remember": 4, "remembrance": 4,
-              }
-
-              def group_score(indices):
-                  joined = " ".join(
-                      index[i]["translation"].lower()
-                      for i in indices
-                  )
-                  score = 0.0
-
-                  for word, weight in keyword_weights.items():
-                      if word in joined:
-                          score += weight
-
-                  # Prefer passages with enough substance to make a meaningful
-                  # short-form video, without favoring extremely long groups.
-                  chars = len(joined)
-                  score += min(chars / 300.0, 3.0)
-
-                  # Small deterministic cycle-dependent rotation prevents every
-                  # later cycle from selecting the same semantic ordering.
-                  first_id = index[indices[0]]["id"]
-                  score += ((first_id * (cycle + 7)) % 17) / 100.0
-                  return score
-
-              ranked_groups = sorted(
-                  groups,
-                  key=group_score,
-                  reverse=True,
-              )
-
-              return ranked_groups[0][0]
-
-          next_index = choose_start_index()
-
-          if next_index is None:
-              raise RuntimeError("No unused ayah found after cycle reset logic.")
-
-          target_min = 35.0
-          target_max = 65.0
-
-          candidates = []
-          total = 0.0
-          i = next_index
-
-          with tempfile.TemporaryDirectory(prefix="quran-audio-") as td:
-              temp_dir = Path(td)
-
-              while i < len(index) and index[i]["verse_key"] not in used:
-                  verse = index[i]
-                  audio_path = temp_dir / f"{int(verse['id']):06d}.mp3"
-                  download_file(ayah_audio_url(verse["verse_key"]), audio_path)
-                  dur = ffprobe_duration(audio_path)
-
-                  if not candidates:
-                      candidates.append((verse, audio_path, dur))
-                      total += dur
-                      i += 1
-                      continue
-
-                  proposed = total + dur
-
-                  # Prefer a coherent 35-65 second section.  If the next
-                  # ayah would push it beyond 65 seconds, stop unless the
-                  # current section is still below 35 seconds.
-                  if proposed > target_max and total >= target_min:
-                      break
-
-                  candidates.append((verse, audio_path, dur))
-                  total = proposed
-                  i += 1
-
-                  # Once comfortably inside the target range, prefer ending
-                  # at a ruku boundary rather than arbitrarily cutting meaning.
-                  if total >= target_min:
-                      current_ruku = verse.get("ruku_number")
-                      next_ruku = index[i].get("ruku_number") if i < len(index) else None
-                      if next_ruku != current_ruku:
-                          break
-
-              if not candidates:
-                  raise RuntimeError("Could not select a production section.")
-
-              selected = [x[0] for x in candidates]
-              durations = [x[2] for x in candidates]
-              total = sum(durations)
-
-              # ----------------------------------------------------------
-              # Build section metadata and paths.
-              # ----------------------------------------------------------
-              start_key = selected[0]["verse_key"].replace(":", "-")
-              end_key = selected[-1]["verse_key"].replace(":", "-")
-              section_id = f"cycle-{cycle}-{start_key}-{end_key}"
-              section_dir = OUTPUT / section_id
-              section_dir.mkdir(parents=True, exist_ok=True)
-
-              concat_file = section_dir / "audio.concat.txt"
-              section_audio = section_dir / "saad-al-ghamdi.mp3"
-              background_source = section_dir / "pexels-source.mp4"
-              background = section_dir / "background.mp4"
-              subtitles = section_dir / "subtitles.ass"
-              final_video = section_dir / "quran-section.mp4"
-
-              # Copy selected ayah files to stable paths for artifact/debugging.
-              stable_audio = []
-              for verse, audio_path, dur in candidates:
-                  dest = section_dir / f"{verse['verse_key'].replace(':', '-')}.mp3"
-                  dest.write_bytes(audio_path.read_bytes())
-                  stable_audio.append((verse, dest, dur))
-
-              concat_lines = []
-              for _, path, _ in stable_audio:
-                  concat_lines.append(
-                      "file " + "'" + str(path.resolve()).replace("'", "'\\''") + "'"
-                  )
-              concat_file.write_text("\n".join(concat_lines) + "\n", encoding="utf-8")
-
-              subprocess.run(
-                  [
-                      "ffmpeg", "-y",
-                      "-f", "concat", "-safe", "0",
-                      "-i", str(concat_file),
-                      "-vn",
-                      "-c:a", "libmp3lame",
-                      "-b:a", "192k",
-                      str(section_audio),
-                  ],
-                  check=True,
-              )
-
-              final_audio_duration = ffprobe_duration(section_audio)
-
-              # Small MP3 encoder/container differences are expected, but a
-              # large mismatch means the build must fail rather than silently
-              # drift subtitles.
-              if abs(final_audio_duration - total) > 0.35:
-                  raise RuntimeError(
-                      f"Audio duration mismatch: ayah sum={total:.3f}s "
-                      f"final={final_audio_duration:.3f}s"
-                  )
-
-              visual_name, visual_query = visual_profile(
-                  " ".join(v["translation"] for v in selected),
-                  cycle,
-              )
-
-              print("")
-              print("==============================================")
-              print("NEXT AUTOMATIC QURAN PRODUCTION SECTION")
-              print("==============================================")
-              print(f"Cycle: {cycle}")
-              print(f"Verses: {', '.join(v['verse_key'] for v in selected)}")
-              print(f"Audio: Saad Al-Ghamdi / Ghamadi_40kbps")
-              print(f"Duration: {final_audio_duration:.2f}s")
-              print(f"Visual theme: {visual_name}")
-              print(f"Pexels query: {visual_query}")
-              print("==============================================")
-
-              # ----------------------------------------------------------
-              # Pexels: one background video for the whole section.
-              # We rank candidates instead of taking the first result.
-              # ----------------------------------------------------------
-              pexels = request_json(
-                  "GET",
-                  "https://api.pexels.com/v1/videos/search",
-                  headers={"Authorization": PEXELS_API_KEY},
-                  params={
-                      "query": visual_query,
-                      "orientation": "portrait",
-                      "size": "large",
-                      "per_page": 20,
-                  },
-              )
-
-              videos = pexels.get("videos", [])
-              if not videos:
-                  raise RuntimeError("Pexels returned no videos.")
-
-              def best_file(video):
-                  usable = []
-                  for f in video.get("video_files", []):
-                      w = int(f.get("width") or 0)
-                      h = int(f.get("height") or 0)
-                      link = f.get("link")
-                      if not link or not w or not h:
-                          continue
-                      ratio = h / w
-                      score = 0
-                      if h >= w:
-                          score += 50
-                      if 1.55 <= ratio <= 1.85:
-                          score += 30
-                      if h >= 1920:
-                          score += 20
-                      elif h >= 1280:
-                          score += 10
-                      score += min(h / 1000.0, 10)
-                      usable.append((score, f))
-                  if not usable:
-                      return None
-                  return max(usable, key=lambda x: x[0])
-
-              ranked = []
-              for video in videos:
-                  bf = best_file(video)
-                  if not bf:
-                      continue
-                  score, file_data = bf
-                  duration = float(video.get("duration") or 0)
-                  # Prefer videos at least as long as the section, but don't
-                  # reject shorter clips because FFmpeg can loop them.
-                  if duration >= final_audio_duration:
-                      score += 25
-                  elif duration >= final_audio_duration * 0.5:
-                      score += 10
-                  ranked.append((score, duration, video, file_data))
-
-              if not ranked:
-                  raise RuntimeError("Pexels returned no usable video files.")
-
-              ranked.sort(
-                  key=lambda x: (x[0], min(x[1], final_audio_duration)),
-                  reverse=True,
-              )
-
-              _, source_duration, video_meta, video_file = ranked[0]
-              video_url = video_file["link"]
-
-              print(
-                  "Selected Pexels:",
-                  video_meta.get("id"),
-                  video_meta.get("url"),
-                  f"source_duration={source_duration}s",
-              )
-
-              download_file(video_url, background_source)
-
-              # ----------------------------------------------------------
-              # Make a single 9:16 background for the entire section.
-              # It loops only when necessary and never controls audio length.
-              # ----------------------------------------------------------
-              subprocess.run(
-                  [
-                      "ffmpeg", "-y",
-                      "-stream_loop", "-1",
-                      "-i", str(background_source),
-                      "-t", f"{final_audio_duration:.3f}",
-                      "-vf",
-                      (
-                          "scale=1080:1920:"
-                          "force_original_aspect_ratio=increase,"
-                          "crop=1080:1920,"
-                          "fps=30,"
-                          "format=yuv420p"
-                      ),
-                      "-an",
-                      "-c:v", "libx264",
-                      "-preset", "veryfast",
-                      "-crf", "18",
-                      "-movflags", "+faststart",
-                      str(background),
-                  ],
-                  check=True,
-              )
-
-              # ----------------------------------------------------------
-              # Subtitle timing is derived from the actual ayah files.
-              # No Quran Foundation Saad timestamps are used.
-              # This is the critical sync fix.
-              # ----------------------------------------------------------
-              events = []
-              cursor = 0.0
-
-              def ass_time(seconds):
-                  total_cs = max(0, int(round(seconds * 100)))
-                  h = total_cs // 360000
-                  total_cs %= 360000
-                  m = total_cs // 6000
-                  total_cs %= 6000
-                  s = total_cs // 100
-                  cs = total_cs % 100
-                  return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
-
-              def ass_escape(text):
-                  return (
-                      str(text)
-                      .replace("\\", r"\\")
-                      .replace("{", r"\{")
-                      .replace("}", r"\}")
-                  )
-
-              def wrap_english(text, max_chars=52, max_lines=4):
-                  paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
-                  out = []
-                  for paragraph in paragraphs:
-                      words = paragraph.split()
-                      line = ""
-                      for word in words:
-                          candidate = word if not line else line + " " + word
-                          if len(candidate) <= max_chars:
-                              line = candidate
-                          else:
-                              if line:
-                                  out.append(line)
-                              line = word
-                      if line:
-                          out.append(line)
-                  if len(out) > max_lines:
-                      # Reduce font rather than silently deleting Quran translation.
-                      return "\n".join(out), True
-                  return "\n".join(out), False
-
-              for verse, _, dur in stable_audio:
-                  start = cursor
-                  end = cursor + dur
-                  arabic = verse["arabic_text"]
-                  english = verse["translation"]
-
-                  # Keep each ayah on its own timing window. This guarantees
-                  # the text changes at the same boundary as the recitation.
-                  english_display, too_long = wrap_english(english)
-                  if too_long:
-                      english_display, _ = wrap_english(english, max_chars=60, max_lines=5)
-
-                  arabic_size = 84
-                  if len(arabic) > 80:
-                      arabic_size = 76
-                  if len(arabic) > 110:
-                      arabic_size = 68
-
-                  english_size = 44
-                  if len(english) > 110:
-                      english_size = 40
-                  if len(english) > 180:
-                      english_size = 36
-                  if len(english) > 260:
-                      english_size = 32
-
-                  # Reference stays at top; Arabic and English stay comfortably
-                  # inside the safe portrait area.
-                  events.append(
-                      f"Dialogue: 0,{ass_time(start)},{ass_time(end)},Reference,,"
-                      f"0,0,110,,VERSE {ass_escape(verse['verse_key'])}"
-                  )
-                  events.append(
-                      f"Dialogue: 1,{ass_time(start)},{ass_time(end)},Arabic,,"
-                      f"0,0,230,,{ass_escape(arabic)}"
-                  )
-                  events.append(
-                      f"Dialogue: 2,{ass_time(start)},{ass_time(end)},English,,"
-                      f"0,0,390,,{ass_escape(english_display)}"
-                  )
-
-                  cursor = end
-
-              ass = """[Script Info]
-          ScriptType: v4.00+
-          PlayResX: 1080
-          PlayResY: 1920
-          WrapStyle: 2
-          ScaledBorderAndShadow: yes
-
-          [V4+ Styles]
-          Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-          Style: Reference,Noto Sans,38,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,1,0,0,0,100,100,0,0,1,2,1,8,70,70,110,1
-          Style: Arabic,Noto Naskh Arabic,84,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,3,1,5,80,80,230,1
-          Style: English,Noto Sans,44,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,0,0,0,0,100,100,0,0,1,2,1,2,90,90,390,1
-
-          [Events]
-          Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-          """ + "\n".join(events) + "\n"
-
-              subtitles.write_text(ass, encoding="utf-8")
-
-              # ----------------------------------------------------------
-              # Final mux: background + EXACT section audio + subtitles.
-              # ----------------------------------------------------------
-              subprocess.run(
-                  [
-                      "ffmpeg", "-y",
-                      "-i", str(background),
-                      "-i", str(section_audio),
-                      "-vf", f"subtitles={subtitles}:fontsdir=/usr/share/fonts/truetype/noto",
-                      "-map", "0:v:0",
-                      "-map", "1:a:0",
-                      "-c:v", "libx264",
-                      "-preset", "veryfast",
-                      "-crf", "18",
-                      "-pix_fmt", "yuv420p",
-                      "-c:a", "aac",
-                      "-b:a", "192k",
-                      "-shortest",
-                      "-movflags", "+faststart",
-                      str(final_video),
-                  ],
-                  check=True,
-              )
-
-              # ----------------------------------------------------------
-              # Hard verification.  Do not advance progress unless all
-              # checks pass.
-              # ----------------------------------------------------------
-              probe = subprocess.run(
-                  [
-                      "ffprobe", "-v", "error",
-                      "-show_entries", "format=duration,size",
-                      "-show_entries",
-                      "stream=codec_type,codec_name,width,height,r_frame_rate",
-                      "-of", "json",
-                      str(final_video),
-                  ],
-                  capture_output=True,
-                  text=True,
-                  check=True,
-              )
-              info = json.loads(probe.stdout)
-              streams = info.get("streams", [])
-              format_info = info.get("format", {})
-
-              video_stream = next(
-                  (s for s in streams if s.get("codec_type") == "video"),
-                  None,
-              )
-              audio_stream = next(
-                  (s for s in streams if s.get("codec_type") == "audio"),
-                  None,
-              )
-
-              if not video_stream or not audio_stream:
-                  raise RuntimeError("Final video is missing video or audio stream.")
-
-              width = int(video_stream.get("width") or 0)
-              height = int(video_stream.get("height") or 0)
-              final_duration = float(format_info.get("duration") or 0)
-              final_size = int(format_info.get("size") or 0)
-
-              if width != 1080 or height != 1920:
-                  raise RuntimeError(
-                      f"Wrong output dimensions: {width}x{height}"
-                  )
-              if final_size < 100_000:
-                  raise RuntimeError("Final MP4 is unexpectedly small.")
-              if abs(final_duration - final_audio_duration) > 0.40:
-                  raise RuntimeError(
-                      f"Final A/V duration mismatch: audio={final_audio_duration:.3f}s "
-                      f"video={final_duration:.3f}s"
-                  )
-
-              # Metadata saved beside the render.
-              metadata = {
-                  "cycle": cycle,
-                  "verse_keys": [v["verse_key"] for v in selected],
-                  "chapter_ids": sorted(set(v["chapter_id"] for v in selected)),
-                  "ruku_numbers": sorted(set(
-                      v["ruku_number"] for v in selected
-                      if v.get("ruku_number") is not None
-                  )),
-                  "audio": {
-                      "reciter": "Saad Al-Ghamdi",
-                      "source": "EveryAyah / Ghamadi_40kbps",
-                      "source_base": AUDIO_BASE,
-                      "duration_seconds": round(final_audio_duration, 3),
-                  },
-                  "translation": {
-                      "resource_id": 20,
-                      "name": "Saheeh International",
-                  },
-                  "visual": {
-                      "provider": "Pexels",
-                      "theme": visual_name,
-                      "query": visual_query,
-                      "video_id": video_meta.get("id"),
-                      "source_url": video_meta.get("url"),
-                      "download_url": video_url,
-                  },
-                  "render": {
-                      "width": width,
-                      "height": height,
-                      "duration_seconds": round(final_duration, 3),
-                      "fps": video_stream.get("r_frame_rate"),
-                  },
-              }
-
-              (section_dir / "metadata.json").write_text(
-                  json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
-                  encoding="utf-8",
-              )
-
-              # Keep text files for inspection, but never commit media.
-              (section_dir / "arabic.txt").write_text(
-                  "\n".join(v["arabic_text"] for v in selected) + "\n",
-                  encoding="utf-8",
-              )
-              (section_dir / "translation.txt").write_text(
-                  "\n".join(v["translation"] for v in selected) + "\n",
-                  encoding="utf-8",
-              )
-
-              # ----------------------------------------------------------
-              # Commit progress ONLY after final verification succeeded.
-              # ----------------------------------------------------------
-              used.update(v["verse_key"] for v in selected)
-
-              progress["cycle"] = cycle
-              progress["used_verses"] = sorted(
-                  used,
-                  key=lambda key: id_by_key[key],
-              )
-              progress.setdefault("published_sections", [])
-              progress["published_sections"].append(metadata)
-              progress["last_section"] = metadata
-
-              PROGRESS.write_text(
-                  json.dumps(progress, ensure_ascii=False, indent=2) + "\n",
-                  encoding="utf-8",
-              )
-
-              print("")
-              print("==============================================")
-              print("PRODUCTION SECTION PASSED")
-              print("==============================================")
-              print(f"Final video: {final_video}")
-              print(f"Duration: {final_duration:.2f}s")
-              print(f"Verses completed: {', '.join(v['verse_key'] for v in selected)}")
-              print(f"Cycle: {cycle}")
-              print(
-                  f"Cycle progress: {len(used)}/{len(index)} verses"
-              )
-              print("Audio/video sync: VERIFIED")
-              print("Arabic/translation timing: VERIFIED")
-              print("1080x1920 portrait: VERIFIED")
-              print("==============================================")
-          PY
-
-      - name: Upload production artifact
+          python3 production/quran_worker_wow.py | tee run-result.json
+
+      - name: Read run result
+        id: meta
+        run: |
+          FILE=$(python3 -c "import json;print(json.load(open('run-result.json'))['output'])")
+          NAME=$(basename "$FILE")
+          echo "video_path=$FILE" >> "$GITHUB_OUTPUT"
+          echo "video_name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "tag_name=section-$(date +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload production artifact (backup / debugging)
         uses: actions/upload-artifact@v4
         with:
-          name: quran-production
-          path: output/production/
-          retention-days: 7
+          name: quran-production-${{ steps.meta.outputs.tag_name }}
+          path: publish/
+          retention-days: 14
 
-      - name: Commit Quran progress and index
+      # A GitHub Release gives the finished MP4 a stable, public download
+      # URL (public repo) that make.com (or any webhook consumer) can fetch
+      # without any GitHub auth. This is what actually makes the "publish
+      # automatically" step possible.
+      - name: Publish finished video to a GitHub Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: ${{ steps.meta.outputs.video_name }}
+          body: |
+            Automated Quran production section.
+            See the attached JSON for verse keys, reciter, translation, and theme.
+          files: |
+            ${{ steps.meta.outputs.video_path }}
+            publish/*.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Hands the finished video off to make.com (or Zapier / n8n / any
+      # webhook-based automation tool). Create a "Custom Webhook" trigger
+      # module in your make.com scenario, copy its URL into the
+      # MAKE_WEBHOOK_URL repository secret, and this step notifies it every
+      # run with the public video URL + metadata so it can auto-post to
+      # Instagram/TikTok/YouTube Shorts/etc.
+      - name: Notify make.com
+        env:
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add data/progress.json data/quran_index.json
-
-          if git diff --cached --quiet; then
-            echo "No progress changes to commit."
-          else
-            git commit -m "Advance Quran production progress"
-            git push
+          if [ -z "$MAKE_WEBHOOK_URL" ]; then
+            echo "MAKE_WEBHOOK_URL secret is not set; skipping make.com notification."
+            exit 0
           fi
+          ASSET_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag_name }}/${{ steps.meta.outputs.video_name }}"
+          export ASSET_URL
+          PAYLOAD=$(python3 - <<'PY'
+          import json
+          import os
+
+          with open("run-result.json") as fh:
+              meta = json.load(fh)
+          meta["video_url"] = os.environ["ASSET_URL"]
+          print(json.dumps(meta))
+          PY
+          )
+          curl -sf -X POST "$MAKE_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
