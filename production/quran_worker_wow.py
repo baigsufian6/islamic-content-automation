@@ -185,10 +185,6 @@ def log(message: str, level: str = "INFO") -> None:
     if _LEVELS.get(level, 20) < _LEVELS.get(LOG_LEVEL, 20):
         return
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    # Logs go to stderr, not stdout. stdout is reserved for the single final
-    # JSON result object main() prints on success, so anything reading this
-    # script's stdout (a CI step, a Node backend, etc.) never has to parse
-    # log lines mixed in with JSON.
     print(f"[{now}] [{level}] {message}", file=sys.stderr, flush=True)
 
 
@@ -494,19 +490,13 @@ class QuranRepository:
     @staticmethod
     def clean_translation(text: str) -> str:
         text = html.unescape(text or "")
-        # Remove HTML footnote/superscript markup before any typography work.
         text = re.sub(r"<sup[^>]*>.*?</sup>", "", text, flags=re.I | re.S)
         text = re.sub(r"<foot_note[^>]*>.*?</foot_note>", "", text, flags=re.I | re.S)
         text = re.sub(r"<[^>]+>", "", text)
-        # Remove Unicode superscript digits and common bracketed footnote markers.
         text = re.sub(r"[¹²³⁴⁵⁶⁷⁸⁹⁰]+", "", text)
         text = re.sub(r"\[\s*\d{1,3}\s*\]", "", text)
-        # Some translation payloads expose a plain trailing footnote number, e.g.
-        # "...Merciful.2". Remove only a number directly attached to punctuation
-        # so legitimate numbers such as "Chapter 2" are untouched.
         text = re.sub(r"(?<=[.!?,;:])\s*\d{1,3}(?=\s|$)", "", text)
         text = text.replace("\r\n", "\n").replace("\r", "\n")
-        # Project rule: an explicit slash in a translation becomes a new visual line.
         text = re.sub(r"\s*/\s*", "\n", text)
         text = re.sub(r"[ \t]+", " ", text)
         text = re.sub(r" *\n *", "\n", text)
@@ -650,6 +640,54 @@ class ProgressStore:
         self.used_visuals = {int(x) for x in self.state.get("used_pexels_ids", [])}
         self.theme_usage = dict(self.state.get("theme_usage", {}))
         self.cycle = int(self.state.get("cycle", 1))
+        self.audit()
+
+    def audit(self) -> None:
+        """Hard integrity check on the Quran completeness invariant.
+
+        This is the single most important check in the whole pipeline: it is
+        what guarantees "no ayah is ever skipped, and the whole Qur'an is
+        completed before anything repeats." It runs on every load, before any
+        planning happens, and it STOPS the run rather than silently
+        continuing if the state file is ever inconsistent (rule #16 of the
+        rulebook: uncertain about Qur'an integrity -> STOP).
+        """
+        raw_used = self.state.get("used_verses", [])
+
+        # 1) Every recorded "used" key must be a real, current verse_key.
+        unknown = [k for k in raw_used if k not in self.valid_keys]
+        if unknown:
+            raise RuntimeError(
+                f"progress.json references {len(unknown)} verse key(s) not present "
+                f"in the current Quran index (e.g. {unknown[:3]}). STOPPING rather "
+                "than risk skipping or double-counting ayahs."
+            )
+
+        # 2) No duplicates recorded as used.
+        if len(raw_used) != len(set(raw_used)):
+            raise RuntimeError(
+                "progress.json contains duplicate entries in used_verses. STOPPING."
+            )
+
+        remaining = len(self.verses) - len(self.used)
+        log(
+            f"Cycle integrity: cycle={self.cycle} "
+            f"used={len(self.used)}/{len(self.verses)} remaining={remaining}",
+            "INFO",
+        )
+
+        # 3) If every verse is marked used, the NEXT run must roll into a new
+        #    cycle rather than silently having nothing left to plan. This is
+        #    enforced again in begin_cycle_if_needed(), this is just an early,
+        #    loud signal so a stuck state is visible in logs immediately.
+        if remaining == 0 and len(self.verses) > 0:
+            log(
+                f"Cycle {self.cycle} is fully complete "
+                f"({len(self.verses)}/{len(self.verses)} ayahs). "
+                "Next run will start Cycle "
+                f"{self.cycle + 1} from Al-Fatihah 1:1.",
+                "INFO",
+            )
 
     def begin_cycle_if_needed(self) -> None:
         if len(self.used) < len(self.verses):
@@ -664,13 +702,10 @@ class ProgressStore:
         self.cycle += 1
         self.used = set()
         self.theme_usage = {}
-        # Keep the in-memory state internally consistent immediately. The state is
-        # persisted on the next successful section commit; the GitHub workflow only
-        # pushes it after the finished MP4 artifact has uploaded successfully.
         self.state["cycle"] = self.cycle
         self.state["used_verses"] = []
         self.state["theme_usage"] = {}
-        log(f"QURAN CYCLE {self.cycle} STARTING")
+        log(f"QURAN CYCLE {self.cycle} STARTING — every ayah of the previous cycle was covered.")
 
     def commit(
         self,
@@ -695,7 +730,6 @@ class ProgressStore:
 
         history = self.state.get("history", [])
         history.append(history_item)
-        # Keep the state file compact. Full metadata remains beside the video.
         history = history[-200:]
 
         self.state.update({
@@ -860,7 +894,6 @@ class MeaningEngine:
             ["peaceful cinematic nature landscape"],
         )
 
-        # Rotate within the theme so repeated meanings do not look identical.
         count = int(self.progress.theme_usage.get(theme, 0))
         chosen = variants[count % len(variants)]
         cycle_styles = [
@@ -872,8 +905,6 @@ class MeaningEngine:
         ]
         style = cycle_styles[(cycle - 1) % len(cycle_styles)]
 
-        # The score is intentionally deterministic; a later embedding service can
-        # replace this method without touching the render pipeline.
         queries = [
             f"{chosen}, {style}",
             *[f"{v}, {style}" for v in variants if v != chosen],
@@ -958,15 +989,12 @@ class PassagePlanner:
             theme, meaning_score = self.meaning.score_text(text)
             score = meaning_score
 
-            # Prefer coherent but not enormous runs.
             score += min(len(text) / 260.0, 3.0)
             score += min(len(run) * 0.4, 3.0)
 
             if theme == previous_theme:
                 score -= 1.5
 
-            # Gentle deterministic spread across the Quran so the same high-score
-            # passage cannot win forever across cycles.
             first_id = self.verses[run[0]].id
             score += ((first_id * (self.progress.cycle + 11)) % 31) / 100.0
             return score
@@ -987,8 +1015,6 @@ class PassagePlanner:
             if verse.chapter_id != start.chapter_id:
                 break
 
-            # Same ruku until the minimum is satisfied. After the minimum, stop
-            # at the boundary rather than creating a contextless mash-up.
             if (
                 selected
                 and start.ruku_number is not None
@@ -1070,7 +1096,6 @@ class AudioEngine:
     def fetch(self, verse_key: str) -> AudioItem:
         path = self.cache / f"{verse_key.replace(':', '-')}.mp3"
         self.http.download(self.url_for(verse_key), path, expected="audio")
-        # ffprobe is the authoritative validity check, not only file size.
         d = self.duration(path)
         return AudioItem(verse_key, path, d)
 
@@ -1132,15 +1157,18 @@ class VisualEngine:
             if ratio < 1.40:
                 continue
 
+            # QUALITY GATE: reject anything below Full-HD-portrait equivalent.
+            # This is the single biggest lever for "looks premium" vs "looks stocky".
+            if height < 1920:
+                continue
+
             score = 0.0
-            if height >= 2160:
-                score += 70
+            if height >= 2560:
+                score += 90
+            elif height >= 2160:
+                score += 75
             elif height >= 1920:
-                score += 60
-            elif height >= 1280:
-                score += 35
-            elif height >= 720:
-                score += 10
+                score += 55
 
             if 1.60 <= ratio <= 1.85:
                 score += 20
@@ -1180,7 +1208,6 @@ class VisualEngine:
         else:
             score -= 8
 
-        # Prefer clips with room for a slow crop/pan rather than extremely short loops.
         if duration >= 12:
             score += 5
         if duration >= 20:
@@ -1211,7 +1238,9 @@ class VisualEngine:
 
         def scan(query_list: list[str]) -> None:
             for query in query_list:
-                for page in range(1, 5):
+                # Stricter best_file() means fewer qualifying results per page,
+                # so scan a couple of pages deeper than before (was range(1,5)).
+                for page in range(1, 7):
                     try:
                         payload = self.client.search(query, page)
                     except Exception as exc:
@@ -1231,13 +1260,16 @@ class VisualEngine:
                         else:
                             fresh.append(candidate)
 
+                    # Stop early once we have a healthy pool for this query.
+                    if len(fresh) >= 12:
+                        break
+
         scan(queries)
         if not fresh:
             log("No fresh visual found in theme queries; trying neutral fallbacks.", "WARN")
             scan(fallback_queries)
 
         if fresh:
-            # Highest score wins; tiny deterministic tie-breaker prevents unstable ordering.
             fresh.sort(
                 key=lambda c: (
                     c.score,
@@ -1273,19 +1305,16 @@ class VisualEngine:
 # 10. Typography and visual layout engine
 # ============================================================================
 #
-# Presentation notes (design pass):
+# Presentation notes (design pass v2):
 #   - Palette: warm ivory Arabic text, soft champagne-gold accents, pure white
-#     English translation. Everything sits on a deep charcoal scrim rather than
-#     flat black so it reads as "cinematic" instead of "subtitle box".
-#   - The gradient scrim is now stronger and asymmetric: heavier over the
-#     lower third (where the English line and progress dots live) so text
-#     always has contrast regardless of the background footage.
-#   - A slim double-line frame plus four minimal arabesque corner flourishes
-#     replace the old plain dots — this is what gives the frame its
-#     "designed", non-template feel.
-#   - A thin hairline divider sits directly under the header block, and a
-#     matching one sits above the footer, so the composition reads as three
-#     clear zones (header / verse / footer) at a glance.
+#     English translation, sitting directly on the cinematic footage with
+#     outline+shadow only — no flat "subtitle box" behind the text anymore.
+#   - The readability gradient is smoother and feathered rather than banded,
+#     plus a subtle tiled 8-point-star geometric watermark behind the verse
+#     zone at very low opacity — this is what gives it a "designed Islamic
+#     media" identity instead of a generic AI slideshow look.
+#   - A slim double-line frame plus four larger arabesque corner flourishes.
+#   - Thin hairline dividers separate header / verse / footer zones.
 
 
 PALETTE = {
@@ -1408,8 +1437,6 @@ class TypographyEngine:
         )
         arabic_height = arabic_line_height * len(arabic_lines)
 
-        # The two text blocks are intentionally close: the ornament becomes the
-        # breathing space, not an enormous empty gap.
         arabic_top = 336
         arabic_height_limit = 448
         arabic_center = int(
@@ -1434,7 +1461,6 @@ class TypographyEngine:
             ornament_y + 54
         )
 
-        # If English would run into the footer, compact it rather than allowing overflow.
         if english_top + english_height > 1500:
             english_size, english_lines, english_line_height = self.fit(
                 self.english_font_path,
@@ -1460,75 +1486,80 @@ class TypographyEngine:
     def make_overlay(self, path: Path) -> None:
         """Build the static PNG scrim + frame that sits over the background video.
 
-        This is the single biggest lever for how "premium" the final render
-        looks, since it controls legibility and the frame/border identity.
+        v2: no flat "subtitle box" — a smoother feathered gradient, a soft
+        blurred wash behind the Arabic block only, and a subtle tiled
+        geometric watermark for a premium, designed feel.
         """
         image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        top, bottom = 640, 1240  # gradient never touches, header/footer own their zones
-
-        # --- readability scrim -------------------------------------------------
-        # Asymmetric: the lower third (English line + progress + footer) needs
-        # the most contrast because it sits over the busiest part of most stock
-        # footage (horizon lines, water glare, moving foliage).
+        # --- smoother multi-stop readability gradient (no hard box look) ---
         for y in range(H):
-            alpha = 0
-            if y < 400:
-                alpha = int(150 * (1 - y / 400))
-            elif y > 1200:
-                t = (y - 1200) / (H - 1200)
-                alpha = int(30 + 190 * t)
+            if y < 420:
+                alpha = int(130 * (1 - y / 420) ** 1.4)
+            elif y < 1100:
+                alpha = 0
+            elif y < 1300:
+                t = (y - 1100) / 200
+                alpha = int(40 * t)
+            else:
+                t = min((y - 1300) / (H - 1300), 1.0)
+                alpha = int(40 + 170 * (t ** 1.2))
             if alpha:
                 draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
 
-        # A soft secondary wash directly behind the Arabic block only, so the
-        # verse itself always sits on a slightly darker plate regardless of
-        # what's happening in the footage behind it.
-        verse_band = Image.new("RGBA", (W, 560), (0, 0, 0, 0))
+        # Soft feathered wash behind the Arabic block only (no visible edge).
+        verse_band = Image.new("RGBA", (W, 620), (0, 0, 0, 0))
         band_draw = ImageDraw.Draw(verse_band)
-        for y in range(560):
-            d = min(y, 560 - y) / 280.0
-            alpha = int(70 * (1 - d))
+        for y in range(620):
+            d = min(y, 620 - y) / 310.0
+            alpha = int(55 * (1 - d) ** 1.6)
             band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], max(alpha, 0)))
-        image.alpha_composite(verse_band, (0, 300))
+        verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=40))
+        image.alpha_composite(verse_band, (0, 280))
 
-        # --- frame ---------------------------------------------------------
+        # --- subtle tiled geometric watermark (the "designed" signal) ------
+        star = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(star)
+        cx, cy, r = 60, 60, 44
+        pts = []
+        for k in range(8):
+            ang = math.pi / 8 + k * math.pi / 4
+            rr = r if k % 2 == 0 else r * 0.55
+            pts.append((cx + rr * math.cos(ang), cy + rr * math.sin(ang)))
+        sd.polygon(pts, outline=(*PALETTE["gold"], 20), width=1)
+        for tx in range(0, W, 120):
+            for ty in range(420, 1200, 120):
+                image.alpha_composite(star, (tx, ty))
+
+        # --- frame -----------------------------------------------------
         margin = 34
         inner = margin + 10
         draw.rounded_rectangle(
             [margin, margin, W - margin, H - margin],
-            radius=26,
-            outline=(*PALETTE["gold"], 60),
-            width=2,
+            radius=26, outline=(*PALETTE["gold"], 60), width=2,
         )
         draw.rounded_rectangle(
             [inner, inner, W - inner, H - inner],
-            radius=20,
-            outline=(255, 255, 255, 18),
-            width=1,
+            radius=20, outline=(255, 255, 255, 18), width=1,
         )
 
-        # --- minimal arabesque corner flourishes ---------------------------
-        # A short diagonal tick plus a small hollow diamond at each corner:
-        # reads as an intentional ornamental frame rather than plain dots.
+        # --- larger, clearer arabesque corner flourishes --------------------
         def flourish(cx: float, cy: float, flip_x: int, flip_y: int) -> None:
-            gold = (*PALETTE["gold"], 130)
-            arm = 30
+            gold = (*PALETTE["gold"], 150)
+            arm = 42
             draw.line(
                 [
-                    (cx, cy + flip_y * arm * 0.35),
+                    (cx, cy + flip_y * arm * 0.4),
                     (cx + flip_x * arm, cy),
-                    (cx, cy - flip_y * arm * 0.35),
+                    (cx, cy - flip_y * arm * 0.4),
                 ],
-                fill=gold,
-                width=2,
-                joint="curve",
+                fill=gold, width=2, joint="curve",
             )
-            r = 5
+            r = 7
             draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=gold, width=2)
 
-        pad = margin + 26
+        pad = margin + 30
         flourish(pad, pad, 1, 1)
         flourish(W - pad, pad, -1, 1)
         flourish(pad, H - pad, 1, -1)
@@ -1538,8 +1569,7 @@ class TypographyEngine:
         draw.line([(150, 224), (W - 150, 224)], fill=(*PALETTE["gold"], 55), width=1)
         draw.line([(150, 1745), (W - 150, 1745)], fill=(*PALETTE["gold"], 45), width=1)
 
-        # A very soft blur avoids hard overlay edges.
-        image = image.filter(ImageFilter.GaussianBlur(radius=0.25))
+        image = image.filter(ImageFilter.GaussianBlur(radius=0.2))
         image.save(path)
 
     @staticmethod
@@ -1610,14 +1640,12 @@ class TypographyEngine:
             progress = f"{idx + 1} / {total_count}"
             arabic_badge = f"﴿ {arabic_digits(verse.verse_number)} ﴾"
 
-            # Header
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Header,,0,0,0,,"
                 f"{{\\an8\\pos(540,64)\\fs{layout.header_size}\\fad(180,180)}}"
                 f"{self.ass_escape(header_text)}"
             )
 
-            # Arabic Surah name is deliberately small and elegant, not another headline.
             if arabic_chapter:
                 events.append(
                     f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},ChapterArabic,,0,0,0,,"
@@ -1636,7 +1664,6 @@ class TypographyEngine:
                 f"SAHEEH INTERNATIONAL  •  SAAD AL-GHAMDI"
             )
 
-            # Arabic verse
             events.append(
                 f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Arabic,,0,0,0,,"
                 f"{{\\an5\\pos(540,{layout.arabic_center_y})"
@@ -1644,21 +1671,18 @@ class TypographyEngine:
                 f"{self.ass_lines(layout.arabic_lines)}"
             )
 
-            # Small ayah medallion and ornamental divider.
             events.append(
                 f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Ornament,,0,0,0,,"
                 f"{{\\an5\\pos(540,{layout.ornament_y})\\fad(180,180)}}"
                 f"✦   ۞   ✦   {self.ass_escape(arabic_badge)}"
             )
 
-            # English stays intentionally close to Arabic.
             events.append(
                 f"Dialogue: 2,{self.ass_time(start)},{self.ass_time(end)},English,,0,0,0,,"
                 f"{{\\an8\\pos(540,{layout.english_top_y})\\fs{layout.english_size}\\fad(220,220)}}"
                 f"{self.ass_lines(layout.english_lines)}"
             )
 
-            # Progress indicator is tiny and quiet.
             dots = "".join("●" if j == idx else "○" for j in range(total_count))
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Progress,,0,0,0,,"
@@ -1671,6 +1695,11 @@ class TypographyEngine:
                 f"{{\\an8\\pos(540,1788)}}QURAN  •  SAHEEH INTERNATIONAL"
             )
 
+        # NOTE the BorderStyle field on Arabic/English (the value right
+        # before Outline/Shadow, e.g. "...,1,3.0,4,...") is now 1
+        # (outline+shadow) instead of 3 (opaque box). That box is what made
+        # the render look like a flat "subtitle plate" instead of text
+        # sitting on the cinematic footage.
         ass = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -1680,15 +1709,15 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Header,Noto Sans,42,&H007DC7E7,&H007DC7E7,&H00101010,&H78000000,1,0,0,0,100,100,1,0,3,1.4,2,8,60,60,0,1
-Style: ChapterArabic,Noto Naskh Arabic,27,&H00AED6E7,&H00AED6E7,&H00101010,&H60000000,0,0,0,0,100,100,0,0,3,1,1,8,60,60,0,1
-Style: SubHeader,Noto Sans,25,&H00FFFFFF,&H00FFFFFF,&H00101010,&H70000000,1,0,0,0,100,100,0,0,3,1.2,2,8,60,60,0,1
-Style: Source,Noto Sans,16,&H00E0D9CC,&H00E0D9CC,&H00101010,&H50000000,0,0,0,0,100,100,1,0,3,1,1,8,60,60,0,1
-Style: Arabic,Noto Naskh Arabic,84,&H00C7F1FF,&H00C7F1FF,&H00101010,&H35000000,0,0,0,0,100,100,0,0,1,3.4,2,5,60,60,0,1
-Style: Ornament,Noto Sans,26,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,2,1,5,60,60,0,1
-Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H55000000,0,0,0,0,100,100,0,0,3,2.2,2,8,70,70,0,1
-Style: Progress,Noto Sans,18,&H007DC7E7,&H007DC7E7,&H00101010,&H30000000,0,0,0,0,100,100,2,0,3,1,1,8,60,60,0,1
-Style: Footer,Noto Sans,15,&H00D6CFC1,&H00D6CFC1,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1,0,8,60,60,0,1
+Style: Header,Noto Sans,42,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,1,0,1,2.0,2,8,60,60,0,1
+Style: ChapterArabic,Noto Naskh Arabic,27,&H00AED6E7,&H00AED6E7,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.4,2,8,60,60,0,1
+Style: SubHeader,Noto Sans,25,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.8,2,8,60,60,0,1
+Style: Source,Noto Sans,16,&H00E0D9CC,&H00E0D9CC,&H00101010,&H00000000,0,0,0,0,100,100,1,0,1,1.2,1,8,60,60,0,1
+Style: Arabic,Noto Naskh Arabic,84,&H00C7F1FF,&H00C7F1FF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,3.0,4,5,60,60,0,1
+Style: Ornament,Noto Sans,26,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.6,2,5,60,60,0,1
+Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,2.4,3,8,70,70,0,1
+Style: Progress,Noto Sans,18,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.4,1,8,60,60,0,1
+Style: Footer,Noto Sans,15,&H00D6CFC1,&H00D6CFC1,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.2,1,8,60,60,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -1713,16 +1742,23 @@ class VideoRenderer:
         cycle: int,
         visual_id: int,
     ) -> str:
-        # Deterministic camera profile. Each visual gets a gentle but non-identical
-        # motion pattern. No aggressive zooming: the Quran remains the focus.
+        # Deterministic camera profile — slightly faster periods than before
+        # so the motion actually reads on a <60s clip instead of being
+        # imperceptibly slow.
         profiles = [
-            "x='(iw-1080)/2 + (iw-1080)/2*0.28*sin(2*PI*t/47)':y='(ih-1920)/2 + (ih-1920)/2*0.18*cos(2*PI*t/59)'",
-            "x='(iw-1080)/2 + (iw-1080)/2*0.20*cos(2*PI*t/53)':y='(ih-1920)/2 + (ih-1920)/2*0.20*sin(2*PI*t/61)'",
-            "x='(iw-1080)/2 + (iw-1080)/2*0.16*sin(2*PI*t/67)':y='(ih-1920)/2 + (ih-1920)/2*0.25*sin(2*PI*t/71)'",
-            "x='(iw-1080)/2 + (iw-1080)/2*0.22*cos(2*PI*t/73)':y='(ih-1920)/2 + (ih-1920)/2*0.14*cos(2*PI*t/83)'",
+            "x='(iw-1080)/2 + (iw-1080)/2*0.28*sin(2*PI*t/28)':y='(ih-1920)/2 + (ih-1920)/2*0.18*cos(2*PI*t/35)'",
+            "x='(iw-1080)/2 + (iw-1080)/2*0.20*cos(2*PI*t/31)':y='(ih-1920)/2 + (ih-1920)/2*0.20*sin(2*PI*t/37)'",
+            "x='(iw-1080)/2 + (iw-1080)/2*0.16*sin(2*PI*t/40)':y='(ih-1920)/2 + (ih-1920)/2*0.25*sin(2*PI*t/43)'",
+            "x='(iw-1080)/2 + (iw-1080)/2*0.22*cos(2*PI*t/44)':y='(ih-1920)/2 + (ih-1920)/2*0.14*cos(2*PI*t/49)'",
         ]
         profile = profiles[(cycle + visual_id) % len(profiles)]
 
+        # Supersample: scale up to 1.5x target, crop with motion at that
+        # higher resolution, THEN scale back down to final size with a sharp
+        # filter + light unsharp pass. This anti-aliases the pan/crop motion
+        # and restores perceived detail that compression would otherwise
+        # soften — the main "video quality" lever besides the source clip
+        # itself.
         run_cmd([
             "ffmpeg", "-y",
             "-stream_loop", "-1",
@@ -1730,15 +1766,17 @@ class VideoRenderer:
             "-t", f"{duration:.3f}",
             "-vf",
             (
-                "scale=1300:2311:force_original_aspect_ratio=increase,"
-                f"crop=1080:1920:{profile},"
+                "scale=1950:3467:force_original_aspect_ratio=increase:flags=lanczos,"
+                f"crop=1620:2880:{profile},"
+                "scale=1080:1920:flags=lanczos,"
                 f"fps={FPS},format=yuv420p,"
-                "eq=contrast=1.03:saturation=1.05"
+                "unsharp=5:5:0.6:5:5:0.0,"
+                "eq=contrast=1.05:saturation=1.08:brightness=0.01"
             ),
             "-an",
             "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "16",
+            "-preset", "slow",
+            "-crf", "14",
             "-movflags", "+faststart",
             str(destination),
         ])
@@ -1772,8 +1810,8 @@ class VideoRenderer:
             "-map", "[vout]",
             "-map", "[aout]",
             "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "16",
+            "-preset", "slow",
+            "-crf", "14",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
             "-b:a", "192k",
@@ -1886,7 +1924,6 @@ class Publisher:
         if not isinstance(queue, list):
             queue = []
 
-        # Avoid duplicate queue entries if the same publication is rerun.
         key = metadata.get("published_sha256")
         queue = [item for item in queue if item.get("published_sha256") != key]
         queue.append({
@@ -1943,8 +1980,6 @@ class GitProgress:
         last_error = "unknown push error"
         for attempt in range(1, GIT_PUSH_RETRIES + 1):
             try:
-                # Fetch the remote first so a harmless remote advancement does not
-                # leave the runner permanently unable to persist its checkpoint.
                 run_cmd([
                     "git", "-C", str(ROOT), "fetch",
                     GIT_REMOTE, GIT_BRANCH,
@@ -2021,14 +2056,6 @@ class QuranProduction:
     def _select_passage_with_fallback(
         self, start_index: int, duration_map: dict[str, float]
     ) -> list[Verse]:
-        """Belt-and-suspenders wrapper around PassagePlanner.select_passage.
-
-        The prefetch loop in run() is written to fetch exactly the durations
-        select_passage can need. If those two ever drift out of sync again
-        (e.g. a future edit to one without the other), this retries once by
-        fetching whatever single duration was reported missing, rather than
-        failing the whole production run over one missing lookup.
-        """
         try:
             return self.planner.select_passage(start_index, duration_map)
         except RuntimeError as exc:
@@ -2052,18 +2079,6 @@ class QuranProduction:
             f"surah={start_verse.chapter_name}"
         )
 
-        # Fetch enough audio metadata to decide the passage length. The actual
-        # files are cached, so this is not an expensive repeat download.
-        #
-        # IMPORTANT: this loop's stopping conditions must exactly mirror
-        # PassagePlanner.select_passage's stopping conditions below. That
-        # method deliberately keeps consuming verses past TARGET_MIN as long
-        # as they're in the same ruku (so a passage doesn't cut off
-        # mid-thought), up to TARGET_MAX. If this loop stopped fetching the
-        # instant TARGET_MIN was reached, select_passage could later ask for
-        # a duration that was never fetched and crash with "Missing audio
-        # duration for X:Y" — which is exactly what used to happen on longer
-        # rukus. Keep both loops in sync if either one changes.
         duration_map: dict[str, float] = {}
         i = start_index
         while i < len(self.verses):
@@ -2104,8 +2119,6 @@ class QuranProduction:
         selected = self._select_passage_with_fallback(start_index, duration_map)
         keys = [v.verse_key for v in selected]
 
-        # Ensure the duration planner has everything it needs; if the final
-        # passage contains one extra ayah at the edge, fetch it now.
         for verse in selected:
             if verse.verse_key not in duration_map:
                 duration_map[verse.verse_key] = self.audio.fetch(verse.verse_key).duration
@@ -2122,7 +2135,6 @@ class QuranProduction:
                 f"Planner exceeded target maximum: {planned_duration:.2f}s"
             )
 
-        # A stable section ID makes reruns inspectable.
         section_id = (
             f"cycle-{cycle}-"
             f"{keys[0].replace(':', '-')}-"
@@ -2150,17 +2162,11 @@ class QuranProduction:
             atomic_write_json(section_dir / "dry-run.json", result)
             return result
 
-        # ------------------------------------------------------------
-        # Audio
-        # ------------------------------------------------------------
         audio_items, section_audio, audio_duration = self.audio.prepare(
             selected,
             section_dir,
         )
 
-        # ------------------------------------------------------------
-        # Meaning + visual selection
-        # ------------------------------------------------------------
         theme, queries, fallback_queries = self.meaning.visual_queries(selected, cycle)
         visual = self.visuals.choose(
             queries,
@@ -2170,9 +2176,6 @@ class QuranProduction:
         source_video = section_dir / "pexels-source.mp4"
         self.visuals.download(visual, source_video)
 
-        # ------------------------------------------------------------
-        # Background and overlay
-        # ------------------------------------------------------------
         background = section_dir / "background.mp4"
         camera_profile = self.renderer.prepare_background(
             source_video,
@@ -2185,9 +2188,6 @@ class QuranProduction:
         overlay = section_dir / "overlay.png"
         self.typography.make_overlay(overlay)
 
-        # ------------------------------------------------------------
-        # Subtitles / frontend
-        # ------------------------------------------------------------
         subtitles = section_dir / "subtitles.ass"
         self.typography.make_ass(
             subtitles,
@@ -2208,18 +2208,12 @@ class QuranProduction:
             audio_duration,
         )
 
-        # ------------------------------------------------------------
-        # QA
-        # ------------------------------------------------------------
         qa = self.qa.validate_video(final_video, audio_duration)
         log(
             f"Media QA PASSED: {qa['width']}x{qa['height']} "
             f"{qa['duration']:.2f}s H.264/AAC"
         )
 
-        # ------------------------------------------------------------
-        # Metadata
-        # ------------------------------------------------------------
         metadata: dict[str, Any] = {
             "schema_version": 4,
             "cycle": cycle,
@@ -2291,9 +2285,6 @@ class QuranProduction:
             },
         }
 
-        # ------------------------------------------------------------
-        # Publication — only after QA
-        # ------------------------------------------------------------
         publish_video, publish_metadata = self.publisher.package(
             final_video,
             metadata,
@@ -2305,9 +2296,6 @@ class QuranProduction:
         )
         self.publisher.enqueue(metadata, publish_video, publish_metadata)
 
-        # ------------------------------------------------------------
-        # Progress — only after publication succeeded
-        # ------------------------------------------------------------
         visual_is_fresh = visual.video_id not in self.progress.used_visuals
 
         self.progress.commit(
@@ -2329,9 +2317,6 @@ class QuranProduction:
 
         self.git.commit_if_enabled()
 
-        # ------------------------------------------------------------
-        # Final report
-        # ------------------------------------------------------------
         elapsed = time.time() - start_time
         result = {
             "success": True,
@@ -2373,10 +2358,6 @@ def main() -> int:
         try:
             production = QuranProduction()
             result = production.run()
-            # Written directly to disk so the workflow (or any other caller)
-            # never has to parse this script's stdout — stdout can carry
-            # logs, warnings, or nothing at all without breaking anything
-            # downstream.
             atomic_write_json(result_path, result)
             print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
             return 0
