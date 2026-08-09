@@ -155,23 +155,24 @@ jobs:
           pwd
 
           echo ""
-          echo "Top-level contents:"
-          ls -la
+          echo "Full repo tree (excluding .git):"
+          find . -not -path "*/.git/*" -not -path "./.git" | sort
 
           echo ""
-          echo "Searching whole repo for quran_worker.py:"
-          find . -iname "quran_worker.py" -not -path "*/.git/*"
+          echo "Every .py file in the repo:"
+          find . -iname "*.py" -not -path "*/.git/*"
 
           echo ""
-          if [ ! -f "production/quran_worker.py" ]; then
-            echo "ERROR: production/quran_worker.py does not exist at the expected path."
-            echo "See the 'find' output above for its actual location (if any),"
-            echo "then either move it to production/quran_worker.py or update"
-            echo "the 'Build and render next Quran section' step to match."
+          echo "Searching specifically for quran_worker_wow.py:"
+          find . -iname "quran_worker_wow.py" -not -path "*/.git/*"
+
+          echo ""
+          if [ ! -f "production/quran_worker_wow.py" ]; then
+            echo "ERROR: production/quran_worker_wow.py does not exist at the expected path."
             exit 1
           fi
 
-          echo "production/quran_worker.py found as expected."
+          echo "production/quran_worker_wow.py found as expected."
 
 
       # ============================================================
@@ -195,7 +196,7 @@ jobs:
           GIT_BRANCH: ${{ github.ref_name }}
 
         run: |
-          python3 production/quran_worker.py
+          python3 production/quran_worker_wow.py
 
 
       # ============================================================
