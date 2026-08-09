@@ -33,7 +33,9 @@
     "2:23",
     "2:24",
     "2:25",
-    "2:26"
+    "2:26",
+    "2:27",
+    "2:28"
   ],
   "published_sections": [
     {
@@ -201,16 +203,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:26"
+      "2:27",
+      "2:28"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 44.774,
-    "visual_id": 37694201,
-    "theme": "justice",
-    "visual_query": "perfectly straight horizon over open landscape, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-26-Cycle-1.mp4",
-    "published_sha256": "4fe0ea1627404c5bd28471b257dc059a7f86d18101805e7ad46343327d0b7948"
+    "duration_seconds": 41.482,
+    "visual_id": 37904635,
+    "theme": "earth",
+    "visual_query": "vast desert landscape beneath open sky, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-27-to-28-Cycle-1.mp4",
+    "published_sha256": "3ffdc394b854c7f14ee87e8a7141d7ab9d134ffa7724f09ebf49fa2515bb9d4a"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -219,16 +222,18 @@
     28615722,
     34464344,
     37127031,
-    37694201
+    37694201,
+    37904635
   ],
   "theme_usage": {
     "guidance": 2,
     "creation": 1,
     "justice": 2,
-    "paradise": 1
+    "paradise": 1,
+    "earth": 1
   },
   "completed_cycles": [],
-  "published_count": 6,
+  "published_count": 7,
   "history": [
     {
       "cycle": 1,
@@ -304,6 +309,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-26-Cycle-1.mp4",
       "published_sha256": "4fe0ea1627404c5bd28471b257dc059a7f86d18101805e7ad46343327d0b7948",
       "created_at": "2026-08-09T16:57:15Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:27",
+        "2:28"
+      ],
+      "visual_id": 37904635,
+      "theme": "earth",
+      "visual_query": "vast desert landscape beneath open sky, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-27-to-28-Cycle-1.mp4",
+      "published_sha256": "3ffdc394b854c7f14ee87e8a7141d7ab9d134ffa7724f09ebf49fa2515bb9d4a",
+      "created_at": "2026-08-09T17:21:23Z"
     }
   ],
   "visual_history": [
@@ -312,6 +330,7 @@
     11318637,
     28615722,
     34464344,
-    37694201
+    37694201,
+    37904635
   ]
 }
