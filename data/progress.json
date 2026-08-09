@@ -37,7 +37,9 @@
     "2:27",
     "2:28",
     "2:29",
-    "2:30"
+    "2:30",
+    "2:31",
+    "2:32"
   ],
   "published_sections": [
     {
@@ -205,17 +207,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:29",
-      "2:30"
+      "2:31",
+      "2:32"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 60.865,
-    "visual_id": 38430067,
-    "theme": "creation",
-    "visual_query": "slow moving clouds across vast blue sky, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-29-to-30-Cycle-1.mp4",
-    "published_sha256": "b757b13f3cfbb4819d2789722fcfc7508bb3677720fc9ba0a4f427191e1769da"
+    "duration_seconds": 34.664,
+    "visual_id": 37894855,
+    "theme": "knowledge",
+    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-31-to-32-Cycle-1.mp4",
+    "published_sha256": "981952958177973780ac85aad102b84f62676a5dc822d0d8e3d236c68d3d28cf"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -225,6 +227,7 @@
     34464344,
     37127031,
     37694201,
+    37894855,
     37904635,
     38430067
   ],
@@ -233,10 +236,11 @@
     "creation": 2,
     "justice": 2,
     "paradise": 1,
-    "earth": 1
+    "earth": 1,
+    "knowledge": 1
   },
   "completed_cycles": [],
-  "published_count": 8,
+  "published_count": 9,
   "history": [
     {
       "cycle": 1,
@@ -338,6 +342,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-29-to-30-Cycle-1.mp4",
       "published_sha256": "b757b13f3cfbb4819d2789722fcfc7508bb3677720fc9ba0a4f427191e1769da",
       "created_at": "2026-08-09T17:41:24Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:31",
+        "2:32"
+      ],
+      "visual_id": 37894855,
+      "theme": "knowledge",
+      "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-31-to-32-Cycle-1.mp4",
+      "published_sha256": "981952958177973780ac85aad102b84f62676a5dc822d0d8e3d236c68d3d28cf",
+      "created_at": "2026-08-09T18:05:29Z"
     }
   ],
   "visual_history": [
@@ -348,6 +365,7 @@
     34464344,
     37694201,
     37904635,
-    38430067
+    38430067,
+    37894855
   ]
 }
