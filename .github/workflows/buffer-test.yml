@@ -14,12 +14,14 @@ jobs:
       - name: Test Buffer API
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+
         run: |
           python3 - <<'PY'
           import json
           import os
           import sys
-          import requests
+          import urllib.request
+          import urllib.error
 
           api_key = os.environ.get("BUFFER_API_KEY")
 
@@ -34,9 +36,68 @@ jobs:
               "Authorization": f"Bearer {api_key}",
           }
 
+          def buffer_request(query):
+              body = json.dumps({
+                  "query": query
+              }).encode("utf-8")
+
+              request = urllib.request.Request(
+                  endpoint,
+                  data=body,
+                  headers=headers,
+                  method="POST",
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      request,
+                      timeout=30,
+                  ) as response:
+                      raw = response.read().decode("utf-8")
+
+              except urllib.error.HTTPError as exc:
+                  print(
+                      f"ERROR: Buffer API HTTP {exc.code}"
+                  )
+                  print(
+                      exc.read().decode("utf-8", errors="replace")
+                  )
+                  sys.exit(1)
+
+              except urllib.error.URLError as exc:
+                  print(
+                      f"ERROR: Could not reach Buffer API: {exc}"
+                  )
+                  sys.exit(1)
+
+              try:
+                  data = json.loads(raw)
+              except json.JSONDecodeError:
+                  print("ERROR: Buffer returned invalid JSON.")
+                  print(raw)
+                  sys.exit(1)
+
+              if data.get("errors"):
+                  print("ERROR: Buffer API returned GraphQL errors:")
+                  print(
+                      json.dumps(
+                          data["errors"],
+                          indent=2,
+                      )
+                  )
+                  sys.exit(1)
+
+              return data
+
           # ------------------------------------------------------------
-          # 1. Get the Buffer organization(s)
+          # 1. Get Buffer organizations
           # ------------------------------------------------------------
+
+          print("")
+          print("========================================")
+          print("STEP 1: GET BUFFER ORGANIZATIONS")
+          print("========================================")
+
           organization_query = """
           query GetOrganizations {
             account {
@@ -48,56 +109,55 @@ jobs:
           }
           """
 
-          response = requests.post(
-              endpoint,
-              headers=headers,
-              json={"query": organization_query},
-              timeout=30,
+          data = buffer_request(organization_query)
+
+          organizations = (
+              data
+              .get("data", {})
+              .get("account", {})
+              .get("organizations", [])
           )
 
-          response.raise_for_status()
-
-          data = response.json()
-
-          if data.get("errors"):
-              print("Buffer API returned an error:")
-              print(json.dumps(data["errors"], indent=2))
-              sys.exit(1)
-
-          organizations = data.get("data", {}).get(
-              "account", {}
-          ).get("organizations", [])
-
           if not organizations:
+              print("")
               print("ERROR: No Buffer organizations were found.")
               sys.exit(1)
 
           print("")
-          print("========================================")
-          print("BUFFER ORGANIZATIONS")
-          print("========================================")
 
-          for org in organizations:
+          for organization in organizations:
               print(
-                  f"Organization: {org.get('name')}"
+                  f"Organization: {organization.get('name')}"
               )
               print(
-                  f"Organization ID: {org.get('id')}"
+                  f"Organization ID: {organization.get('id')}"
               )
               print("")
 
           # ------------------------------------------------------------
           # 2. Get channels for the first organization
           # ------------------------------------------------------------
-          organization_id = organizations[0]["id"]
 
-          channel_query = """
-          query GetChannels($organizationId: String!) {
-            channels(
-              input: {
-                organizationId: $organizationId
-              }
-            ) {
+          organization_id = organizations[0].get("id")
+
+          if not organization_id:
+              print(
+                  "ERROR: Buffer organization has no ID."
+              )
+              sys.exit(1)
+
+          print("")
+          print("========================================")
+          print("STEP 2: GET BUFFER CHANNELS")
+          print("========================================")
+
+          # The organization ID came directly from Buffer,
+          # so it is safe to insert into this read-only query.
+          channel_query = f"""
+          query GetChannels {{
+            channels(input: {{
+              organizationId: "{organization_id}"
+            }}) {{
               id
               name
               displayName
@@ -106,45 +166,32 @@ jobs:
               isLocked
               isQueuePaused
               timezone
-            }
-          }
+            }}
+          }}
           """
 
-          response = requests.post(
-              endpoint,
-              headers=headers,
-              json={
-                  "query": channel_query,
-                  "variables": {
-                      "organizationId": organization_id
-                  },
-              },
-              timeout=30,
+          data = buffer_request(channel_query)
+
+          channels = (
+              data
+              .get("data", {})
+              .get("channels", [])
           )
 
-          response.raise_for_status()
-
-          data = response.json()
-
-          if data.get("errors"):
-              print("Buffer channel query returned an error:")
-              print(json.dumps(data["errors"], indent=2))
-              sys.exit(1)
-
-          channels = data.get("data", {}).get("channels", [])
-
           if not channels:
-              print("ERROR: No Buffer channels were found.")
+              print("")
+              print(
+                  "ERROR: No Buffer channels were found."
+              )
               sys.exit(1)
 
           print("")
-          print("========================================")
-          print("BUFFER CHANNELS")
-          print("========================================")
 
           for channel in channels:
+              print("----------------------------------------")
               print(
-                  f"Name: {channel.get('displayName') or channel.get('name')}"
+                  f"Name: "
+                  f"{channel.get('displayName') or channel.get('name')}"
               )
               print(
                   f"Service: {channel.get('service')}"
@@ -153,19 +200,25 @@ jobs:
                   f"Channel ID: {channel.get('id')}"
               )
               print(
-                  f"Disconnected: {channel.get('isDisconnected')}"
+                  f"Disconnected: "
+                  f"{channel.get('isDisconnected')}"
               )
               print(
-                  f"Locked: {channel.get('isLocked')}"
+                  f"Locked: "
+                  f"{channel.get('isLocked')}"
               )
               print(
-                  f"Queue paused: {channel.get('isQueuePaused')}"
+                  f"Queue paused: "
+                  f"{channel.get('isQueuePaused')}"
               )
               print(
-                  f"Timezone: {channel.get('timezone')}"
+                  f"Timezone: "
+                  f"{channel.get('timezone')}"
               )
-              print("----------------------------------------")
 
+          print("----------------------------------------")
           print("")
-          print("BUFFER API CONNECTION TEST PASSED.")
+          print("========================================")
+          print("BUFFER API CONNECTION TEST PASSED")
+          print("========================================")
           PY
