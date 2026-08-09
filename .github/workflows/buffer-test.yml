@@ -1,241 +1,71 @@
-name: Test Instagram via Buffer
+name: Buffer Authentication Test
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  test-instagram:
+  test-buffer:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send test video to Instagram via Buffer
+      - name: Test Buffer authentication
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
         run: |
           python3 - <<'PY'
-          import json
           import os
           import sys
           import requests
 
-          # ------------------------------------------------------------
-          # CONFIGURATION
-          # ------------------------------------------------------------
+          api_key = os.environ.get("BUFFER_API_KEY", "").strip()
 
-          BUFFER_API_KEY = os.environ.get("BUFFER_API_KEY")
-
-          INSTAGRAM_CHANNEL_ID = "6a7884d3b2d9d57743451076"
-
-          VIDEO_URL = (
-              "https://pub-4ac1cf8ee6a44509bb69a39b67ba92b0.r2.dev/"
-              "Surah-Al-Baqarah-Chapter-2-Ayahs-21-to-22-Cycle-1.mp4"
-          )
-
-          CAPTION = """Surah Al-Baqarah — Ayahs 21–22
-
-          A reminder from the Quran.
-
-          #Quran #Islam #IslamicReminder #QuranVerses #AlBaqarah"""
-
-          # ------------------------------------------------------------
-          # VALIDATE SECRET
-          # ------------------------------------------------------------
-
-          if not BUFFER_API_KEY:
-              print("ERROR: BUFFER_API_KEY secret is missing.")
+          if not api_key:
+              print("ERROR: BUFFER_API_KEY is empty.")
               sys.exit(1)
 
-          # ------------------------------------------------------------
-          # VERIFY THE R2 VIDEO IS PUBLICLY ACCESSIBLE
-          # ------------------------------------------------------------
+          print("BUFFER_API_KEY is present.")
+          print(f"Key length: {len(api_key)} characters")
 
-          print("========================================")
-          print("STEP 1: VERIFY R2 VIDEO")
-          print("========================================")
-          print(f"Video URL: {VIDEO_URL}")
-
-          try:
-              r2_response = requests.head(
-                  VIDEO_URL,
-                  allow_redirects=True,
-                  timeout=30,
-              )
-
-              print(f"HTTP status: {r2_response.status_code}")
-              print(
-                  f"Content-Type: "
-                  f"{r2_response.headers.get('content-type')}"
-              )
-              print(
-                  f"Content-Length: "
-                  f"{r2_response.headers.get('content-length')}"
-              )
-
-              if r2_response.status_code != 200:
-                  print("ERROR: R2 video is not publicly accessible.")
-                  sys.exit(1)
-
-          except Exception as e:
-              print(f"ERROR checking R2 video: {e}")
-              sys.exit(1)
-
-          print("R2 VIDEO ACCESS TEST PASSED.")
-          print("")
-
-          # ------------------------------------------------------------
-          # BUFFER GRAPHQL MUTATION
-          # ------------------------------------------------------------
-
-          endpoint = "https://api.buffer.com"
-
-          headers = {
-              "Content-Type": "application/json",
-              "Authorization": f"Bearer {BUFFER_API_KEY}",
-          }
-
-          mutation = """
-          mutation CreateInstagramReel {
-            createPost(
-              input: {
-                text: """ + json.dumps(CAPTION) + """
-                channelId: """ + json.dumps(INSTAGRAM_CHANNEL_ID) + """
-                schedulingType: automatic
-                mode: shareNow
-                assets: [
-                  {
-                    video: {
-                      url: """ + json.dumps(VIDEO_URL) + """
-                    }
-                  }
-                ]
-                metadata: {
-                  instagram: {
-                    type: reel
-                    shouldShareToFeed: true
-                  }
-                }
-              }
-            ) {
-              ... on PostActionSuccess {
-                post {
-                  id
-                  text
-                  status
-                  shareMode
-                  sharedNow
-                  assets {
-                    id
-                    mimeType
-                    source
-                  }
-                }
-              }
-
-              ... on MutationError {
-                message
+          query = """
+          query {
+            account {
+              id
+              email
+              organizations {
+                id
+                name
               }
             }
           }
           """
 
-          # ------------------------------------------------------------
-          # SEND TO BUFFER
-          # ------------------------------------------------------------
+          response = requests.post(
+              "https://api.buffer.com",
+              headers={
+                  "Authorization": f"Bearer {api_key}",
+                  "Content-Type": "application/json",
+              },
+              json={"query": query},
+              timeout=30,
+          )
 
-          print("========================================")
-          print("STEP 2: SEND VIDEO TO BUFFER")
-          print("========================================")
-
-          try:
-              response = requests.post(
-                  endpoint,
-                  headers=headers,
-                  json={"query": mutation},
-                  timeout=60,
-              )
-          except Exception as e:
-              print(f"ERROR contacting Buffer API: {e}")
-              sys.exit(1)
-
-          print(f"HTTP status: {response.status_code}")
-          print("")
+          print(f"Buffer HTTP status: {response.status_code}")
+          print("Buffer response:")
 
           try:
               data = response.json()
+              print(data)
           except Exception:
-              print("ERROR: Buffer returned non-JSON response.")
               print(response.text)
               sys.exit(1)
 
-          print(json.dumps(data, indent=2))
-
-          # ------------------------------------------------------------
-          # HTTP ERROR
-          # ------------------------------------------------------------
-
           if response.status_code != 200:
-              print("")
-              print("BUFFER HTTP REQUEST FAILED.")
+              print("BUFFER HTTP AUTHENTICATION FAILED")
               sys.exit(1)
 
-          # ------------------------------------------------------------
-          # GRAPHQL ERRORS
-          # ------------------------------------------------------------
-
-          if data.get("errors"):
-              print("")
-              print("BUFFER GRAPHQL ERROR:")
-              print(json.dumps(data["errors"], indent=2))
+          if "errors" in data:
+              print("BUFFER GRAPHQL ERROR")
               sys.exit(1)
 
-          # ------------------------------------------------------------
-          # CREATE POST RESULT
-          # ------------------------------------------------------------
-
-          create_post = (
-              data.get("data", {})
-                  .get("createPost")
-          )
-
-          if not create_post:
-              print("")
-              print("ERROR: Buffer returned no createPost result.")
-              sys.exit(1)
-
-          # MutationError
-          if "message" in create_post and "post" not in create_post:
-              print("")
-              print("BUFFER REJECTED THE POST:")
-              print(create_post["message"])
-              sys.exit(1)
-
-          # Success
-          post = create_post.get("post")
-
-          if not post:
-              print("")
-              print("ERROR: Buffer did not return a post object.")
-              print(json.dumps(create_post, indent=2))
-              sys.exit(1)
-
-          # ------------------------------------------------------------
-          # SUCCESS
-          # ------------------------------------------------------------
-
-          print("")
-          print("========================================")
-          print("BUFFER INSTAGRAM TEST PASSED")
-          print("========================================")
-          print(f"Buffer Post ID: {post.get('id')}")
-          print(f"Status: {post.get('status')}")
-          print(f"Share Mode: {post.get('shareMode')}")
-          print(f"Shared Now: {post.get('sharedNow')}")
-          print("")
-          print("The video was accepted by Buffer.")
-          print("Buffer is attempting to publish it to Instagram.")
-          print("")
-
+          print("BUFFER AUTHENTICATION TEST PASSED.")
           PY
