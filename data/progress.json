@@ -31,7 +31,8 @@
     "2:21",
     "2:22",
     "2:23",
-    "2:24"
+    "2:24",
+    "2:25"
   ],
   "published_sections": [
     {
@@ -199,32 +200,33 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:23",
-      "2:24"
+      "2:25"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 41.326,
-    "visual_id": 28615722,
-    "theme": "justice",
-    "visual_query": "perfectly balanced mountains reflected in still water, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-23-to-24-Cycle-1.mp4",
-    "published_sha256": "3d98543e4cf767c051fae8115da01431e9314e59f18af3c48c19af9902a9fbf2"
+    "duration_seconds": 37.747,
+    "visual_id": 34464344,
+    "theme": "paradise",
+    "visual_query": "misty garden soft morning light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-25-Cycle-1.mp4",
+    "published_sha256": "da2703cb473c5cd3dc9b88ab76c881ca892edefa62b9d38ab91a38990e9d4658"
   },
   "schema_version": 4,
   "used_pexels_ids": [
     11318637,
     13243682,
     28615722,
+    34464344,
     37127031
   ],
   "theme_usage": {
     "guidance": 2,
     "creation": 1,
-    "justice": 1
+    "justice": 1,
+    "paradise": 1
   },
   "completed_cycles": [],
-  "published_count": 4,
+  "published_count": 5,
   "history": [
     {
       "cycle": 1,
@@ -276,12 +278,25 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-23-to-24-Cycle-1.mp4",
       "published_sha256": "3d98543e4cf767c051fae8115da01431e9314e59f18af3c48c19af9902a9fbf2",
       "created_at": "2026-08-09T15:31:03Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:25"
+      ],
+      "visual_id": 34464344,
+      "theme": "paradise",
+      "visual_query": "misty garden soft morning light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-25-Cycle-1.mp4",
+      "published_sha256": "da2703cb473c5cd3dc9b88ab76c881ca892edefa62b9d38ab91a38990e9d4658",
+      "created_at": "2026-08-09T16:18:24Z"
     }
   ],
   "visual_history": [
     13243682,
     37127031,
     11318637,
-    28615722
+    28615722,
+    34464344
   ]
 }
