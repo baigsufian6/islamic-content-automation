@@ -1191,7 +1191,7 @@ jobs:
                       text
                       status
                       channelId
-                      type
+                      
                     }}
                   }}
 
@@ -1324,7 +1324,7 @@ jobs:
 
               print(
                   f"Type: "
-                  f"{post.get('type')}"
+                  f"{post.get('channelId')}"
               )
 
 
