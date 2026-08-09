@@ -1,12 +1,12 @@
 name: Quran Production Pipeline
 
-# Timing is controlled externally by Make.com.
+# No built-in schedule.
 #
 # workflow_dispatch:
 #   Manual testing from GitHub Actions.
 #
 # repository_dispatch:
-#   Allows Make.com to trigger production through GitHub's API.
+#   Make.com can trigger production through GitHub's API.
 
 on:
   workflow_dispatch: {}
@@ -128,7 +128,7 @@ jobs:
           )
 
           # --------------------------------------------------------
-          # Extract Quran metadata for later social captions.
+          # Quran metadata for social captions.
           # --------------------------------------------------------
 
           surah = meta.get("surah") or "Quran"
@@ -201,10 +201,7 @@ jobs:
 
 
       # ============================================================
-      # 6. GITHUB RELEASE
-      #
-      # GitHub remains an archive/backup.
-      # R2 becomes the public media source for Buffer.
+      # 6. GITHUB RELEASE BACKUP
       # ============================================================
 
       - name: Publish finished video to GitHub Release
@@ -232,31 +229,29 @@ jobs:
 
 
       # ============================================================
-      # 7. UPLOAD VIDEO TO CLOUDFLARE R2
-      #
-      # Storage target:
-      # 9 GB maximum.
-      #
-      # If adding the new video would exceed 9 GB,
-      # the oldest MP4 files are deleted first.
+      # 7. CLOUDFLARE R2
       #
       # IMPORTANT:
-      # The endpoint handling below is defensive.
-      # It works whether CLOUDFLARE_ACCOUNT_ID contains:
+      # We use the confirmed R2 endpoint directly.
       #
-      #   f628...
+      # We do NOT use CLOUDFLARE_ACCOUNT_ID here because the
+      # previous GitHub secret was arriving empty.
       #
-      # OR:
+      # R2 bucket:
+      #   quran-production-media
       #
-      #   https://f628....r2.cloudflarestorage.com
+      # Storage ceiling:
+      #   9 GB
       #
-      # Whitespace is also stripped.
+      # Cleanup:
+      #   oldest MP4 first
       # ============================================================
 
       - name: Upload video to Cloudflare R2
         id: r2
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ENDPOINT: https://f628f290c08401d255823b7cfe41054c.r2.cloudflarestorage.com
+
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
 
@@ -281,31 +276,9 @@ jobs:
           # CONFIGURATION
           # ========================================================
 
-          raw_account = os.environ[
-              "CLOUDFLARE_ACCOUNT_ID"
-          ].strip()
-
-          if not raw_account:
-              raise SystemExit(
-                  "ERROR: CLOUDFLARE_ACCOUNT_ID is empty."
-              )
-
-
-          # ========================================================
-          # DEFENSIVE R2 ENDPOINT CONSTRUCTION
-          # ========================================================
-
-          if (
-              raw_account.startswith("http://")
-              or raw_account.startswith("https://")
-          ):
-              ENDPOINT = raw_account.rstrip("/")
-          else:
-              ENDPOINT = (
-                  f"https://{raw_account}"
-                  ".r2.cloudflarestorage.com"
-              )
-
+          ENDPOINT = os.environ[
+              "R2_ENDPOINT"
+          ].strip().rstrip("/")
 
           ACCESS_KEY = os.environ[
               "R2_ACCESS_KEY_ID"
@@ -356,7 +329,6 @@ jobs:
           print("R2 CONFIGURATION")
           print("========================================")
 
-          # Do NOT print credentials.
           print(
               f"R2 endpoint: {ENDPOINT}"
           )
@@ -371,7 +343,7 @@ jobs:
 
 
           # ========================================================
-          # CREATE S3/R2 CLIENT
+          # CREATE R2 / S3 CLIENT
           # ========================================================
 
           s3 = boto3.client(
@@ -384,16 +356,19 @@ jobs:
 
 
           # ========================================================
-          # TEST R2 CONNECTION
+          # TEST BUCKET CONNECTION
           # ========================================================
 
           print("")
-          print("Testing R2 connection...")
+          print(
+              "Testing R2 connection..."
+          )
 
           try:
               s3.head_bucket(
                   Bucket=BUCKET
               )
+
           except Exception as exc:
               raise SystemExit(
                   "ERROR: Could not access R2 bucket.\n"
@@ -417,6 +392,7 @@ jobs:
               VIDEO_PATH.stat().st_size
           )
 
+
           print("")
           print("========================================")
           print("R2 STORAGE CHECK")
@@ -430,13 +406,12 @@ jobs:
 
           if new_size > MAX_STORAGE:
               raise SystemExit(
-                  "ERROR: The new video itself is larger "
-                  "than the 9 GB storage limit."
+                  "ERROR: New video itself exceeds 9 GB."
               )
 
 
           # ========================================================
-          # LIST EXISTING OBJECTS
+          # LIST EXISTING R2 OBJECTS
           # ========================================================
 
           objects = []
@@ -474,44 +449,43 @@ jobs:
           )
 
           print(
-              f"Storage limit: "
+              f"Storage ceiling: "
               f"{MAX_STORAGE / 1024 / 1024:.2f} MB"
           )
 
 
           # ========================================================
-          # DELETE OLDEST MP4 FILES IF NECESSARY
+          # OLDEST-FIRST CLEANUP
+          #
+          # Only MP4 files are automatically deleted.
+          # JSON/SRT files are left alone.
           # ========================================================
 
           if projected_size > MAX_STORAGE:
 
               print("")
               print(
-                  "9 GB limit would be exceeded."
+                  "9 GB ceiling would be exceeded."
               )
 
               print(
-                  "Beginning oldest-MP4 cleanup..."
+                  "Starting oldest-MP4 cleanup..."
               )
 
-              candidates = []
 
-              for obj in objects:
-
-                  key = obj["Key"]
-
-                  # Only automatically delete MP4 media.
-                  #
-                  # JSON/SRT metadata remains untouched.
-                  if not key.lower().endswith(".mp4"):
-                      continue
-
-                  candidates.append(obj)
+              candidates = [
+                  obj
+                  for obj in objects
+                  if obj["Key"]
+                  .lower()
+                  .endswith(".mp4")
+              ]
 
 
-              # Oldest first.
               candidates.sort(
-                  key=lambda item: item["LastModified"]
+                  key=lambda obj: obj[
+                      "LastModified"
+                  ]
               )
 
 
@@ -520,11 +494,14 @@ jobs:
                   if projected_size <= MAX_STORAGE:
                       break
 
+
                   key = obj["Key"]
                   size = obj["Size"]
 
+
                   print(
-                      f"Deleting: {key}"
+                      f"Deleting oldest MP4: "
+                      f"{key}"
                   )
 
                   print(
@@ -532,28 +509,31 @@ jobs:
                       f"{size / 1024 / 1024:.2f} MB"
                   )
 
+
                   s3.delete_object(
                       Bucket=BUCKET,
                       Key=key,
                   )
+
 
                   projected_size -= size
 
 
               if projected_size > MAX_STORAGE:
                   raise SystemExit(
-                      "ERROR: Not enough old MP4 media "
-                      "could be deleted to stay below 9 GB."
+                      "ERROR: Could not free enough "
+                      "space to stay below 9 GB."
                   )
 
+
               print(
-                  "Oldest-media cleanup completed."
+                  "Oldest-MP4 cleanup completed."
               )
 
           else:
 
               print(
-                  "No cleanup required."
+                  "No R2 cleanup required."
               )
 
 
@@ -570,6 +550,7 @@ jobs:
               "Uploading Quran MP4 to R2..."
           )
 
+
           s3.upload_file(
               str(VIDEO_PATH),
               BUCKET,
@@ -581,7 +562,7 @@ jobs:
 
 
           # ========================================================
-          # BUILD PUBLIC URL
+          # CREATE PUBLIC URL
           # ========================================================
 
           video_url = (
@@ -609,6 +590,7 @@ jobs:
               "Checking public R2 URL..."
           )
 
+
           verify = requests.head(
               video_url,
               allow_redirects=True,
@@ -627,9 +609,14 @@ jobs:
               "R2 public URL verification passed."
           )
 
+          print(
+              f"HTTP status: "
+              f"{verify.status_code}"
+          )
+
 
           # ========================================================
-          # PASS URL TO NEXT GITHUB ACTION STEP
+          # OUTPUT URL FOR NEXT STEPS
           # ========================================================
 
           with open(
@@ -642,14 +629,13 @@ jobs:
                   f"video_url={video_url}\n"
               )
 
+          PY
+
 
       # ============================================================
       # 8. CREATE BUFFER DRAFTS
       #
-      # IMPORTANT:
-      # These are DRAFTS.
-      #
-      # Nothing is automatically published at this stage.
+      # NOTHING IS PUBLISHED AUTOMATICALLY.
       #
       # Instagram:
       #   Reel
@@ -660,7 +646,8 @@ jobs:
       # YouTube:
       #   Short
       #
-      # Caption is generated from the actual Quran section.
+      # Caption:
+      #   Generated from the actual Quran section.
       # ============================================================
 
       - name: Create Buffer drafts
@@ -709,7 +696,7 @@ jobs:
 
 
           # ========================================================
-          # BUILD SOCIAL CAPTION
+          # BUILD DYNAMIC SOCIAL CAPTION
           # ========================================================
 
           reference = SURAH
@@ -751,7 +738,7 @@ jobs:
 
 
           # ========================================================
-          # BUFFER HEADERS
+          # BUFFER AUTH
           # ========================================================
 
           headers = {
@@ -766,13 +753,13 @@ jobs:
           # BUFFER ORGANIZATION
           # ========================================================
 
-          organization_id = (
+          ORGANIZATION_ID = (
               "6a4a94cd8807be89129990e6"
           )
 
 
           # ========================================================
-          # FIND CONNECTED CHANNELS
+          # DISCOVER CONNECTED CHANNELS
           # ========================================================
 
           channel_query = """
@@ -800,7 +787,7 @@ jobs:
                   "query": channel_query,
                   "variables": {
                       "organizationId":
-                          organization_id
+                          ORGANIZATION_ID
                   },
               },
               timeout=30,
@@ -839,6 +826,7 @@ jobs:
               ):
                   continue
 
+
               service = (
                   channel.get("service")
                   or ""
@@ -873,7 +861,7 @@ jobs:
               raise SystemExit(
                   "Missing connected Buffer channels: "
                   + ", ".join(missing)
-          )
+              )
 
 
           # ========================================================
@@ -897,6 +885,7 @@ jobs:
                   input: {
                     channelId: $channelId
                     text: $text
+
                     schedulingType: automatic
                     mode: addToQueue
                     saveToDraft: true
@@ -1075,7 +1064,7 @@ jobs:
 
 
           # ========================================================
-          # SHOW GENERATED CAPTION
+          # SHOW CAPTION IN ACTION LOG
           # ========================================================
 
           print("")
@@ -1106,11 +1095,14 @@ jobs:
               "========================================"
           )
 
+          PY
+
 
       # ============================================================
       # 9. NOTIFY MAKE.COM
       #
-      # Make receives the R2 video URL.
+      # Make receives the R2 URL.
+      # GitHub Release remains the backup/archive.
       # ============================================================
 
       - name: Notify Make.com
@@ -1151,13 +1143,13 @@ jobs:
               meta = json.load(fh)
 
 
-          # R2 is the public media source.
+          # R2 is now the media URL for downstream automation.
           meta["video_url"] = os.environ[
               "VIDEO_URL"
           ]
 
 
-          # GitHub remains the archive.
+          # GitHub remains the backup.
           meta["video_name"] = os.environ[
               "VIDEO_NAME"
           ]
