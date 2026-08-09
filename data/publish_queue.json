@@ -141,5 +141,21 @@
     "duration_seconds": 34.664,
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-31-to-32-Cycle-1.srt",
     "created_at": "2026-08-09T18:05:29Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-33-to-34-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-33-to-34-Cycle-1.json",
+    "published_sha256": "4d8470307d24f46c539c7bb407ebf6ad9d3a6f016ed255ba2a4f47c38323c028",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:33",
+      "2:34"
+    ],
+    "duration_seconds": 54.1,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-33-to-34-Cycle-1.srt",
+    "created_at": "2026-08-09T18:41:32Z"
   }
 ]
