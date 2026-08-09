@@ -15,9 +15,11 @@ name: Quran Production Pipeline
 #       ↓
 # Cloudflare R2
 #       ↓
+# R2 accessibility verification (incl. Meta crawler simulation)
+#       ↓
 # Buffer
 #       ↓
-# Instagram / Facebook / YouTube DRAFTS
+# Instagram / Facebook / YouTube DRAFTS (with retry on Facebook)
 #
 # Make.com is NOT used.
 #
@@ -647,7 +649,212 @@ jobs:
 
 
       # ============================================================
-      # 8. CREATE BUFFER DRAFTS
+      # 8. R2 VIDEO ACCESSIBILITY TEST
+      #
+      # This specifically tests the exact public URL that Buffer
+      # receives, from multiple angles:
+      #
+      #   1. HEAD                       (basic reachability)
+      #   2. Full GET                   (file actually downloads)
+      #   3. Byte-range GET             (partial-content support,
+      #                                  which Meta's video ingest
+      #                                  relies on)
+      #   4. HEAD as Meta's crawler     (facebookexternalhit UA,
+      #                                  to catch Cloudflare bot
+      #                                  protection blocking Meta
+      #                                  specifically while normal
+      #                                  clients pass)
+      #
+      # Any failure here fails the job BEFORE Buffer is called,
+      # so you get a precise diagnosis instead of Buffer's generic
+      # "Video could not be read from its URL" message.
+      # ============================================================
+
+      - name: Verify R2 video for Buffer
+        env:
+          BUFFER_VIDEO_URL: ${{ steps.r2.outputs.video_url }}
+
+        run: |
+          set -e
+
+          if [ -z "$BUFFER_VIDEO_URL" ]; then
+            echo "ERROR: BUFFER_VIDEO_URL is empty."
+            exit 1
+          fi
+
+          echo "========================================"
+          echo "R2 BUFFER VIDEO ACCESS TEST"
+          echo "========================================"
+
+          echo ""
+          echo "Video URL:"
+          echo "$BUFFER_VIDEO_URL"
+
+          echo ""
+          echo "========================================"
+          echo "1. HEAD REQUEST (default client)"
+          echo "========================================"
+
+          curl \
+            -I \
+            -L \
+            --fail \
+            --max-time 30 \
+            "$BUFFER_VIDEO_URL"
+
+          echo ""
+          echo "HEAD request passed."
+
+          echo ""
+          echo "========================================"
+          echo "2. FULL GET TEST"
+          echo "========================================"
+
+          curl \
+            -L \
+            --fail \
+            --output /tmp/r2-buffer-test.mp4 \
+            --max-time 120 \
+            "$BUFFER_VIDEO_URL"
+
+          if [ ! -s /tmp/r2-buffer-test.mp4 ]; then
+            echo "ERROR: GET returned an empty file."
+            exit 1
+          fi
+
+          echo ""
+          echo "Downloaded test file:"
+          ls -lh /tmp/r2-buffer-test.mp4
+
+          echo ""
+          echo "File identification:"
+          file /tmp/r2-buffer-test.mp4
+
+          echo ""
+          echo "Full GET request passed."
+
+          echo ""
+          echo "========================================"
+          echo "3. BYTE-RANGE REQUEST"
+          echo "========================================"
+
+          rm -f /tmp/r2-range-headers.txt
+          rm -f /tmp/r2-range-test.bin
+
+          curl \
+            -L \
+            --fail \
+            --range 0-1048575 \
+            --dump-header /tmp/r2-range-headers.txt \
+            --output /tmp/r2-range-test.bin \
+            --max-time 60 \
+            "$BUFFER_VIDEO_URL"
+
+          echo ""
+          echo "Range response headers:"
+          cat /tmp/r2-range-headers.txt
+
+          echo ""
+          echo "Downloaded range:"
+          ls -lh /tmp/r2-range-test.bin
+
+          if [ ! -s /tmp/r2-range-test.bin ]; then
+            echo "ERROR: Range GET returned an empty file."
+            exit 1
+          fi
+
+          if ! grep -qi "^HTTP/.* 206" /tmp/r2-range-headers.txt; then
+            echo ""
+            echo "ERROR: Server did not return 206 Partial Content"
+            echo "for a byte-range request. It likely ignored the"
+            echo "Range header and returned the full file instead."
+            echo "This is a common root cause of Facebook's"
+            echo "'Video could not be read from its URL' error,"
+            echo "since Meta's ingest pipeline expects range support."
+            exit 1
+          fi
+
+          if ! grep -qi "^Content-Range:" /tmp/r2-range-headers.txt; then
+            echo ""
+            echo "ERROR: Response is missing a Content-Range header"
+            echo "on a ranged request. Byte-range support looks"
+            echo "incomplete."
+            exit 1
+          fi
+
+          echo ""
+          echo "Byte-range support confirmed (206 + Content-Range)."
+
+          echo ""
+          echo "========================================"
+          echo "4. HEAD REQUEST AS META'S CRAWLER"
+          echo "========================================"
+          echo "Simulating the facebookexternalhit user agent to"
+          echo "check whether Cloudflare bot protection treats"
+          echo "Meta's fetcher differently from a normal client."
+
+          set +e
+
+          curl \
+            -I \
+            -L \
+            --max-time 30 \
+            -A "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)" \
+            -w "\nHTTP_STATUS:%{http_code}\n" \
+            "$BUFFER_VIDEO_URL" \
+            > /tmp/r2-meta-ua-headers.txt 2>&1
+
+          META_UA_EXIT=$?
+
+          set -e
+
+          cat /tmp/r2-meta-ua-headers.txt
+
+          if [ $META_UA_EXIT -ne 0 ]; then
+            echo ""
+            echo "WARNING: The request with Meta's user agent failed"
+            echo "at the network level. This does not fail the job,"
+            echo "since it is not a fully reliable simulation of"
+            echo "Meta's real infrastructure, but it is a strong"
+            echo "signal that Cloudflare may be blocking Meta's"
+            echo "crawler on this domain. Check Cloudflare's Bot"
+            echo "Fight Mode / WAF settings for this zone if"
+            echo "Facebook drafts keep failing."
+          else
+            META_STATUS=$(grep "HTTP_STATUS:" /tmp/r2-meta-ua-headers.txt | cut -d: -f2)
+            if [ "$META_STATUS" -ge 400 ] 2>/dev/null; then
+              echo ""
+              echo "WARNING: Request with Meta's user agent returned"
+              echo "HTTP $META_STATUS while the normal client request"
+              echo "succeeded. This strongly suggests Cloudflare is"
+              echo "blocking or challenging Meta's crawler on this"
+              echo "domain. Check Bot Fight Mode / WAF / hotlink"
+              echo "protection settings."
+            else
+              echo ""
+              echo "Meta user-agent HEAD request looked fine"
+              echo "(HTTP $META_STATUS)."
+            fi
+          fi
+
+          echo ""
+          echo "========================================"
+          echo "R2 ACCESSIBILITY TEST PASSED"
+          echo "========================================"
+
+          echo ""
+          echo "The exact URL sent to Buffer supports:"
+          echo "- HEAD"
+          echo "- GET"
+          echo "- byte-range GET (206 + Content-Range)"
+          echo ""
+          echo "Any remaining Facebook rejection is more likely to"
+          echo "be Meta-side (rate limiting, format validation, or"
+          echo "bot blocking) rather than an R2 delivery problem."
+
+
+      # ============================================================
+      # 9. CREATE BUFFER DRAFTS
       #
       # Buffer flow:
       #
@@ -662,6 +869,11 @@ jobs:
       # Everything is saved as a DRAFT.
       #
       # Nothing is automatically published.
+      #
+      # Facebook specifically gets retried with backoff, since its
+      # "Video could not be read from its URL" error can be a
+      # transient CDN-propagation or Meta-side hiccup even when the
+      # R2 accessibility test above passes cleanly.
       # ============================================================
 
       - name: Create Buffer drafts
@@ -683,7 +895,7 @@ jobs:
           python3 - <<'PY'
           import json
           import os
-          import sys
+          import time
 
           import requests
 
@@ -711,6 +923,22 @@ jobs:
           CAPTION = os.environ.get(
               "CAPTION",
               ""
+          )
+
+          # Facebook-specific retry settings. "Video could not be
+          # read from its URL" can be transient (CDN propagation,
+          # brief Meta-side hiccup), so it is worth a few spaced-out
+          # attempts before treating it as fatal.
+          FACEBOOK_MAX_ATTEMPTS = 3
+          FACEBOOK_RETRY_DELAY_SECONDS = 20
+
+          # Errors from Buffer that are worth retrying automatically.
+          # Anything else (auth, locked channel, bad channel id,
+          # etc.) fails immediately instead of retrying blindly.
+          RETRYABLE_MESSAGE_FRAGMENTS = (
+              "could not be read from its url",
+              "timeout",
+              "timed out",
           )
 
 
@@ -749,9 +977,9 @@ jobs:
           # ========================================================
           # 1. GET ACCOUNT + ORGANIZATION
           #
-          # We deliberately do NOT hard-code the organization ID.
+          # Organization is taken directly from Buffer.
           #
-          # This prevents the previous ...e6 / ...e4 mismatch.
+          # No hard-coded organization ID is used.
           # ========================================================
 
           account_query = """
@@ -849,52 +1077,22 @@ jobs:
           # ========================================================
           # SELECT ORGANIZATION
           #
-          # The authentication test confirmed this organization:
+          # There is currently one organization in the account.
           #
-          # 6a4a94cd8807be89129990e4
-          #
-          # Prefer it when present.
-          #
-          # If it isn't present, and there is exactly one
-          # organization, use that one.
+          # If Buffer ever returns multiple organizations, stop
+          # instead of guessing which one should receive the posts.
           # ========================================================
 
-          EXPECTED_ORGANIZATION_ID = (
-              "6a4a94cd8807be89129990e4"
-          )
+          if len(organizations) != 1:
 
-          organization = next(
-              (
-                  org
-                  for org in organizations
-                  if org.get("id")
-                  == EXPECTED_ORGANIZATION_ID
-              ),
-              None,
-          )
+              raise SystemExit(
+                  "ERROR: Buffer returned "
+                  f"{len(organizations)} organizations. "
+                  "Multiple organizations require explicit "
+                  "selection instead of guessing."
+              )
 
-          if organization is None:
-
-              if len(organizations) == 1:
-
-                  organization = (
-                      organizations[0]
-                  )
-
-                  print(
-                      "Expected organization ID was "
-                      "not returned; using the only "
-                      "available organization."
-                  )
-
-              else:
-
-                  raise SystemExit(
-                      "ERROR: Expected Buffer organization "
-                      f"{EXPECTED_ORGANIZATION_ID} was not found, "
-                      "and multiple organizations are available."
-                  )
-
+          organization = organizations[0]
 
           organization_id = organization[
               "id"
@@ -1032,6 +1230,7 @@ jobs:
               if channel.get(
                   "isDisconnected"
               ):
+
                   print(
                       "  WARNING: channel is disconnected."
                   )
@@ -1039,62 +1238,32 @@ jobs:
               if channel.get(
                   "isLocked"
               ):
+
                   print(
                       "  WARNING: channel is locked."
                   )
 
               if service == "instagram":
+
                   instagram = channel
 
               elif service == "facebook":
+
                   facebook = channel
 
               elif service == "youtube":
+
                   youtube = channel
 
 
           # ========================================================
-          # CREATE DRAFT
+          # BUILD DRAFT MUTATION
           # ========================================================
 
-          def create_draft(
-              channel,
+          def build_mutation(
+              channel_id,
               label,
           ):
-
-              if not channel:
-
-                  print(
-                      f"{label} channel not found; "
-                      "skipping."
-                  )
-
-                  return
-
-              if channel.get(
-                  "isDisconnected"
-              ):
-
-                  raise SystemExit(
-                      f"ERROR: {label} channel is disconnected."
-                  )
-
-              if channel.get(
-                  "isLocked"
-              ):
-
-                  raise SystemExit(
-                      f"ERROR: {label} channel is locked."
-                  )
-
-              channel_id = channel[
-                  "id"
-              ]
-
-
-              # ----------------------------------------------------
-              # Platform-specific metadata
-              # ----------------------------------------------------
 
               if label == "Instagram":
 
@@ -1129,7 +1298,6 @@ jobs:
                   metadata_graphql = f"""
                   metadata: {{
                     youtube: {{
-                      
                       categoryId: "27"
                       title: {json.dumps(
                           youtube_title
@@ -1148,15 +1316,7 @@ jobs:
                       f"Unsupported Buffer service: {label}"
                   )
 
-
-              # ----------------------------------------------------
-              # CreatePost
-              #
-              # Video URL is public R2 URL.
-              # Buffer requires public media URLs.
-              # ----------------------------------------------------
-
-              mutation = f"""
+              return f"""
               mutation CreateDraft {{
                 createPost(
                   input: {{
@@ -1191,7 +1351,6 @@ jobs:
                       text
                       status
                       channelId
-                      
                     }}
                   }}
 
@@ -1203,17 +1362,20 @@ jobs:
               """
 
 
-              print("")
-              print(
-                  "----------------------------------------"
-              )
+          # ========================================================
+          # SINGLE ATTEMPT AT CREATING A DRAFT
+          #
+          # Returns (success, error_message_or_none).
+          # ========================================================
 
-              print(
-                  f"Creating {label} draft..."
-              )
+          def attempt_create_draft(
+              channel_id,
+              label,
+          ):
 
-              print(
-                  f"Buffer channel ID: {channel_id}"
+              mutation = build_mutation(
+                  channel_id,
+                  label,
               )
 
               result = requests.post(
@@ -1236,31 +1398,26 @@ jobs:
                       result.text
                   )
 
-                  raise SystemExit(
-                      f"ERROR: Buffer HTTP request "
-                      f"failed for {label}."
+                  return (
+                      False,
+                      f"Buffer HTTP request failed "
+                      f"({result.status_code}).",
                   )
 
               payload = result.json()
-
-
-              # ----------------------------------------------------
-              # GraphQL errors
-              # ----------------------------------------------------
 
               if payload.get(
                   "errors"
               ):
 
-                  raise SystemExit(
-                      f"ERROR: Buffer GraphQL error "
-                      f"for {label}:\n"
+                  return (
+                      False,
+                      "Buffer GraphQL error:\n"
                       + json.dumps(
                           payload["errors"],
                           indent=2,
-                      )
+                      ),
                   )
-
 
               create_result = (
                   payload
@@ -1268,29 +1425,21 @@ jobs:
                   .get("createPost")
               )
 
-
               if not create_result:
 
-                  raise SystemExit(
-                      f"ERROR: Buffer returned no "
-                      f"createPost result for {label}."
+                  return (
+                      False,
+                      "Buffer returned no createPost result.",
                   )
-
-
-              # ----------------------------------------------------
-              # MutationError
-              # ----------------------------------------------------
 
               if create_result.get(
                   "message"
               ):
 
-                  raise SystemExit(
-                      f"ERROR: Buffer rejected "
-                      f"{label}:\n"
-                      f"{create_result['message']}"
+                  return (
+                      False,
+                      create_result["message"],
                   )
-
 
               post = (
                   create_result.get(
@@ -1298,14 +1447,12 @@ jobs:
                   )
               )
 
-
               if not post:
 
-                  raise SystemExit(
-                      f"ERROR: Buffer did not create "
-                      f"{label} draft."
+                  return (
+                      False,
+                      "Buffer did not return a post object.",
                   )
-
 
               print("")
               print(
@@ -1323,8 +1470,154 @@ jobs:
               )
 
               print(
-                  f"Type: "
+                  f"Channel ID: "
                   f"{post.get('channelId')}"
+              )
+
+              return (True, None)
+
+
+          # ========================================================
+          # CREATE DRAFT WITH RETRY (Facebook only, by default)
+          # ========================================================
+
+          def create_draft(
+              channel,
+              label,
+              max_attempts=1,
+              retry_delay_seconds=0,
+          ):
+
+              if not channel:
+
+                  print(
+                      f"{label} channel not found; "
+                      "skipping."
+                  )
+
+                  return
+
+              if channel.get(
+                  "isDisconnected"
+              ):
+
+                  raise SystemExit(
+                      f"ERROR: {label} channel is disconnected."
+                  )
+
+              if channel.get(
+                  "isLocked"
+              ):
+
+                  raise SystemExit(
+                      f"ERROR: {label} channel is locked."
+                  )
+
+              channel_id = channel[
+                  "id"
+              ]
+
+              last_error = None
+
+              for attempt in range(
+                  1,
+                  max_attempts + 1,
+              ):
+
+                  print("")
+                  print(
+                      "----------------------------------------"
+                  )
+
+                  print(
+                      f"Creating {label} draft "
+                      f"(attempt {attempt}/{max_attempts})..."
+                  )
+
+                  print(
+                      f"Buffer channel ID: {channel_id}"
+                  )
+
+                  success, error_message = attempt_create_draft(
+                      channel_id,
+                      label,
+                  )
+
+                  if success:
+                      return
+
+                  last_error = error_message
+
+                  is_retryable = (
+                      error_message is not None
+                      and any(
+                          fragment in error_message.lower()
+                          for fragment in RETRYABLE_MESSAGE_FRAGMENTS
+                      )
+                  )
+
+                  print("")
+                  print(
+                      f"{label} draft attempt {attempt} failed:"
+                  )
+                  print(
+                      error_message
+                  )
+
+                  if (
+                      is_retryable
+                      and attempt < max_attempts
+                  ):
+
+                      print("")
+                      print(
+                          "This looks like a transient error "
+                          "(URL fetch / timeout). Waiting "
+                          f"{retry_delay_seconds}s before "
+                          "retrying..."
+                      )
+
+                      time.sleep(
+                          retry_delay_seconds
+                      )
+
+                      continue
+
+                  # Not retryable, or out of attempts: stop here.
+                  break
+
+              hint = ""
+
+              if (
+                  last_error
+                  and "could not be read from its url"
+                  in last_error.lower()
+              ):
+
+                  hint = (
+                      "\n\nThis error persisted across "
+                      f"{max_attempts} attempt(s). Since the "
+                      "R2 accessibility test earlier in this "
+                      "run already confirmed HEAD, GET, and "
+                      "byte-range access to the exact same URL, "
+                      "the remaining likely causes are: "
+                      "(1) Facebook/Meta rate limiting from "
+                      "repeated runs \u2014 space out runs or wait "
+                      "up to 24h, "
+                      "(2) Cloudflare blocking Meta's crawler "
+                      "specifically (check Bot Fight Mode / WAF "
+                      "on the r2.dev zone), or "
+                      "(3) the video not meeting Facebook Reels "
+                      "format requirements (H.264/AAC, faststart "
+                      "moov atom, 3-90s duration, 9:16 aspect "
+                      "ratio)."
+                  )
+
+              raise SystemExit(
+                  f"ERROR: Buffer rejected {label} after "
+                  f"{max_attempts} attempt(s):\n"
+                  f"{last_error}"
+                  f"{hint}"
               )
 
 
@@ -1339,12 +1632,15 @@ jobs:
 
 
           # ========================================================
-          # FACEBOOK
+          # FACEBOOK (with retry, since this is the channel that
+          # has shown transient "could not be read" failures)
           # ========================================================
 
           create_draft(
               facebook,
               "Facebook",
+              max_attempts=FACEBOOK_MAX_ATTEMPTS,
+              retry_delay_seconds=FACEBOOK_RETRY_DELAY_SECONDS,
           )
 
 
