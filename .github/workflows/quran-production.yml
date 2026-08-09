@@ -1,5 +1,13 @@
 name: Quran Production Pipeline
 
+# Timing is controlled externally by Make.com.
+#
+# workflow_dispatch:
+#   Manual testing from GitHub Actions.
+#
+# repository_dispatch:
+#   Allows Make.com to trigger production through GitHub's API.
+
 on:
   workflow_dispatch: {}
 
@@ -25,6 +33,7 @@ jobs:
       # ============================================================
       # 1. CHECKOUT
       # ============================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -34,6 +43,7 @@ jobs:
       # ============================================================
       # 2. INSTALL DEPENDENCIES
       # ============================================================
+
       - name: Install rendering and storage dependencies
         run: |
           sudo apt-get update
@@ -51,8 +61,9 @@ jobs:
 
 
       # ============================================================
-      # 3. BUILD QURAN VIDEO
+      # 3. BUILD / RENDER QURAN SECTION
       # ============================================================
+
       - name: Build and render next Quran section
         id: build
         env:
@@ -73,6 +84,7 @@ jobs:
       # ============================================================
       # 4. READ WORKER RESULT
       # ============================================================
+
       - name: Read run result
         id: meta
         run: |
@@ -86,7 +98,7 @@ jobs:
 
           if not path.exists():
               raise SystemExit(
-                  "ERROR: run-result.json was not created."
+                  "ERROR: run-result.json was not created by the worker."
               )
 
           with path.open("r", encoding="utf-8") as fh:
@@ -96,7 +108,7 @@ jobs:
 
           if not output:
               raise SystemExit(
-                  "ERROR: run-result.json has no output path."
+                  "ERROR: run-result.json does not contain an output path."
               )
 
           output_path = Path(output)
@@ -115,7 +127,29 @@ jobs:
               )
           )
 
-          # Save the fields needed by later steps.
+          # --------------------------------------------------------
+          # Extract Quran metadata for later social captions.
+          # --------------------------------------------------------
+
+          surah = meta.get("surah") or "Quran"
+
+          section = meta.get("section") or {}
+
+          first_ayah = section.get("first_ayah")
+          last_ayah = section.get("last_ayah")
+
+          cycle = meta.get("cycle") or 1
+
+          theme = meta.get("theme") or ""
+
+          if first_ayah is not None and last_ayah is not None:
+              if first_ayah == last_ayah:
+                  ayah_text = f"Ayah {first_ayah}"
+              else:
+                  ayah_text = f"Ayahs {first_ayah}–{last_ayah}"
+          else:
+              ayah_text = ""
+
           with open(
               os.environ["GITHUB_OUTPUT"],
               "a",
@@ -125,45 +159,6 @@ jobs:
               fh.write(f"video_path={output}\n")
               fh.write(f"video_name={video_name}\n")
               fh.write(f"tag_name={tag_name}\n")
-
-              # ----------------------------------------------------
-              # Quran metadata for social captions.
-              # ----------------------------------------------------
-
-              surah = (
-                  meta.get("surah")
-                  or "Quran"
-              )
-
-              first_ayah = (
-                  meta.get("section", {})
-                  .get("first_ayah")
-              )
-
-              last_ayah = (
-                  meta.get("section", {})
-                  .get("last_ayah")
-              )
-
-              cycle = (
-                  meta.get("cycle")
-                  or 1
-              )
-
-              theme = (
-                  meta.get("theme")
-                  or ""
-              )
-
-              if first_ayah is not None and last_ayah is not None:
-                  if first_ayah == last_ayah:
-                      ayah_text = f"Ayah {first_ayah}"
-                  else:
-                      ayah_text = (
-                          f"Ayahs {first_ayah}–{last_ayah}"
-                      )
-              else:
-                  ayah_text = ""
 
               fh.write(
                   "surah="
@@ -194,8 +189,9 @@ jobs:
 
 
       # ============================================================
-      # 5. GITHUB ARTIFACT BACKUP
+      # 5. BACKUP ARTIFACT
       # ============================================================
+
       - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
@@ -205,8 +201,12 @@ jobs:
 
 
       # ============================================================
-      # 6. GITHUB RELEASE BACKUP
+      # 6. GITHUB RELEASE
+      #
+      # GitHub remains an archive/backup.
+      # R2 becomes the public media source for Buffer.
       # ============================================================
+
       - name: Publish finished video to GitHub Release
         id: release
         uses: softprops/action-gh-release@v2
@@ -234,11 +234,25 @@ jobs:
       # ============================================================
       # 7. UPLOAD VIDEO TO CLOUDFLARE R2
       #
-      # Maximum internal storage target:
-      # 9 GB
+      # Storage target:
+      # 9 GB maximum.
       #
-      # Oldest unprotected media is deleted first if necessary.
+      # If adding the new video would exceed 9 GB,
+      # the oldest MP4 files are deleted first.
+      #
+      # IMPORTANT:
+      # The endpoint handling below is defensive.
+      # It works whether CLOUDFLARE_ACCOUNT_ID contains:
+      #
+      #   f628...
+      #
+      # OR:
+      #
+      #   https://f628....r2.cloudflarestorage.com
+      #
+      # Whitespace is also stripped.
       # ============================================================
+
       - name: Upload video to Cloudflare R2
         id: r2
         env:
@@ -262,30 +276,103 @@ jobs:
           import boto3
           import requests
 
-          ACCOUNT_ID = os.environ["CLOUDFLARE_ACCOUNT_ID"]
-          ACCESS_KEY = os.environ["R2_ACCESS_KEY_ID"]
-          SECRET_KEY = os.environ["R2_SECRET_ACCESS_KEY"]
 
-          BUCKET = os.environ["R2_BUCKET"]
+          # ========================================================
+          # CONFIGURATION
+          # ========================================================
 
-          PUBLIC_BASE = (
-              os.environ["R2_PUBLIC_BASE_URL"]
-              .rstrip("/")
-          )
+          raw_account = os.environ[
+              "CLOUDFLARE_ACCOUNT_ID"
+          ].strip()
+
+          if not raw_account:
+              raise SystemExit(
+                  "ERROR: CLOUDFLARE_ACCOUNT_ID is empty."
+              )
+
+
+          # ========================================================
+          # DEFENSIVE R2 ENDPOINT CONSTRUCTION
+          # ========================================================
+
+          if (
+              raw_account.startswith("http://")
+              or raw_account.startswith("https://")
+          ):
+              ENDPOINT = raw_account.rstrip("/")
+          else:
+              ENDPOINT = (
+                  f"https://{raw_account}"
+                  ".r2.cloudflarestorage.com"
+              )
+
+
+          ACCESS_KEY = os.environ[
+              "R2_ACCESS_KEY_ID"
+          ].strip()
+
+          SECRET_KEY = os.environ[
+              "R2_SECRET_ACCESS_KEY"
+          ].strip()
+
+          BUCKET = os.environ[
+              "R2_BUCKET"
+          ]
+
+          PUBLIC_BASE = os.environ[
+              "R2_PUBLIC_BASE_URL"
+          ].rstrip("/")
 
           VIDEO_PATH = Path(
               os.environ["VIDEO_PATH"]
           )
 
-          VIDEO_NAME = os.environ["VIDEO_NAME"]
+          VIDEO_NAME = os.environ[
+              "VIDEO_NAME"
+          ]
 
-          MAX_STORAGE = (
-              9 * 1024 * 1024 * 1024
+
+          # ========================================================
+          # VALIDATION
+          # ========================================================
+
+          if not ACCESS_KEY:
+              raise SystemExit(
+                  "ERROR: R2_ACCESS_KEY_ID is empty."
+              )
+
+          if not SECRET_KEY:
+              raise SystemExit(
+                  "ERROR: R2_SECRET_ACCESS_KEY is empty."
+              )
+
+          if not VIDEO_PATH.exists():
+              raise SystemExit(
+                  f"ERROR: video does not exist: {VIDEO_PATH}"
+              )
+
+
+          print("========================================")
+          print("R2 CONFIGURATION")
+          print("========================================")
+
+          # Do NOT print credentials.
+          print(
+              f"R2 endpoint: {ENDPOINT}"
           )
 
-          ENDPOINT = (
-              f"https://{ACCOUNT_ID}.r2.cloudflarestorage.com"
+          print(
+              f"R2 bucket: {BUCKET}"
           )
+
+          print(
+              f"Video: {VIDEO_NAME}"
+          )
+
+
+          # ========================================================
+          # CREATE S3/R2 CLIENT
+          # ========================================================
 
           s3 = boto3.client(
               "s3",
@@ -295,29 +382,62 @@ jobs:
               region_name="auto",
           )
 
-          new_size = VIDEO_PATH.stat().st_size
 
+          # ========================================================
+          # TEST R2 CONNECTION
+          # ========================================================
+
+          print("")
+          print("Testing R2 connection...")
+
+          try:
+              s3.head_bucket(
+                  Bucket=BUCKET
+              )
+          except Exception as exc:
+              raise SystemExit(
+                  "ERROR: Could not access R2 bucket.\n"
+                  f"{exc}"
+              )
+
+          print(
+              "R2 bucket connection successful."
+          )
+
+
+          # ========================================================
+          # 9 GB STORAGE LIMIT
+          # ========================================================
+
+          MAX_STORAGE = (
+              9 * 1024 * 1024 * 1024
+          )
+
+          new_size = (
+              VIDEO_PATH.stat().st_size
+          )
+
+          print("")
           print("========================================")
           print("R2 STORAGE CHECK")
           print("========================================")
-
-          print(
-              f"New video: {VIDEO_NAME}"
-          )
 
           print(
               f"New video size: "
               f"{new_size / 1024 / 1024:.2f} MB"
           )
 
+
           if new_size > MAX_STORAGE:
               raise SystemExit(
-                  "The new video itself exceeds 9 GB."
+                  "ERROR: The new video itself is larger "
+                  "than the 9 GB storage limit."
               )
 
-          # --------------------------------------------------------
-          # List existing objects.
-          # --------------------------------------------------------
+
+          # ========================================================
+          # LIST EXISTING OBJECTS
+          # ========================================================
 
           objects = []
 
@@ -332,36 +452,46 @@ jobs:
                   page.get("Contents", [])
               )
 
+
           current_size = sum(
               obj["Size"]
               for obj in objects
           )
 
-          print(
-              f"Current R2 storage: "
-              f"{current_size / 1024 / 1024:.2f} MB"
-          )
-
-          required_total = (
+          projected_size = (
               current_size + new_size
           )
 
-          # --------------------------------------------------------
-          # If there is enough room, upload directly.
-          # --------------------------------------------------------
 
-          if required_total <= MAX_STORAGE:
-              print(
-                  "Enough R2 space available."
-              )
+          print(
+              f"Current storage: "
+              f"{current_size / 1024 / 1024:.2f} MB"
+          )
 
-          else:
+          print(
+              f"Projected storage: "
+              f"{projected_size / 1024 / 1024:.2f} MB"
+          )
+
+          print(
+              f"Storage limit: "
+              f"{MAX_STORAGE / 1024 / 1024:.2f} MB"
+          )
+
+
+          # ========================================================
+          # DELETE OLDEST MP4 FILES IF NECESSARY
+          # ========================================================
+
+          if projected_size > MAX_STORAGE:
+
               print("")
               print(
-                  "9 GB threshold would be exceeded."
+                  "9 GB limit would be exceeded."
               )
+
               print(
-                  "Deleting oldest objects first."
+                  "Beginning oldest-MP4 cleanup..."
               )
 
               candidates = []
@@ -370,34 +500,35 @@ jobs:
 
                   key = obj["Key"]
 
-                  if key == VIDEO_NAME:
-                      continue
-
-                  # Only MP4 media is eligible for automatic
-                  # cleanup. Metadata and other objects are kept.
+                  # Only automatically delete MP4 media.
+                  #
+                  # JSON/SRT metadata remains untouched.
                   if not key.lower().endswith(".mp4"):
                       continue
 
                   candidates.append(obj)
 
+
+              # Oldest first.
               candidates.sort(
                   key=lambda item: item["LastModified"]
               )
 
+
               for obj in candidates:
 
-                  if required_total <= MAX_STORAGE:
+                  if projected_size <= MAX_STORAGE:
                       break
 
                   key = obj["Key"]
                   size = obj["Size"]
 
                   print(
-                      f"Deleting oldest MP4: {key}"
+                      f"Deleting: {key}"
                   )
 
                   print(
-                      f"Freeing "
+                      f"Freeing: "
                       f"{size / 1024 / 1024:.2f} MB"
                   )
 
@@ -406,19 +537,35 @@ jobs:
                       Key=key,
                   )
 
-                  required_total -= size
+                  projected_size -= size
 
-              if required_total > MAX_STORAGE:
+
+              if projected_size > MAX_STORAGE:
                   raise SystemExit(
-                      "Unable to free enough R2 storage "
-                      "without exceeding the 9 GB limit."
+                      "ERROR: Not enough old MP4 media "
+                      "could be deleted to stay below 9 GB."
                   )
 
-          # --------------------------------------------------------
-          # Upload new video.
-          # --------------------------------------------------------
+              print(
+                  "Oldest-media cleanup completed."
+              )
+
+          else:
+
+              print(
+                  "No cleanup required."
+              )
+
+
+          # ========================================================
+          # UPLOAD NEW VIDEO
+          # ========================================================
 
           print("")
+          print("========================================")
+          print("R2 VIDEO UPLOAD")
+          print("========================================")
+
           print(
               "Uploading Quran MP4 to R2..."
           )
@@ -432,10 +579,16 @@ jobs:
               },
           )
 
+
+          # ========================================================
+          # BUILD PUBLIC URL
+          # ========================================================
+
           video_url = (
               f"{PUBLIC_BASE}/"
               f"{quote(VIDEO_NAME, safe='/')}"
           )
+
 
           print("")
           print(
@@ -446,9 +599,15 @@ jobs:
               f"Public URL: {video_url}"
           )
 
-          # --------------------------------------------------------
-          # Verify public URL.
-          # --------------------------------------------------------
+
+          # ========================================================
+          # VERIFY PUBLIC URL
+          # ========================================================
+
+          print("")
+          print(
+              "Checking public R2 URL..."
+          )
 
           verify = requests.head(
               video_url,
@@ -456,35 +615,54 @@ jobs:
               timeout=30,
           )
 
+
           if verify.status_code >= 400:
               raise SystemExit(
-                  "R2 public URL verification failed: "
+                  "ERROR: R2 public URL verification failed: "
                   f"HTTP {verify.status_code}"
               )
+
 
           print(
               "R2 public URL verification passed."
           )
+
+
+          # ========================================================
+          # PASS URL TO NEXT GITHUB ACTION STEP
+          # ========================================================
 
           with open(
               os.environ["GITHUB_OUTPUT"],
               "a",
               encoding="utf-8",
           ) as fh:
+
               fh.write(
                   f"video_url={video_url}\n"
               )
-
-          PY
 
 
       # ============================================================
       # 8. CREATE BUFFER DRAFTS
       #
-      # NOTHING IS PUBLISHED AUTOMATICALLY.
+      # IMPORTANT:
+      # These are DRAFTS.
       #
-      # The generated caption is based on the actual Quran section.
+      # Nothing is automatically published at this stage.
+      #
+      # Instagram:
+      #   Reel
+      #
+      # Facebook:
+      #   Reel
+      #
+      # YouTube:
+      #   Short
+      #
+      # Caption is generated from the actual Quran section.
       # ============================================================
+
       - name: Create Buffer drafts
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
@@ -531,26 +709,29 @@ jobs:
 
 
           # ========================================================
-          # DYNAMIC SOCIAL CAPTION
+          # BUILD SOCIAL CAPTION
           # ========================================================
 
           reference = SURAH
 
           if AYAH_TEXT:
-              reference += f" — {AYAH_TEXT}"
+              reference += (
+                  f" — {AYAH_TEXT}"
+              )
+
 
           caption_parts = [
               f"📖 {reference}",
               "",
           ]
 
-          # The worker's theme is included when available.
-          # This makes each post specific to the actual section.
+
           if THEME:
               caption_parts.extend([
                   THEME,
                   "",
               ])
+
 
           caption_parts.extend([
               "Listen, reflect, and let the words "
@@ -563,16 +744,14 @@ jobs:
               "#IslamicContent",
           ])
 
+
           CAPTION = "\n".join(
               caption_parts
           )
 
 
           # ========================================================
-          # BUFFER CHANNEL DISCOVERY
-          #
-          # We discover the connected channels instead of hardcoding
-          # Facebook/YouTube IDs.
+          # BUFFER HEADERS
           # ========================================================
 
           headers = {
@@ -582,13 +761,23 @@ jobs:
               ),
           }
 
+
+          # ========================================================
+          # BUFFER ORGANIZATION
+          # ========================================================
+
           organization_id = (
               "6a4a94cd8807be89129990e6"
           )
 
+
+          # ========================================================
+          # FIND CONNECTED CHANNELS
+          # ========================================================
+
           channel_query = """
           query GetChannels(
-            $organizationId: OrganizationId!
+            $organizationId: String!
           ) {
             channels(
               input: {
@@ -603,6 +792,7 @@ jobs:
           }
           """
 
+
           response = requests.post(
               API,
               headers=headers,
@@ -616,17 +806,21 @@ jobs:
               timeout=30,
           )
 
+
           response.raise_for_status()
 
           data = response.json()
 
+
           if data.get("errors"):
               raise SystemExit(
-                  json.dumps(
+                  "Buffer channel query failed:\n"
+                  + json.dumps(
                       data["errors"],
                       indent=2,
                   )
               )
+
 
           channels = (
               data
@@ -634,7 +828,9 @@ jobs:
               .get("channels", [])
           )
 
+
           targets = {}
+
 
           for channel in channels:
 
@@ -647,6 +843,7 @@ jobs:
                   channel.get("service")
                   or ""
               ).lower()
+
 
               if service == "instagram":
                   targets["instagram"] = channel
@@ -664,21 +861,23 @@ jobs:
               "youtube",
           ]
 
+
           missing = [
               name
               for name in required
               if name not in targets
           ]
 
+
           if missing:
               raise SystemExit(
                   "Missing connected Buffer channels: "
                   + ", ".join(missing)
-              )
+          )
 
 
           # ========================================================
-          # CREATE POST
+          # CREATE BUFFER DRAFT
           # ========================================================
 
           def create_draft(
@@ -698,7 +897,6 @@ jobs:
                   input: {
                     channelId: $channelId
                     text: $text
-
                     schedulingType: automatic
                     mode: addToQueue
                     saveToDraft: true
@@ -720,11 +918,6 @@ jobs:
                       status
                       channelId
                       text
-                      assets {
-                        id
-                        mimeType
-                        source
-                      }
                     }
                   }
 
@@ -735,12 +928,14 @@ jobs:
               }
               """
 
+
               variables = {
                   "channelId": channel_id,
                   "text": CAPTION,
                   "videoUrl": VIDEO_URL,
                   "metadata": metadata,
               }
+
 
               response = requests.post(
                   API,
@@ -752,44 +947,52 @@ jobs:
                   timeout=30,
               )
 
+
               response.raise_for_status()
 
-              data = response.json()
+              result_data = response.json()
 
-              if data.get("errors"):
-                  print(
-                      json.dumps(
-                          data["errors"],
+
+              if result_data.get(
+                  "errors"
+              ):
+                  raise SystemExit(
+                      f"Buffer GraphQL error for "
+                      f"{label}:\n"
+                      + json.dumps(
+                          result_data["errors"],
                           indent=2,
                       )
                   )
 
-                  raise SystemExit(
-                      f"Buffer GraphQL error for "
-                      f"{label}"
-                  )
 
               result = (
-                  data
+                  result_data
                   .get("data", {})
                   .get("createPost")
               )
 
+
               if not result:
                   raise SystemExit(
                       f"Buffer returned no result "
-                      f"for {label}"
+                      f"for {label}."
                   )
 
-              if "message" in result:
+
+              if result.get(
+                  "message"
+              ):
                   raise SystemExit(
                       f"Buffer rejected {label}: "
                       f"{result['message']}"
                   )
 
+
               post = result.get(
                   "post"
               )
+
 
               if not post:
                   raise SystemExit(
@@ -797,9 +1000,10 @@ jobs:
                       f"{label} draft."
                   )
 
+
               print("")
               print(
-                  f"{label} draft created."
+                  f"{label} draft created successfully."
               )
 
               print(
@@ -853,35 +1057,36 @@ jobs:
               else SURAH
           )
 
-          youtube_metadata = {
-              "youtube": {
-                  "type": "short",
-                  "title": youtube_title,
-                  "categoryId": "27",
-                  "privacy": "public",
-                  "madeForKids": False,
-                  "notifySubscribers": True,
-              }
-          }
 
           create_draft(
               targets["youtube"]["id"],
-              youtube_metadata,
+              {
+                  "youtube": {
+                      "type": "short",
+                      "title": youtube_title,
+                      "categoryId": "27",
+                      "privacy": "public",
+                      "madeForKids": False,
+                      "notifySubscribers": True,
+                  }
+              },
               "YouTube",
           )
 
 
           # ========================================================
-          # SHOW THE CAPTION THAT WAS GENERATED
+          # SHOW GENERATED CAPTION
           # ========================================================
 
           print("")
           print(
               "========================================"
           )
+
           print(
               "GENERATED SOCIAL CAPTION"
           )
+
           print(
               "========================================"
           )
@@ -892,21 +1097,22 @@ jobs:
           print(
               "========================================"
           )
+
           print(
               "BUFFER DRAFT CREATION PASSED"
           )
+
           print(
               "========================================"
           )
-
-          PY
 
 
       # ============================================================
       # 9. NOTIFY MAKE.COM
       #
-      # Make receives the R2 URL, not the GitHub Release MP4 URL.
+      # Make receives the R2 video URL.
       # ============================================================
+
       - name: Notify Make.com
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
@@ -925,15 +1131,18 @@ jobs:
             exit 0
           fi
 
+
           python3 - <<'PY'
           import json
           import os
           import requests
           from pathlib import Path
 
+
           result_path = Path(
               "run-result.json"
           )
+
 
           with result_path.open(
               "r",
@@ -941,19 +1150,23 @@ jobs:
           ) as fh:
               meta = json.load(fh)
 
-          # R2 is now the social-media media source.
+
+          # R2 is the public media source.
           meta["video_url"] = os.environ[
               "VIDEO_URL"
           ]
 
-          # GitHub remains the backup/archive.
+
+          # GitHub remains the archive.
           meta["video_name"] = os.environ[
               "VIDEO_NAME"
           ]
 
+
           meta["release_tag"] = os.environ[
               "TAG_NAME"
           ]
+
 
           response = requests.post(
               os.environ[
@@ -963,7 +1176,9 @@ jobs:
               timeout=90,
           )
 
+
           response.raise_for_status()
+
 
           print(
               "Make.com notification delivered successfully."
