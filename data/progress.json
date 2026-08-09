@@ -46,7 +46,11 @@
     "2:36",
     "2:37",
     "2:38",
-    "2:39"
+    "2:39",
+    "2:40",
+    "2:41",
+    "2:42",
+    "2:43"
   ],
   "published_sections": [
     {
@@ -214,17 +218,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:38",
-      "2:39"
+      "2:40",
+      "2:41",
+      "2:42",
+      "2:43"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 39.21,
-    "visual_id": 27863479,
-    "theme": "guidance",
-    "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-38-to-39-Cycle-1.mp4",
-    "published_sha256": "8e16a9c3c9e8679ddb4abc032c399f17a0bfd1d6cbbe82e788b8a85833cec32c"
+    "duration_seconds": 57.339,
+    "visual_id": 29898627,
+    "theme": "worship",
+    "visual_query": "empty prayer space with warm natural light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-40-to-43-Cycle-1.mp4",
+    "published_sha256": "0a7c944302e2ea21d50d466d7ffc1fc89178a666353554af8df236e5bec9307d"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -233,6 +239,7 @@
     19948838,
     27863479,
     28615722,
+    29898627,
     33807471,
     34464344,
     37127031,
@@ -247,10 +254,11 @@
     "justice": 2,
     "paradise": 2,
     "earth": 1,
-    "knowledge": 1
+    "knowledge": 1,
+    "worship": 1
   },
   "completed_cycles": [],
-  "published_count": 12,
+  "published_count": 13,
   "history": [
     {
       "cycle": 1,
@@ -405,6 +413,21 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-38-to-39-Cycle-1.mp4",
       "published_sha256": "8e16a9c3c9e8679ddb4abc032c399f17a0bfd1d6cbbe82e788b8a85833cec32c",
       "created_at": "2026-08-09T19:17:34Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:40",
+        "2:41",
+        "2:42",
+        "2:43"
+      ],
+      "visual_id": 29898627,
+      "theme": "worship",
+      "visual_query": "empty prayer space with warm natural light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-40-to-43-Cycle-1.mp4",
+      "published_sha256": "0a7c944302e2ea21d50d466d7ffc1fc89178a666353554af8df236e5bec9307d",
+      "created_at": "2026-08-09T19:50:19Z"
     }
   ],
   "visual_history": [
@@ -419,6 +442,7 @@
     37894855,
     19948838,
     33807471,
-    27863479
+    27863479,
+    29898627
   ]
 }
