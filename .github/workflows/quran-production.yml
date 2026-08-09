@@ -57,7 +57,10 @@ jobs:
           GIT_REMOTE: origin
           GIT_BRANCH: ${{ github.ref_name }}
         run: |
-          python3 production/quran_worker_wow.py | tee run-result.json
+          python3 production/quran_worker_wow.py
+          # The script writes run-result.json itself (pure JSON, no log
+          # lines mixed in). A nonzero exit here fails this step directly —
+          # nothing downstream runs on a bad build.
 
       - name: Read run result
         id: meta
