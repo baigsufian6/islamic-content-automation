@@ -1129,7 +1129,7 @@ jobs:
                   metadata_graphql = f"""
                   metadata: {{
                     youtube: {{
-                      type: short
+                      
                       categoryId: "27"
                       title: {json.dumps(
                           youtube_title
