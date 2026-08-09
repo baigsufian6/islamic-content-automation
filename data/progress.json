@@ -50,7 +50,10 @@
     "2:40",
     "2:41",
     "2:42",
-    "2:43"
+    "2:43",
+    "2:44",
+    "2:45",
+    "2:46"
   ],
   "published_sections": [
     {
@@ -218,19 +221,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:40",
-      "2:41",
-      "2:42",
-      "2:43"
+      "2:44",
+      "2:45",
+      "2:46"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 57.339,
-    "visual_id": 29898627,
-    "theme": "worship",
-    "visual_query": "empty prayer space with warm natural light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-40-to-43-Cycle-1.mp4",
-    "published_sha256": "0a7c944302e2ea21d50d466d7ffc1fc89178a666353554af8df236e5bec9307d"
+    "duration_seconds": 38.322,
+    "visual_id": 37542312,
+    "theme": "patience",
+    "visual_query": "slow river flowing peacefully through valley, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowdsno text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-44-to-46-Cycle-1.mp4",
+    "published_sha256": "53418af4177bb7420ca3868f0a668738b19fd9f50e1a05708774b247f526ccbf"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -243,6 +245,7 @@
     33807471,
     34464344,
     37127031,
+    37542312,
     37694201,
     37894855,
     37904635,
@@ -255,10 +258,11 @@
     "paradise": 2,
     "earth": 1,
     "knowledge": 1,
-    "worship": 1
+    "worship": 1,
+    "patience": 1
   },
   "completed_cycles": [],
-  "published_count": 13,
+  "published_count": 14,
   "history": [
     {
       "cycle": 1,
@@ -428,6 +432,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-40-to-43-Cycle-1.mp4",
       "published_sha256": "0a7c944302e2ea21d50d466d7ffc1fc89178a666353554af8df236e5bec9307d",
       "created_at": "2026-08-09T19:50:19Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:44",
+        "2:45",
+        "2:46"
+      ],
+      "visual_id": 37542312,
+      "theme": "patience",
+      "visual_query": "slow river flowing peacefully through valley, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowdsno text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-44-to-46-Cycle-1.mp4",
+      "published_sha256": "53418af4177bb7420ca3868f0a668738b19fd9f50e1a05708774b247f526ccbf",
+      "created_at": "2026-08-09T21:20:41Z"
     }
   ],
   "visual_history": [
@@ -443,6 +461,7 @@
     19948838,
     33807471,
     27863479,
-    29898627
+    29898627,
+    37542312
   ]
 }
