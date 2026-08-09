@@ -2456,16 +2456,14 @@ class VisualEngine:
 # 10. Typography and visual layout engine
 # ============================================================================
 #
-# Presentation notes (design pass v2):
-#   - Palette: warm ivory Arabic text, soft champagne-gold accents, pure white
-#     English translation, sitting directly on the cinematic footage with
-#     outline+shadow only — no flat "subtitle box" behind the text anymore.
-#   - The readability gradient is smoother and feathered rather than banded,
-#     plus a subtle tiled 8-point-star geometric watermark behind the verse
-#     zone at very low opacity — this is what gives it a "designed Islamic
-#     media" identity instead of a generic AI slideshow look.
-#   - A slim double-line frame plus four larger arabesque corner flourishes.
-#   - Thin hairline dividers separate header / verse / footer zones.
+# Presentation notes (design pass v4 — clean/minimal):
+#   - No gold frame, no corner flourishes, no tiled watermark. Text sits
+#     directly on the cinematic footage with only a soft feathered gradient
+#     behind it for legibility — this matches a clean, modern caption style
+#     instead of a "designed plaque" look.
+#   - One header line (Surah name), a larger/bolder Arabic block, a small
+#     ayah-number badge, and the English translation underneath. The ayah
+#     number is fully dynamic per on-screen verse, exactly as before.
 
 
 PALETTE = {
@@ -2481,6 +2479,10 @@ class TypographyEngine:
     def __init__(self):
         self.font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
         self.arabic_font_path = self.find_font([
+            "/usr/share/fonts/**/Amiri-Regular.ttf",
+            "/usr/share/fonts/**/Amiri*Regular*.ttf",
+            "/usr/share/fonts/**/Scheherazade*Regular*.ttf",
+            "/usr/share/fonts/**/ScheherazadeNew*Regular*.ttf",
             "/usr/share/fonts/**/NotoNaskhArabic-Regular.ttf",
             "/usr/share/fonts/**/NotoNaskhArabic*Regular*.ttf",
             "/usr/share/fonts/**/NotoNaskhArabic*.ttf",
@@ -2566,7 +2568,7 @@ class TypographyEngine:
         arabic: str,
         english: str,
     ) -> LayoutResult:
-        header = f"✦  SURAH {romanish(chapter_name)}  ✦"
+        header = f"SURAH {romanish(chapter_name)}"
         header_size, _header_lines, _ = self.fit(
             self.english_font_path,
             header,
@@ -2577,19 +2579,21 @@ class TypographyEngine:
             1.10,
         )
 
+        # Bigger, bolder Arabic block — this is the main visual focus now
+        # that the frame/watermark are gone.
         arabic_size, arabic_lines, arabic_line_height = self.fit(
             self.arabic_font_path,
             arabic,
-            W - 140,
-            460,
-            96,
-            44,
-            1.46,
+            W - 120,
+            480,
+            110,
+            48,
+            1.5,
         )
         arabic_height = arabic_line_height * len(arabic_lines)
 
-        arabic_top = 336
-        arabic_height_limit = 448
+        arabic_top = 340
+        arabic_height_limit = 460
         arabic_center = int(
             arabic_top + (arabic_height_limit - arabic_height) / 2 + arabic_height / 2
         )
@@ -2606,7 +2610,7 @@ class TypographyEngine:
         english_height = english_line_height * len(english_lines)
 
         ornament_y = int(
-            max(742, min(818, arabic_center + arabic_height / 2 + 50))
+            max(742, min(818, arabic_center + arabic_height / 2 + 46))
         )
         english_top = int(
             ornament_y + 54
@@ -2635,147 +2639,36 @@ class TypographyEngine:
         )
 
     def make_overlay(self, path: Path) -> None:
-        """Build the static PNG scrim + frame that sits over the background video.
-
-        v3 design pass (this fix):
-          - The readability gradient and the geometric watermark are now
-            strictly confined INSIDE the picture frame. Previously the
-            watermark tiles were placed on a raw 0..W / 0..H grid, so tiles
-            near the edges bled past the gold border into the outer margin
-            — that's the "going out of border" artifact. Everything below
-            is now clipped to the frame's inner rectangle before it is
-            composited, and the frame itself is drawn as a soft-glow double
-            line so it reads as a deliberate border rather than a thin flat
-            rule.
-          - The star motif is smaller, sparser, and lower-contrast so it
-            reads as a faint textile pattern instead of a busy grid, and it
-            fades out near the frame edges instead of being cut off hard.
+        """Clean, minimal readability scrim — no frame, no flourishes,
+        no watermark. Just a soft top/bottom gradient plus a gentle
+        feathered wash behind the Arabic block, so the text sits directly
+        on the cinematic footage.
         """
         image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        margin = 34
-        inner = margin + 10
-        # Content-safe rectangle: everything decorative (gradient wash,
-        # watermark) stays inside this box, comfortably clear of the frame
-        # lines themselves.
-        safe_left, safe_top = inner + 4, inner + 4
-        safe_right, safe_bottom = W - inner - 4, H - inner - 4
-
-        # --- smoother multi-stop readability gradient (no hard box look) ---
         for y in range(H):
-            if y < 420:
-                alpha = int(130 * (1 - y / 420) ** 1.4)
-            elif y < 1100:
+            if y < 380:
+                alpha = int(120 * (1 - y / 380) ** 1.5)
+            elif y < 1080:
                 alpha = 0
-            elif y < 1300:
-                t = (y - 1100) / 200
-                alpha = int(40 * t)
+            elif y < 1280:
+                t = (y - 1080) / 200
+                alpha = int(45 * t)
             else:
-                t = min((y - 1300) / (H - 1300), 1.0)
-                alpha = int(40 + 170 * (t ** 1.2))
+                t = min((y - 1280) / (H - 1280), 1.0)
+                alpha = int(45 + 175 * (t ** 1.15))
             if alpha:
-                draw.line(
-                    [(safe_left, y), (safe_right, y)],
-                    fill=(*PALETTE["scrim"], alpha),
-                )
+                draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
 
-        # Soft feathered wash behind the Arabic block only (no visible edge).
-        verse_band = Image.new("RGBA", (W, 620), (0, 0, 0, 0))
+        verse_band = Image.new("RGBA", (W, 640), (0, 0, 0, 0))
         band_draw = ImageDraw.Draw(verse_band)
-        for y in range(620):
-            d = min(y, 620 - y) / 310.0
-            alpha = int(55 * (1 - d) ** 1.6)
-            band_draw.line(
-                [(safe_left, y), (safe_right, y)],
-                fill=(*PALETTE["scrim"], max(alpha, 0)),
-            )
-        verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=40))
-        image.alpha_composite(verse_band, (0, 280))
-
-        # --- subtle geometric watermark, fully contained inside the frame ---
-        # Built on its own transparent layer, tiled only where a whole tile
-        # fits, then masked with a soft-edged rectangle so it fades near the
-        # frame instead of being sharply clipped or bleeding past it.
-        star_size = 130
-        star = Image.new("RGBA", (star_size, star_size), (0, 0, 0, 0))
-        sd = ImageDraw.Draw(star)
-        cx, cy, r = star_size / 2, star_size / 2, 38
-        pts = []
-        for k in range(8):
-            ang = math.pi / 8 + k * math.pi / 4
-            rr = r if k % 2 == 0 else r * 0.55
-            pts.append((cx + rr * math.cos(ang), cy + rr * math.sin(ang)))
-        sd.polygon(pts, outline=(*PALETTE["gold"], 26), width=1)
-
-        watermark = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        wm_top, wm_bottom = 430, 1160
-        wm_left, wm_right = safe_left + 20, safe_right - 20
-        for ty in range(wm_top, wm_bottom - star_size + 1, star_size):
-            for tx in range(wm_left, wm_right - star_size + 1, star_size):
-                watermark.alpha_composite(star, (tx, ty))
-
-        # Feathered mask keeps the watermark strictly inside the safe
-        # rectangle and fades it out near the edges rather than cutting it
-        # off — this is what stops any hint of it crossing the gold border.
-        wm_mask = Image.new("L", (W, H), 0)
-        mask_draw = ImageDraw.Draw(wm_mask)
-        mask_draw.rectangle(
-            [wm_left, wm_top, wm_right, wm_bottom], fill=255
-        )
-        wm_mask = wm_mask.filter(ImageFilter.GaussianBlur(radius=48))
-        watermark.putalpha(
-            ImageChops.multiply(watermark.getchannel("A"), wm_mask)
-        )
-        image.alpha_composite(watermark)
-
-        # --- frame: soft double-line with a faint outer glow -----------
-        glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        glow_draw = ImageDraw.Draw(glow)
-        glow_draw.rounded_rectangle(
-            [margin, margin, W - margin, H - margin],
-            radius=26, outline=(*PALETTE["gold"], 90), width=4,
-        )
-        glow = glow.filter(ImageFilter.GaussianBlur(radius=6))
-        image.alpha_composite(glow)
-
-        draw.rounded_rectangle(
-            [margin, margin, W - margin, H - margin],
-            radius=26, outline=(*PALETTE["gold"], 130), width=2,
-        )
-        draw.rounded_rectangle(
-            [inner, inner, W - inner, H - inner],
-            radius=20, outline=(255, 255, 255, 24), width=1,
-        )
-
-        # --- larger, clearer arabesque corner flourishes --------------------
-        def flourish(cx: float, cy: float, flip_x: int, flip_y: int) -> None:
-            gold = (*PALETTE["gold"], 150)
-            arm = 42
-            draw.line(
-                [
-                    (cx, cy + flip_y * arm * 0.4),
-                    (cx + flip_x * arm, cy),
-                    (cx, cy - flip_y * arm * 0.4),
-                ],
-                fill=gold, width=2, joint="curve",
-            )
-            r = 7
-            draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=gold, width=2)
-
-        pad = margin + 30
-        flourish(pad, pad, 1, 1)
-        flourish(W - pad, pad, -1, 1)
-        flourish(pad, H - pad, 1, -1)
-        flourish(W - pad, H - pad, -1, -1)
-
-        # --- hairline zone dividers, inset so they never touch the frame ---
-        draw.line(
-            [(150, 224), (W - 150, 224)], fill=(*PALETTE["gold"], 55), width=1
-        )
-        draw.line(
-            [(150, 1745), (W - 150, 1745)], fill=(*PALETTE["gold"], 45), width=1
-        )
+        for y in range(640):
+            d = min(y, 640 - y) / 320.0
+            alpha = int(50 * (1 - d) ** 1.6)
+            band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], max(alpha, 0)))
+        verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=44))
+        image.alpha_composite(verse_band, (0, 260))
 
         image = image.filter(ImageFilter.GaussianBlur(radius=0.2))
         image.save(path)
@@ -2813,12 +2706,21 @@ class TypographyEngine:
         chapter_id: int,
         chapter_name_arabic: str,
     ) -> None:
+        """
+        Clean layout, four elements per on-screen ayah:
+          1. Header — "SURAH <NAME>" (static per section)
+          2. Arabic verse text (large, centered)
+          3. Ayah-number badge — fully DYNAMIC, updates every single ayah
+             exactly like the reference video (﴿ 83 ﴾ style)
+          4. English translation
+        No box, no ornament clutter, no extra chapter-Arabic/subheader/
+        source lines competing for attention.
+        """
         total_count = len(verses)
         events: list[str] = []
         cursor = 0.0
 
-        header_text = f"✦  SURAH {romanish(chapter_name)}  ✦"
-        arabic_chapter = chapter_name_arabic or ""
+        header_text = f"SURAH {romanish(chapter_name)}"
 
         for idx, (verse, audio) in enumerate(zip(verses, audio_items)):
             start = cursor
@@ -2834,42 +2736,14 @@ class TypographyEngine:
                 verse.translation,
             )
 
-            if idx == 0:
-                range_label = (
-                    f"CHAPTER {chapter_id}  •  "
-                    f"AYAH {verse.verse_number}–{verses[-1].verse_number}"
-                )
-            else:
-                range_label = (
-                    f"CHAPTER {chapter_id}  •  "
-                    f"AYAH {verse.verse_number}"
-                )
-
-            progress = f"{idx + 1} / {total_count}"
+            # Dynamic ayah badge — recalculated every ayah, exactly like
+            # the reference clip (updates as each verse plays).
             arabic_badge = f"﴿ {arabic_digits(verse.verse_number)} ﴾"
 
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Header,,0,0,0,,"
-                f"{{\\an8\\pos(540,64)\\fs{layout.header_size}\\fad(180,180)}}"
+                f"{{\\an8\\pos(540,86)\\fs{layout.header_size}\\fad(180,180)}}"
                 f"{self.ass_escape(header_text)}"
-            )
-
-            if arabic_chapter:
-                events.append(
-                    f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},ChapterArabic,,0,0,0,,"
-                    f"{{\\an8\\pos(540,118)\\fad(180,180)}}"
-                    f"{self.ass_escape(arabic_chapter)}"
-                )
-
-            events.append(
-                f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},SubHeader,,0,0,0,,"
-                f"{{\\an8\\pos(540,160)\\fad(180,180)}}"
-                f"{self.ass_escape(range_label)}"
-            )
-            events.append(
-                f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Source,,0,0,0,,"
-                f"{{\\an8\\pos(540,200)\\fad(180,180)}}"
-                f"SAHEEH INTERNATIONAL  •  SAAD AL-GHAMDI"
             )
 
             events.append(
@@ -2882,7 +2756,7 @@ class TypographyEngine:
             events.append(
                 f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Ornament,,0,0,0,,"
                 f"{{\\an5\\pos(540,{layout.ornament_y})\\fad(180,180)}}"
-                f"✦   ۞   ✦   {self.ass_escape(arabic_badge)}"
+                f"{self.ass_escape(arabic_badge)}"
             )
 
             events.append(
@@ -2892,6 +2766,7 @@ class TypographyEngine:
             )
 
             dots = "".join("●" if j == idx else "○" for j in range(total_count))
+            progress = f"{idx + 1} / {total_count}"
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Progress,,0,0,0,,"
                 f"{{\\an8\\pos(540,1668)\\fad(180,180)}}"
@@ -2903,11 +2778,10 @@ class TypographyEngine:
                 f"{{\\an8\\pos(540,1788)}}QURAN  •  SAHEEH INTERNATIONAL"
             )
 
-        # NOTE the BorderStyle field on Arabic/English (the value right
-        # before Outline/Shadow, e.g. "...,1,3.0,4,...") is now 1
-        # (outline+shadow) instead of 3 (opaque box). That box is what made
-        # the render look like a flat "subtitle plate" instead of text
-        # sitting on the cinematic footage.
+        # BorderStyle=1 (outline+shadow) everywhere — no opaque "plate"
+        # box behind any text; that flat box is exactly what made older
+        # renders look like a generic subtitle plate instead of text
+        # sitting on the footage.
         ass = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -2917,12 +2791,9 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Header,Noto Sans,42,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,1,0,1,2.0,2,8,60,60,0,1
-Style: ChapterArabic,Noto Naskh Arabic,27,&H00AED6E7,&H00AED6E7,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.4,2,8,60,60,0,1
-Style: SubHeader,Noto Sans,25,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.8,2,8,60,60,0,1
-Style: Source,Noto Sans,16,&H00E0D9CC,&H00E0D9CC,&H00101010,&H00000000,0,0,0,0,100,100,1,0,1,1.2,1,8,60,60,0,1
-Style: Arabic,Noto Naskh Arabic,84,&H00C7F1FF,&H00C7F1FF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,3.0,4,5,60,60,0,1
-Style: Ornament,Noto Sans,26,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.6,2,5,60,60,0,1
+Style: Header,Noto Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,2,0,1,2.0,2,8,60,60,0,1
+Style: Arabic,Amiri,92,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,3.2,4,5,50,50,0,1
+Style: Ornament,Noto Sans,28,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.8,2,5,60,60,0,1
 Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,2.4,3,8,70,70,0,1
 Style: Progress,Noto Sans,18,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.4,1,8,60,60,0,1
 Style: Footer,Noto Sans,15,&H00D6CFC1,&H00D6CFC1,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.2,1,8,60,60,0,1
@@ -3015,9 +2886,6 @@ class VideoRenderer:
         cycle: int,
         visual_id: int,
     ) -> str:
-        # Deterministic camera profile — slightly faster periods than before
-        # so the motion actually reads on a <60s clip instead of being
-        # imperceptibly slow.
         profiles = [
             "x='(iw-1080)/2 + (iw-1080)/2*0.28*sin(2*PI*t/28)':y='(ih-1920)/2 + (ih-1920)/2*0.18*cos(2*PI*t/35)'",
             "x='(iw-1080)/2 + (iw-1080)/2*0.20*cos(2*PI*t/31)':y='(ih-1920)/2 + (ih-1920)/2*0.20*sin(2*PI*t/37)'",
@@ -3026,12 +2894,6 @@ class VideoRenderer:
         ]
         profile = profiles[(cycle + visual_id) % len(profiles)]
 
-        # Supersample: scale up to 1.5x target, crop with motion at that
-        # higher resolution, THEN scale back down to final size with a sharp
-        # filter + light unsharp pass. This anti-aliases the pan/crop motion
-        # and restores perceived detail that compression would otherwise
-        # soften — the main "video quality" lever besides the source clip
-        # itself.
         run_cmd([
             "ffmpeg", "-y",
             "-stream_loop", "-1",
@@ -3191,13 +3053,6 @@ class Publisher:
         metadata["published_sha256"] = sha256_file(video_path)
         metadata["published_at"] = utc_now()
 
-        # ------------------------------------------------------------------
-        # Sidecar .srt captions, published next to the MP4 under the same
-        # stem. Timed against the exact same audio timeline as the burned-in
-        # captions (see CaptionEngine.make_srt), so uploaders/automation
-        # (e.g. make.com -> Instagram/YouTube Shorts) can attach a caption
-        # file that is guaranteed to match what's on screen.
-        # ------------------------------------------------------------------
         captions_path: Optional[Path] = None
         if captions_source is not None and captions_source.exists():
             captions_path = PUBLISH / f"{video_path.stem}.srt"
@@ -3233,9 +3088,6 @@ class Publisher:
             "published_sha256"
         )
 
-        # ==============================================================
-        # Remove duplicate SHA entries.
-        # ==============================================================
         cleaned: list[dict[str, Any]] = []
         for item in queue:
             if not isinstance(item, dict):
@@ -3245,9 +3097,6 @@ class Publisher:
             cleaned.append(item)
         queue = cleaned
 
-        # ==============================================================
-        # Add current publication.
-        # ==============================================================
         queue.append({
             "status": "pending",
             "video_file": video_path.name,
@@ -3264,14 +3113,6 @@ class Publisher:
             "created_at": utc_now(),
         })
 
-        # ==============================================================
-        # SAFETY LIMIT
-        #
-        # Keep pending items, but cap the entire queue.
-        #
-        # If the queue is ever accidentally left untouched for months,
-        # the JSON still cannot grow without bound.
-        # ==============================================================
         MAX_QUEUE_ITEMS = 500
 
         pending = [
@@ -3285,9 +3126,7 @@ class Publisher:
             if item.get("status") != "pending"
         ]
 
-        # Keep the newest records.
         pending = pending[-MAX_QUEUE_ITEMS:]
-        # Completed/other records don't need to accumulate forever.
         non_pending = non_pending[-100:]
 
         queue = non_pending + pending
@@ -3524,13 +3363,6 @@ class QuranProduction:
             section_dir,
         )
 
-        # --------------------------------------------------------------
-        # Overlay + burned-in subtitles + sidecar captions are entirely
-        # independent of which background visual is eventually chosen, so
-        # build them once, up front. The sidecar .srt is timed against the
-        # exact same audio_items durations as the burned-in ASS captions,
-        # so the two can never drift apart or say different things.
-        # --------------------------------------------------------------
         overlay = section_dir / "overlay.png"
         self.typography.make_overlay(overlay)
 
@@ -3547,15 +3379,6 @@ class QuranProduction:
         captions = section_dir / "captions.srt"
         CaptionEngine.make_srt(captions, selected, audio_items)
 
-        # --------------------------------------------------------------
-        # Visual selection with retry: a fresh (never-used) background is
-        # strongly preferred, but a single bad Pexels asset (corrupt
-        # download, transient network failure, an unreadable codec, etc.)
-        # must never fail the whole production run. find_candidates()
-        # returns an ordered shortlist — fresh-first, then least-recently
-        # -used reuse as the last resort — and we walk it until one
-        # candidate downloads and renders successfully.
-        # --------------------------------------------------------------
         theme, queries, fallback_queries = self.meaning.visual_queries(selected, cycle)
         candidates = self.visuals.find_candidates(queries, fallback_queries, audio_duration)
         if not candidates:
@@ -3678,11 +3501,11 @@ class QuranProduction:
                 "audio_channels": qa["audio_channels"],
                 "audio_sample_rate": qa["audio_sample_rate"],
                 "layout": (
-                    "Surah title / Arabic Surah name / chapter-ayah / source / "
-                    "Arabic verse / Islamic ornament / English translation / progress"
+                    "Surah title / Arabic verse / dynamic ayah badge / "
+                    "English translation / progress"
                 ),
                 "fonts": {
-                    "arabic": "Noto Naskh Arabic",
+                    "arabic": Path(self.typography.arabic_font_path).stem,
                     "english": "Noto Sans",
                 },
             },
@@ -3705,8 +3528,6 @@ class QuranProduction:
         )
         self.publisher.enqueue(metadata, publish_video, publish_metadata)
 
-        # Capture freshness BEFORE commit(); commit() records the current
-        # visual as used, so checking afterward would always report reused.
         visual_is_fresh = visual.video_id not in self.progress.used_visuals
 
         self.progress.commit(
@@ -3729,20 +3550,6 @@ class QuranProduction:
 
         self.git.commit_if_enabled()
 
-        # --------------------------------------------------------------
-        # LONG-RUN DISK SAFETY.
-        #
-        # section_dir can hold several source/background MP4 attempts (one
-        # per visual candidate tried), the final render, raw audio, the
-        # overlay PNG, and subtitle/caption files. None of that is needed
-        # once the MP4 + metadata + captions have been copied into
-        # PUBLISH/. Left alone, this would grow output/production/ without
-        # bound across thousands of automated runs. Clean it up unless the
-        # operator explicitly asked to keep it (QURAN_KEEP_BUILD=1, e.g.
-        # for local debugging). The audio cache in BUILD/_audio-cache is
-        # NOT touched here — it is a small, bounded, reusable cache shared
-        # across every future run.
-        # --------------------------------------------------------------
         if not KEEP_BUILD:
             shutil.rmtree(section_dir, ignore_errors=True)
             log("Build artifacts cleaned up (set QURAN_KEEP_BUILD=1 to keep them).", "DEBUG")
