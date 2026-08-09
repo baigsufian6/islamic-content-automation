@@ -2007,7 +2007,7 @@ class PassagePlanner:
             if d is None:
                 raise RuntimeError(f"Missing audio duration for {verse.verse_key}")
 
-            if selected and total + d > TARGET_MAX and total >= TARGET_MIN:
+            if selected and total + d > TARGET_MAX:
                 break
 
             selected.append(verse)
@@ -3457,7 +3457,7 @@ class QuranProduction:
             item = self.audio.fetch(verse.verse_key)
             d = item.duration
 
-            if duration_map and running_total + d > TARGET_MAX and running_total >= TARGET_MIN:
+            if duration_map and running_total + d > TARGET_MAX:
                 break
 
             duration_map[verse.verse_key] = d
