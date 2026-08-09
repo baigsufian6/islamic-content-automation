@@ -63,6 +63,7 @@ jobs:
           QF_CLIENT_SECRET: ${{ secrets.QF_CLIENT_SECRET }}
           QF_ENV: ${{ secrets.QF_ENV }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
 
           COMMIT_PROGRESS: "1"
           GIT_PUSH_PROGRESS: "1"
