@@ -52,7 +52,12 @@ Required:
   PEXELS_API_KEY
 
 Optional:
-  ALLOW_VISUAL_REUSE=1
+  ALLOW_VISUAL_REUSE=1   (legacy — kept for compatibility only; reuse of an
+                          already-used background is now ALWAYS the final
+                          safety net regardless of this flag, so a run can
+                          never fail just because every matching visual has
+                          been used before. A brand-new/never-used visual is
+                          still always preferred whenever one is available.)
   COMMIT_PROGRESS=1
   GIT_PUSH_PROGRESS=1
   GIT_REMOTE=origin
@@ -63,7 +68,15 @@ Optional:
   QURAN_FORCE_REINDEX=1
   QURAN_DRY_RUN=1
   QURAN_RENDER_PREVIEW=1
-  QURAN_KEEP_BUILD=1
+  QURAN_KEEP_BUILD=1     (keep output/production/<section>/ after a
+                          successful publish, for debugging. By default the
+                          per-section build folder — source/background MP4
+                          attempts, raw audio, overlay, subtitles, captions —
+                          is deleted right after publish so long-running
+                          automation never fills up disk. The small, shared
+                          audio cache in output/production/_audio-cache is
+                          never deleted by this flag; it is bounded on its
+                          own by the size of the Quran.)
 
 The script intentionally avoids requiring an AI service for the core pipeline.
 The semantic selector is deterministic and can later be replaced by a semantic
@@ -202,14 +215,55 @@ def atomic_write_json(path: Path, value: Any) -> None:
     tmp.replace(path)
 
 
-def load_json(path: Path, default: Any) -> Any:
+def load_json(path: Path, default: Any = None) -> Any:
+    """
+    Load JSON safely.
+
+    For ordinary optional JSON files, return `default` when the file
+    does not exist.
+
+    For an existing but corrupt JSON file, STOP instead of silently
+    replacing it with an empty/default structure.
+
+    This is especially important for progress.json because silently
+    resetting a corrupt progress file could cause Quran verses to be
+    repeated.
+    """
     if not path.exists():
         return default
+
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        log(f"Could not read {path}: {exc}", "WARN")
-        return default
+        text = path.read_text(encoding="utf-8")
+
+        if not text.strip():
+            raise RuntimeError(
+                f"{path} exists but is empty."
+            )
+
+        return json.loads(text)
+
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"CRITICAL: {path} contains invalid/corrupt JSON. "
+            f"Refusing to continue with a default state because "
+            f"doing so could reset production progress. "
+            f"Repair or restore the file before running again. "
+            f"JSON error: {exc}"
+        ) from exc
+
+    except OSError as exc:
+        raise RuntimeError(
+            f"CRITICAL: unable to read {path}. "
+            f"Refusing to continue because production state may be "
+            f"unavailable. Error: {exc}"
+        ) from exc
+
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(
+            f"CRITICAL: {path} is not valid UTF-8 JSON. "
+            f"Refusing to reset production state. "
+            f"Error: {exc}"
+        ) from exc
 
 
 def sha256_file(path: Path) -> str:
@@ -622,24 +676,175 @@ class ProgressStore:
         self.verses = verses
         self.id_by_key = {v.verse_key: v.id for v in verses}
         self.valid_keys = set(self.id_by_key)
+
         self.state = load_json(PROGRESS, {})
         if not isinstance(self.state, dict):
+            log(
+                "progress.json was not a JSON object; "
+                "starting from a safe empty state.",
+                "WARN",
+            )
             self.state = {}
 
+        # ------------------------------------------------------------------
+        # State schema
+        # ------------------------------------------------------------------
         self.state.setdefault("schema_version", self.SCHEMA)
         self.state.setdefault("cycle", 1)
         self.state.setdefault("used_verses", [])
         self.state.setdefault("used_pexels_ids", [])
+        self.state.setdefault("visual_history", [])
         self.state.setdefault("theme_usage", {})
         self.state.setdefault("completed_cycles", [])
         self.state.setdefault("published_count", 0)
         self.state.setdefault("last_section", None)
         self.state.setdefault("history", [])
 
-        self.used = set(self.state.get("used_verses", [])) & self.valid_keys
-        self.used_visuals = {int(x) for x in self.state.get("used_pexels_ids", [])}
-        self.theme_usage = dict(self.state.get("theme_usage", {}))
-        self.cycle = int(self.state.get("cycle", 1))
+        # ------------------------------------------------------------------
+        # Quran progress
+        # ------------------------------------------------------------------
+        raw_used = self.state.get("used_verses", [])
+
+        if not isinstance(raw_used, list):
+            log(
+                "Invalid used_verses state detected; rebuilding it safely.",
+                "WARN",
+            )
+            raw_used = []
+
+        self.used = {
+            str(key)
+            for key in raw_used
+            if str(key) in self.valid_keys
+        }
+
+        # ------------------------------------------------------------------
+        # Pexels visual memory
+        #
+        # Keep a large rolling memory instead of allowing progress.json
+        # to grow forever.
+        #
+        # 2000 IDs is intentionally generous. It means the pipeline will
+        # normally avoid repeating a background for a very long time.
+        # ------------------------------------------------------------------
+        MAX_VISUAL_MEMORY = 2000
+
+        raw_visuals = self.state.get("used_pexels_ids", [])
+
+        if not isinstance(raw_visuals, list):
+            log(
+                "Invalid used_pexels_ids state detected; "
+                "rebuilding safely.",
+                "WARN",
+            )
+            raw_visuals = []
+
+        cleaned_visuals: list[int] = []
+
+        for value in raw_visuals:
+            try:
+                visual_id = int(value)
+            except (TypeError, ValueError):
+                continue
+
+            if visual_id > 0 and visual_id not in cleaned_visuals:
+                cleaned_visuals.append(visual_id)
+
+        # Keep most recent IDs.
+        cleaned_visuals = cleaned_visuals[-MAX_VISUAL_MEMORY:]
+
+        self.used_visuals = set(cleaned_visuals)
+
+        self.state["used_pexels_ids"] = cleaned_visuals
+
+        # ------------------------------------------------------------------
+        # Visual usage order
+        #
+        # This is separate from used_pexels_ids because it tells us which
+        # visual was used most recently. That makes reuse genuinely
+        # least-recently-used instead of guessing from the numeric Pexels ID.
+        # ------------------------------------------------------------------
+        raw_visual_history = self.state.get("visual_history", [])
+
+        if not isinstance(raw_visual_history, list):
+            raw_visual_history = []
+
+        cleaned_visual_history: list[int] = []
+
+        for value in raw_visual_history:
+            try:
+                visual_id = int(value)
+            except (TypeError, ValueError):
+                continue
+
+            if visual_id > 0:
+                # Remove previous occurrence so newest use is at the end.
+                if visual_id in cleaned_visual_history:
+                    cleaned_visual_history.remove(visual_id)
+
+                cleaned_visual_history.append(visual_id)
+
+        cleaned_visual_history = cleaned_visual_history[-MAX_VISUAL_MEMORY:]
+
+        self.state["visual_history"] = cleaned_visual_history
+
+        # ------------------------------------------------------------------
+        # Theme intelligence
+        #
+        # IMPORTANT:
+        # Do NOT reset this between Quran cycles.
+        # It is deliberately persistent so Cycle 2, 3, 4... learn which
+        # visual variants have already been used.
+        # ------------------------------------------------------------------
+        raw_theme_usage = self.state.get("theme_usage", {})
+
+        if not isinstance(raw_theme_usage, dict):
+            raw_theme_usage = {}
+
+        self.theme_usage = {
+            str(theme): max(0, int(count))
+            for theme, count in raw_theme_usage.items()
+            if isinstance(count, (int, float, str))
+            and str(count).lstrip("-").isdigit()
+        }
+
+        # ------------------------------------------------------------------
+        # Cycle information
+        # ------------------------------------------------------------------
+        try:
+            self.cycle = max(1, int(self.state.get("cycle", 1)))
+        except (TypeError, ValueError):
+            self.cycle = 1
+
+        # ------------------------------------------------------------------
+        # Bound historical records.
+        # ------------------------------------------------------------------
+        MAX_HISTORY = 500
+        MAX_COMPLETED_CYCLES = 100
+
+        history = self.state.get("history", [])
+        if not isinstance(history, list):
+            history = []
+
+        self.state["history"] = history[-MAX_HISTORY:]
+
+        completed_cycles = self.state.get("completed_cycles", [])
+        if not isinstance(completed_cycles, list):
+            completed_cycles = []
+
+        self.state["completed_cycles"] = completed_cycles[-MAX_COMPLETED_CYCLES:]
+
+        # ------------------------------------------------------------------
+        # Published count
+        # ------------------------------------------------------------------
+        try:
+            self.state["published_count"] = max(
+                0,
+                int(self.state.get("published_count", 0)),
+            )
+        except (TypeError, ValueError):
+            self.state["published_count"] = 0
+
         self.audit()
 
     def audit(self) -> None:
@@ -693,56 +898,363 @@ class ProgressStore:
         if len(self.used) < len(self.verses):
             return
 
-        self.state["completed_cycles"].append({
+        MAX_COMPLETED_CYCLES = 100
+
+        completed_cycles = self.state.get("completed_cycles", [])
+        if not isinstance(completed_cycles, list):
+            completed_cycles = []
+
+        completed_cycles.append({
             "cycle": self.cycle,
             "verses": len(self.verses),
             "completed_at": utc_now(),
-            "published_count": int(self.state.get("published_count", 0)),
+            "published_count": int(
+                self.state.get("published_count", 0)
+            ),
         })
+
+        # Safety: don't let completed cycle history grow forever.
+        completed_cycles = completed_cycles[-MAX_COMPLETED_CYCLES:]
+
         self.cycle += 1
+
+        # --------------------------------------------------------------
+        # Quran selection resets.
+        # --------------------------------------------------------------
         self.used = set()
-        self.theme_usage = {}
         self.state["cycle"] = self.cycle
         self.state["used_verses"] = []
-        self.state["theme_usage"] = {}
-        log(f"QURAN CYCLE {self.cycle} STARTING — every ayah of the previous cycle was covered.")
+
+        # --------------------------------------------------------------
+        # IMPORTANT:
+        #
+        # DO NOT reset theme_usage.
+        #
+        # Theme usage is our long-term visual intelligence.
+        # Cycle 2 should know what Cycle 1 already used.
+        # Cycle 3 should know what Cycles 1 + 2 used.
+        # --------------------------------------------------------------
+        self.state["theme_usage"] = self.theme_usage
+        self.state["completed_cycles"] = completed_cycles
+
+        log(
+            f"QURAN CYCLE {self.cycle} STARTING — "
+            f"every ayah of the previous cycle was covered. "
+            f"Visual/theme intelligence is being preserved across cycles."
+        )
+        atomic_write_json(PROGRESS, self.state)
 
     def commit(
-        self,
-        *,
-        keys: list[str],
-        visual_id: int,
-        theme: str,
-        metadata: dict[str, Any],
-    ) -> None:
-        self.used.update(keys)
-        self.used_visuals.add(visual_id)
-        self.theme_usage[theme] = int(self.theme_usage.get(theme, 0)) + 1
+    self,
+    *,
+    keys: list[str],
+    visual_id: int,
+    theme: str,
+    metadata: dict[str, Any],
+) -> None:
+    """
+    Atomically commit one successfully published Quran section.
 
-        history_item = {
-            "cycle": self.cycle,
-            "verse_keys": keys,
-            "visual_id": visual_id,
-            "theme": theme,
-            "published_file": metadata.get("published_file"),
-            "created_at": utc_now(),
-        }
+    Safety guarantees:
+      - validates verse keys before changing state
+      - validates Pexels visual ID
+      - preserves Quran cycle integrity
+      - keeps theme intelligence across cycles
+      - keeps Pexels visual memory bounded
+      - keeps visual LRU history bounded
+      - keeps production history bounded
+      - keeps completed-cycle history bounded
+      - writes progress atomically
+    """
 
-        history = self.state.get("history", [])
-        history.append(history_item)
-        history = history[-200:]
+    # ==============================================================
+    # 1. Validate Quran verse keys BEFORE modifying anything.
+    # ==============================================================
 
-        self.state.update({
-            "schema_version": self.SCHEMA,
-            "cycle": self.cycle,
-            "used_verses": sorted(self.used, key=lambda key: self.id_by_key[key]),
-            "used_pexels_ids": sorted(self.used_visuals),
-            "theme_usage": self.theme_usage,
-            "published_count": int(self.state.get("published_count", 0)) + 1,
-            "last_section": metadata,
-            "history": history,
-        })
-        atomic_write_json(PROGRESS, self.state)
+    if not keys:
+        raise RuntimeError(
+            "Progress commit refused: no Quran verse keys supplied."
+        )
+
+    invalid_keys = [
+        key
+        for key in keys
+        if key not in self.valid_keys
+    ]
+
+    if invalid_keys:
+        raise RuntimeError(
+            "Progress commit refused: invalid Quran verse key(s): "
+            f"{invalid_keys[:5]}"
+        )
+
+    # Prevent accidental duplicate keys inside one production.
+    if len(keys) != len(set(keys)):
+        raise RuntimeError(
+            "Progress commit refused: duplicate Quran verse keys "
+            "were supplied."
+        )
+
+    # ==============================================================
+    # 2. Validate Pexels visual ID.
+    # ==============================================================
+
+    try:
+        visual_id = int(visual_id)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(
+            f"Progress commit refused: invalid Pexels visual ID "
+            f"{visual_id!r}."
+        ) from exc
+
+    if visual_id <= 0:
+        raise RuntimeError(
+            f"Progress commit refused: invalid Pexels visual ID "
+            f"{visual_id}."
+        )
+
+    # ==============================================================
+    # 3. Normalize theme.
+    # ==============================================================
+
+    theme = str(theme or "reflection").strip()
+
+    if not theme:
+        theme = "reflection"
+
+    # ==============================================================
+    # 4. Update Quran usage.
+    # ==============================================================
+
+    self.used.update(keys)
+
+    # ==============================================================
+    # 5. Persistent theme intelligence.
+    #
+    # IMPORTANT:
+    # This is intentionally NOT reset when a new Quran cycle starts.
+    # Cycle 2 learns from Cycle 1, Cycle 3 learns from 1 + 2, etc.
+    # ==============================================================
+
+    current_theme_count = self.theme_usage.get(theme, 0)
+
+    try:
+        current_theme_count = int(current_theme_count)
+    except (TypeError, ValueError):
+        current_theme_count = 0
+
+    self.theme_usage[theme] = max(
+        0,
+        current_theme_count,
+    ) + 1
+
+    # ==============================================================
+    # 6. BOUNDED PEXELS VISUAL MEMORY.
+    #
+    # Never allow this set to grow forever during a long-running
+    # process.
+    # ==============================================================
+
+    MAX_VISUAL_MEMORY = 2000
+
+    visual_history = self.state.get(
+        "visual_history",
+        [],
+    )
+
+    if not isinstance(visual_history, list):
+        visual_history = []
+
+    # Clean visual history first.
+    cleaned_visual_history: list[int] = []
+
+    for value in visual_history:
+        try:
+            existing_id = int(value)
+        except (TypeError, ValueError):
+            continue
+
+        if existing_id <= 0:
+            continue
+
+        # Remove duplicate occurrence so the most recent occurrence
+        # can be placed at the end.
+        if existing_id in cleaned_visual_history:
+            cleaned_visual_history.remove(existing_id)
+
+        cleaned_visual_history.append(existing_id)
+
+    # Current visual becomes the newest-used visual.
+    if visual_id in cleaned_visual_history:
+        cleaned_visual_history.remove(visual_id)
+
+    cleaned_visual_history.append(visual_id)
+
+    # Hard memory limit.
+    cleaned_visual_history = (
+        cleaned_visual_history[-MAX_VISUAL_MEMORY:]
+    )
+
+    # Store the bounded usage order.
+    self.state["visual_history"] = cleaned_visual_history
+
+    # The used-visual set is derived from the same bounded history.
+    #
+    # This is important:
+    # we do NOT simply keep adding forever to self.used_visuals.
+    self.used_visuals = set(
+        cleaned_visual_history
+    )
+
+    # ==============================================================
+    # 7. Keep Quran verse usage clean and deterministic.
+    # ==============================================================
+
+    ordered_used_verses = sorted(
+        self.used,
+        key=lambda key: self.id_by_key[key],
+    )
+
+    # ==============================================================
+    # 8. Production history.
+    # ==============================================================
+
+    history = self.state.get(
+        "history",
+        [],
+    )
+
+    if not isinstance(history, list):
+        history = []
+
+    history_item = {
+        "cycle": self.cycle,
+        "verse_keys": list(keys),
+        "visual_id": visual_id,
+        "theme": theme,
+        "visual_query": metadata.get(
+            "visual_query"
+        ),
+        "published_file": metadata.get(
+            "published_file"
+        ),
+        "published_sha256": metadata.get(
+            "published_sha256"
+        ),
+        "created_at": utc_now(),
+    }
+
+    history.append(history_item)
+
+    # Long-term safety limit.
+    MAX_HISTORY = 500
+
+    history = history[-MAX_HISTORY:]
+
+    # ==============================================================
+    # 9. Completed cycle history.
+    # ==============================================================
+
+    completed_cycles = self.state.get(
+        "completed_cycles",
+        [],
+    )
+
+    if not isinstance(completed_cycles, list):
+        completed_cycles = []
+
+    MAX_COMPLETED_CYCLES = 100
+
+    completed_cycles = (
+        completed_cycles[-MAX_COMPLETED_CYCLES:]
+    )
+
+    # ==============================================================
+    # 10. Published count.
+    # ==============================================================
+
+    try:
+        published_count = int(
+            self.state.get(
+                "published_count",
+                0,
+            )
+        )
+    except (TypeError, ValueError):
+        published_count = 0
+
+    published_count = max(
+        0,
+        published_count,
+    ) + 1
+
+    # ==============================================================
+    # 11. Store the complete bounded state.
+    # ==============================================================
+
+    self.state.update({
+        "schema_version": self.SCHEMA,
+        "cycle": self.cycle,
+
+        # Quran progress
+        "used_verses": ordered_used_verses,
+
+        # Bounded visual memory
+        "used_pexels_ids": sorted(
+            self.used_visuals
+        ),
+        "visual_history": cleaned_visual_history,
+
+        # Persistent intelligence
+        "theme_usage": self.theme_usage,
+
+        # Bounded historical records
+        "history": history,
+        "completed_cycles": completed_cycles,
+
+        # Counters / metadata
+        "published_count": published_count,
+        "last_section": metadata,
+    })
+
+    # ==============================================================
+    # 12. Final sanity checks BEFORE writing.
+    # ==============================================================
+
+    if len(self.state["used_pexels_ids"]) > MAX_VISUAL_MEMORY:
+        raise RuntimeError(
+            "Internal safety check failed: "
+            "used_pexels_ids exceeded the configured limit."
+        )
+
+    if len(self.state["visual_history"]) > MAX_VISUAL_MEMORY:
+        raise RuntimeError(
+            "Internal safety check failed: "
+            "visual_history exceeded the configured limit."
+        )
+
+    if len(self.state["history"]) > MAX_HISTORY:
+        raise RuntimeError(
+            "Internal safety check failed: "
+            "history exceeded the configured limit."
+        )
+
+    if len(self.state["completed_cycles"]) > MAX_COMPLETED_CYCLES:
+        raise RuntimeError(
+            "Internal safety check failed: "
+            "completed_cycles exceeded the configured limit."
+        )
+
+    # ==============================================================
+    # 13. Atomic persistence.
+    #
+    # Never directly overwrite progress.json.
+    # ==============================================================
+    
+    atomic_write_json(
+        PROGRESS,
+        self.state,
+    )
 
 
 # ============================================================================
@@ -750,65 +1262,408 @@ class ProgressStore:
 # ============================================================================
 
 THEMES: list[tuple[str, list[str], list[str]]] = [
-    ("mercy", ["mercy", "merciful", "compassion", "forgive", "forgiveness", "gracious", "kind"], [
-        "soft golden sunrise over calm hills",
-        "warm morning light through clouds",
-        "gentle sunrise over a quiet valley",
+
+    ("mercy", [
+        "mercy", "merciful", "compassion", "forgive", "forgiveness",
+        "forgiving", "gracious", "kind", "rahmah"
+    ], [
+        "soft golden sunrise over peaceful desert hills",
+        "warm sunlight spreading across a quiet valley",
+        "gentle sunrise over vast peaceful mountains",
+        "golden light breaking through soft morning clouds",
+        "warm lantern glowing inside quiet Islamic architecture",
+        "open Quran manuscript illuminated by warm candlelight",
+        "sunlight entering a peaceful mosque through geometric windows",
+        "calm landscape glowing with soft golden morning light",
     ]),
-    ("guidance", ["guidance", "guide", "guided", "straight path", "path"], [
-        "winding path through peaceful landscape morning",
-        "trail through misty forest sunrise",
-        "quiet road through open countryside",
+
+    ("guidance", [
+        "guidance", "guide", "guided", "guiding", "straight path",
+        "path", "way", "direction"
+    ], [
+        "peaceful mountain path leading toward sunrise",
+        "winding desert path toward distant golden light",
+        "ancient stone pathway illuminated at dawn",
+        "lantern illuminating a quiet stone passage",
+        "mountain trail disappearing into morning mist",
+        "peaceful road through vast open landscape at sunrise",
+        "ancient Islamic archway with light beyond it",
+        "single path through quiet hills under morning sky",
     ]),
-    ("creation", ["creation", "created", "heavens", "earth", "sky", "sun", "moon", "stars"], [
-        "vast night sky and stars",
-        "mountains under dramatic sky",
-        "sun and clouds over open horizon",
+
+    ("creation", [
+        "creation", "created", "heavens", "signs", "universe",
+        "sun", "moon", "stars", "sky", "skies", "cloud", "clouds"
+    ], [
+        "vast star-filled sky over dramatic mountains",
+        "moon rising above distant desert mountains",
+        "galaxy nebula deep space",
+        "milky way over desert horizon",
+        "slow moving clouds across vast blue sky",
+        "sun rays breaking through enormous clouds",
+        "full moon above distant mountains",
+        "timelapse clouds moving across a vast horizon",
     ]),
-    ("water", ["rain", "water", "river", "rivers", "sea", "ocean", "spring"], [
-        "flowing river through green valley",
-        "gentle rain over calm landscape",
-        "waves rolling onto quiet shore",
+
+    ("water", [
+        "rain", "water", "river", "rivers", "spring",
+        "springs", "stream", "streams"
+    ], [
+        "clear river flowing through green mountain valley",
+        "gentle rain falling over peaceful landscape",
+        "rain clouds moving over distant mountains",
+        "fresh spring water flowing between mountain rocks",
+        "peaceful waterfall surrounded by green landscape",
+        "clear river reflecting mountains at sunrise",
+        "raindrops on window glass",
+        "fountain courtyard reflection",
     ]),
-    ("garden", ["garden", "gardens", "fruit", "fruits", "green", "trees", "orchard"], [
-        "lush green garden sunlight leaves",
-        "orchard trees in soft sunlight",
-        "botanical garden morning light",
+
+    ("garden", [
+        "garden", "gardens", "fruit", "fruits", "green",
+        "trees", "tree", "orchard", "orchards", "shade"
+    ], [
+        "lush green garden with soft sunlight through leaves",
+        "peaceful orchard trees glowing in morning sunlight",
+        "date palm oasis surrounded by green landscape",
+        "lush garden with gentle flowing water",
+        "green courtyard garden with Islamic arches",
+        "vines growing across ancient stone walls",
+        "peaceful botanical garden in soft morning light",
+        "date palms beside clear water in desert oasis",
     ]),
-    ("light", ["light", "darkness", "dark", "night", "morning", "day"], [
-        "sunlight breaking through clouds",
-        "golden hour light over fields",
-        "soft light through forest canopy",
+
+    ("light", [
+        "light", "bright", "brightness", "illuminate",
+        "illuminated", "radiance", "shines", "shine"
+    ], [
+        "powerful sun rays breaking through dark clouds",
+        "golden sunlight across a vast peaceful landscape",
+        "soft dawn light over distant mountains",
+        "sunbeams passing through clouds over desert",
+        "warm lantern illuminating ancient stone architecture",
+        "golden light entering through geometric Islamic windows",
+        "sunlight through trees creating gentle rays",
+        "bright horizon glowing over peaceful hills",
     ]),
-    ("patience", ["patience", "patient", "steadfast", "persevere"], [
-        "slow ocean waves calm horizon",
-        "still lake reflecting mountains",
-        "quiet desert dunes in wind",
+
+    ("darkness", [
+        "darkness", "dark", "night", "lightning", "thunder", "flash"
+    ], [
+        "vast peaceful night sky filled with stars",
+        "moonlight breaking through heavy clouds",
+        "distant lightning across dark mountain horizon",
+        "dark clouds moving over a silent desert",
+        "quiet mountains beneath deep blue night sky",
+        "single lantern glowing in dark stone architecture",
+        "moon rising through clouds over distant hills",
+        "dark ocean beneath dramatic night sky",
     ]),
-    ("gratitude", ["grateful", "gratitude", "thankful", "thanks"], [
-        "golden sunrise over open field",
-        "warm light over wheat field",
-        "peaceful countryside morning glow",
+
+    ("patience", [
+        "patience", "patient", "steadfast", "steadfastness",
+        "persevere", "perseverance", "endure", "endurance"
+    ], [
+        "still mountain lake reflecting peaceful sky",
+        "slow ocean waves beneath a calm horizon",
+        "quiet desert dunes under soft evening light",
+        "ancient weathered mountains under changing sky",
+        "slow river flowing peacefully through valley",
+        "hourglass with sand falling in warm light",
+        "mist slowly moving across silent mountains",
+        "calm horizon over vast empty desert",
     ]),
-    ("knowledge", ["knowledge", "wisdom", "learn", "understand", "signs"], [
-        "quiet contemplative landscape dawn",
-        "misty mountains sunrise stillness",
-        "calm valley soft morning fog",
+
+    ("gratitude", [
+        "grateful", "gratitude", "thankful", "thanks", "thank",
+        "blessing", "blessings", "favor", "favors"
+    ], [
+        "golden sunrise over abundant wheat fields",
+        "warm sunlight across peaceful countryside",
+        "golden harvest field moving gently in the breeze",
+        "lush green valley beneath morning sunlight",
+        "date palm oasis glowing in golden light",
+        "peaceful countryside landscape at dawn",
+        "sunrise over fertile green valley",
+        "warm golden light across fields and mountains",
     ]),
-    ("justice", ["justice", "just", "truth", "truthful", "balance"], [
-        "calm balanced landscape wide horizon",
-        "mountain reflection on still water",
-        "clear horizon over open plain",
+
+    ("knowledge", [
+        "knowledge", "wisdom", "wise", "learn", "learning",
+        "understand", "understanding", "know", "knowing"
+    ], [
+        "open Quran manuscript pages in warm natural light",
+        "detailed Arabic calligraphy on ancient stone",
+        "ink pen beside an open manuscript",
+        "old manuscript pages illuminated by soft sunlight",
+        "Islamic geometric architecture close up",
+        "ancient Islamic library interior without people",
+        "ornate Arabic calligraphy on historic architecture",
+        "Quran pages with soft golden light and shallow focus",
     ]),
-    ("warning", ["warning", "punishment", "wrongdoers", "wrong", "evil", "fire"], [
-        "dramatic storm clouds over landscape",
-        "dark clouds rolling over hills",
-        "distant storm horizon",
+
+    ("justice", [
+        "justice", "just", "truth", "truthful", "truthfulness",
+        "balance", "balanced", "fair", "measure", "scales"
+    ], [
+        "perfectly balanced mountains reflected in still water",
+        "symmetrical Islamic architecture under clear sky",
+        "balanced stone scales in ancient architecture",
+        "perfectly straight horizon over open landscape",
+        "symmetrical mosque courtyard geometric patterns",
+        "still water reflecting symmetrical mountains",
+        "balanced stones beside calm water",
+        "geometric Islamic architecture in perfect symmetry",
     ]),
-    ("paradise", ["paradise", "bliss", "gardens", "rivers"], [
-        "lush garden with flowing water",
-        "waterfall through green landscape",
-        "peaceful oasis with water",
+
+    ("warning", [
+        "warning", "warn", "warned", "punishment", "punished",
+        "wrongdoers", "wrongdoer", "wrong", "evil", "fire",
+        "torment", "hell", "hellfire", "wrath"
+    ], [
+        "dramatic storm clouds over barren mountains",
+        "dark storm approaching across vast desert",
+        "distant lightning across an empty horizon",
+        "cracked dry earth beneath threatening clouds",
+        "dark turbulent ocean beneath storm clouds",
+        "powerful thunderstorm over distant mountains",
+        "heavy clouds covering a barren landscape",
+        "dramatic dark sky over empty desert terrain",
+    ]),
+
+    ("paradise", [
+        "paradise", "bliss", "jannah", "eternal", "fountains"
+    ], [
+        "lush eternal garden with clear flowing rivers",
+        "beautiful green garden with peaceful flowing water",
+        "date palm oasis with clear streams and greenery",
+        "serene garden surrounded by flowing water",
+        "lush garden courtyard with elegant fountain",
+        "golden clouds glowing sunset light",
+        "misty garden soft morning light",
+        "beautiful oasis surrounded by trees and clear water",
+    ]),
+
+    ("repentance", [
+        "repent", "repentance", "return", "returned",
+        "turn", "turning", "seek forgiveness"
+    ], [
+        "quiet path leading toward sunrise over mountains",
+        "golden dawn appearing after dark clouds",
+        "peaceful road disappearing toward distant light",
+        "sunrise over empty desert after night",
+        "soft light breaking through clouds over hills",
+        "ancient doorway opening toward warm morning light",
+        "quiet mountain valley at first light",
+        "lantern illuminating a path through darkness",
+    ]),
+
+    ("trust", [
+        "trust", "rely", "reliance", "trustworthy", "depend",
+        "relied", "entrust"
+    ], [
+        "vast calm ocean beneath peaceful sunrise",
+        "mountains beneath a wide open sky",
+        "quiet desert landscape under golden dawn",
+        "still lake reflecting enormous sky",
+        "peaceful valley surrounded by mountains",
+        "soft clouds moving over calm landscape",
+        "wide horizon over untouched desert",
+        "sunrise illuminating distant mountain peaks",
+    ]),
+
+    ("hope", [
+        "hope", "hopeful", "hoped", "hopefulness"
+    ], [
+        "golden sunrise emerging over distant mountains",
+        "light breaking through clouds over peaceful valley",
+        "first light appearing across desert horizon",
+        "bright horizon beyond dark mountains",
+        "sunrise reflected across calm water",
+        "warm morning light spreading across open fields",
+        "soft golden rays through clouds",
+        "peaceful dawn over a vast landscape",
+    ]),
+
+    ("worship", [
+        "prayer", "pray", "prays", "worship", "worships",
+        "prostration", "bow", "bowing", "mosque"
+    ], [
+        "quiet mosque interior with geometric architecture",
+        "empty mosque courtyard illuminated by morning light",
+        "Islamic prayer hall with sunlight through arches",
+        "ornate mosque dome interior with soft light",
+        "peaceful Islamic courtyard at sunrise",
+        "geometric mosque architecture in golden hour",
+        "empty prayer space with warm natural light",
+        "mosque arches illuminated by soft evening sunlight",
+    ]),
+
+    ("remembrance", [
+        "remember", "remembrance", "remind", "reminded",
+        "mention", "glorify", "glory", "praise"
+    ], [
+        "open Quran beside warm glowing lantern",
+        "Arabic calligraphy illuminated by soft golden light",
+        "Quran pages with gentle sunlight across the paper",
+        "quiet mosque interior with warm lantern light",
+        "close up Arabic calligraphy on Islamic architecture",
+        "peaceful dawn light entering mosque windows",
+        "open manuscript in a quiet contemplative setting",
+        "soft candlelight across Quran manuscript pages",
+    ]),
+
+    ("provision", [
+        "provision", "sustenance", "food", "rizq",
+        "provide", "provided", "provisions"
+    ], [
+        "golden wheat field beneath warm sunlight",
+        "abundant date palm oasis",
+        "lush agricultural valley under morning light",
+        "green fields stretching toward mountains",
+        "fruit trees glowing in warm sunlight",
+        "peaceful farmland beneath golden sky",
+        "harvest fields at golden hour",
+        "fertile green valley after rainfall",
+    ]),
+
+    ("trials", [
+        "trial", "trials", "test", "tested", "testing",
+        "difficulty", "hardship", "affliction", "calamity"
+    ], [
+        "dramatic mountains beneath changing storm clouds",
+        "rough ocean waves beneath dark sky",
+        "desert landscape under harsh sunlight",
+        "mountain path through heavy mist",
+        "storm clouds passing over distant mountains",
+        "rocky landscape beneath dramatic sky",
+        "rain moving across an empty desert",
+        "strong waves against a rugged coastline",
+    ]),
+
+    ("mortality", [
+        "death", "die", "dies", "dead", "dying",
+        "mortal", "mortality", "grave", "graves"
+    ], [
+        "quiet sunset disappearing behind distant mountains",
+        "empty desert beneath fading evening light",
+        "fallen leaves on a quiet natural landscape",
+        "ancient weathered stone beneath evening sky",
+        "sunset over a silent mountain valley",
+        "last light across a vast empty landscape",
+        "quiet path disappearing into evening mist",
+        "moon rising over a silent desert",
+    ]),
+
+    ("afterlife", [
+        "resurrection", "resurrect", "hereafter", "afterlife"
+    ], [
+        "vast dramatic horizon beneath powerful clouds",
+        "mountains beneath an immense golden sky",
+        "endless desert horizon at dawn",
+        "dramatic sunrise over vast empty landscape",
+        "powerful clouds opening above distant mountains",
+        "vast empty plain beneath a glowing horizon",
+        "mountain landscape under dramatic celestial light",
+        "endless horizon disappearing into golden mist",
+    ]),
+
+    ("judgment", [
+        "judgment", "judgement", "day of judgment",
+        "account", "reckoning", "deeds", "deed"
+    ], [
+        "dramatic sky over a vast empty plain",
+        "powerful clouds over distant mountains",
+        "vast desert horizon beneath dark clouds",
+        "intense sunrise over an empty landscape",
+        "dramatic mountain silhouette beneath glowing sky",
+        "wide empty plain beneath enormous clouds",
+        "storm clouds opening over distant golden horizon",
+        "vast landscape beneath a solemn dramatic sky",
+    ]),
+
+    ("power", [
+        "power", "powerful", "might", "mighty", "strength",
+        "great", "greatness", "majesty", "majestic"
+    ], [
+        "towering mountains beneath enormous dramatic sky",
+        "vast ocean beneath powerful storm clouds",
+        "massive mountain range under golden sunlight",
+        "dramatic clouds moving across immense landscape",
+        "towering cliffs beside calm ocean",
+        "vast desert beneath overwhelming sky",
+        "majestic mountain peaks above clouds",
+        "powerful sunrise illuminating enormous mountains",
+    ]),
+
+    ("earth", [
+        "earth", "land", "lands", "mountain", "mountains",
+        "valley", "valleys", "plain", "plains"
+    ], [
+        "majestic mountain range under clear blue sky",
+        "wide green valley surrounded by mountains",
+        "vast desert landscape beneath open sky",
+        "rocky mountains glowing at sunrise",
+        "aerial view of winding mountain valleys",
+        "peaceful open plain beneath golden clouds",
+        "dramatic mountain landscape at golden hour",
+        "vast untouched landscape stretching to horizon",
+    ]),
+
+    ("sea", [
+        "sea", "ocean", "wave", "waves", "shore",
+        "coast", "coastline"
+    ], [
+        "calm ocean horizon at sunrise",
+        "slow waves rolling onto quiet empty shore",
+        "vast blue ocean beneath dramatic clouds",
+        "golden sunset reflecting across calm sea",
+        "powerful waves against rocky coastline",
+        "moonlight reflecting across quiet ocean",
+        "aerial view of clear ocean meeting coastline",
+        "peaceful sea beneath soft morning clouds",
+    ]),
+
+    ("desert", [
+        "desert", "dunes", "sand", "wilderness", "wasteland",
+        "barren"
+    ], [
+        "vast golden desert dunes at sunrise",
+        "wind moving gently across desert sand",
+        "empty desert beneath dramatic sky",
+        "moonlight across peaceful desert dunes",
+        "golden desert horizon at sunset",
+        "desert mountains beneath morning light",
+        "wide untouched desert landscape",
+        "soft shadows across endless sand dunes",
+    ]),
+
+    ("architecture", [
+        "mihrab", "minaret", "architecture", "arches",
+        "courtyard", "Islamic architecture"
+    ], [
+        "empty mosque courtyard with geometric architecture",
+        "Islamic arches illuminated by golden sunlight",
+        "ornate geometric mosque interior without people",
+        "Islamic architecture beneath evening sky",
+        "mosque dome illuminated by warm sunrise",
+        "ancient Islamic courtyard with fountain",
+        "geometric Islamic tile patterns close up",
+        "peaceful mosque corridor with soft natural light",
+    ]),
+
+    ("revelation", [
+        "Quran", "revelation", "revealed", "reveal",
+        "scripture", "book", "verses", "ayah", "ayahs"
+    ], [
+        "open Quran manuscript under soft warm light",
+        "close up Quran pages with Arabic calligraphy",
+        "Quran manuscript beside glowing lantern",
+        "Arabic calligraphy on aged parchment",
+        "open Islamic manuscript illuminated by sunlight",
+        "detailed Quran pages with shallow depth of field",
+        "ink and parchment beside open Quran",
+        "ornate Arabic calligraphy in warm light",
     ]),
 ]
 
@@ -834,12 +1689,13 @@ KEYWORD_WEIGHTS = {
     "kind": 4,
     "wisdom": 5,
     "knowledge": 5,
-    "signs": 4,
+    "signs": 5,
     "creation": 5,
     "created": 4,
     "heavens": 4,
     "earth": 4,
     "paradise": 7,
+    "jannah": 8,
     "gardens": 5,
     "garden": 5,
     "rivers": 4,
@@ -849,8 +1705,12 @@ KEYWORD_WEIGHTS = {
     "truth": 5,
     "truthful": 5,
     "light": 4,
-    "darkness": 3,
+    "darkness": 5,
     "warning": 4,
+    "hell": 6,
+    "hellfire": 7,
+    "torment": 6,
+    "wrath": 6,
     "remember": 5,
     "remembrance": 5,
     "prayer": 5,
@@ -859,8 +1719,41 @@ KEYWORD_WEIGHTS = {
     "hope": 5,
     "fear": 3,
     "repent": 6,
+    "repentance": 6,
+    "resurrection": 8,
+    "hereafter": 8,
+    "afterlife": 7,
+    "judgment": 6,
+    "judgement": 6,
+    "reckoning": 7,
+    "deeds": 5,
+    "deed": 4,
+    "provision": 5,
+    "sustenance": 5,
+    "rizq": 6,
+    "trial": 5,
+    "trials": 5,
+    "hardship": 5,
+    "affliction": 5,
+    "calamity": 6,
+    "death": 6,
+    "grave": 5,
+    "power": 4,
+    "mighty": 5,
+    "majesty": 6,
+    "revelation": 5,
+    "quran": 6,
+    "verses": 4,
+    "mosque": 4,
+    "architecture": 3,
+    "desert": 3,
+    "wilderness": 4,
+    "sea": 4,
+    "ocean": 4,
+    "wave": 3,
+    "waves": 3,
+    "shore": 3,
 }
-
 
 class MeaningEngine:
     def __init__(self, progress: ProgressStore):
@@ -886,41 +1779,119 @@ class MeaningEngine:
 
         return best_theme, best_score
 
-    def visual_queries(self, verses: list[Verse], cycle: int) -> tuple[str, list[str], list[str]]:
-        text = " ".join(v.translation for v in verses)
+    def visual_queries(
+        self,
+        verses: list[Verse],
+        cycle: int,
+    ) -> tuple[str, list[str], list[str]]:
+        text = " ".join(
+            v.translation
+            for v in verses
+        )
         theme, theme_score = self.score_text(text)
+
         variants = next(
-            (variants for name, _words, variants in THEMES if name == theme),
+            (
+                variants
+                for name, _words, variants in THEMES
+                if name == theme
+            ),
             ["peaceful cinematic nature landscape"],
         )
+        if not variants:
+            variants = [
+                "peaceful cinematic nature landscape"
+            ]
 
-        count = int(self.progress.theme_usage.get(theme, 0))
-        chosen = variants[count % len(variants)]
+        # ==============================================================
+        # LONG-TERM THEME INTELLIGENCE
+        #
+        # This count survives Quran cycles.
+        # ==============================================================
+        total_theme_usage = int(
+            self.progress.theme_usage.get(theme, 0)
+        )
+
+        # Start with the least-used variant.
+        #
+        # We deliberately rotate based on persistent theme usage rather
+        # than resetting every Quran cycle.
+        variant_index = total_theme_usage % len(variants)
+        chosen = variants[variant_index]
+
+        # ==============================================================
+        # Cycle style evolves over time too.
+        # ==============================================================
         cycle_styles = [
             "cinematic natural landscape, subtle movement, realistic",
             "cinematic nature close-up, soft depth of field, realistic",
             "wide atmospheric landscape, realistic documentary style",
             "water and sky nature footage, elegant slow motion, realistic",
             "cinematic dawn or twilight nature, restrained movement, realistic",
+            "cinematic aerial landscape, slow graceful movement, realistic",
+            "cinematic environmental detail, shallow depth of field, realistic",
+            "wide peaceful landscape, natural motion, realistic documentary footage",
         ]
-        style = cycle_styles[(cycle - 1) % len(cycle_styles)]
+        style = cycle_styles[
+            (max(cycle, 1) - 1) % len(cycle_styles)
+        ]
+
+        # ==============================================================
+        # Put the currently preferred variant first.
+        #
+        # Keep ALL other variants afterward so Pexels has a large search
+        # pool instead of relying on one phrase.
+        # ==============================================================
+        ordered_variants = [
+            chosen,
+            *[
+                variant
+                for index, variant in enumerate(variants)
+                if index != variant_index
+            ],
+        ]
 
         queries = [
-            f"{chosen}, {style}",
-            *[f"{v}, {style}" for v in variants if v != chosen],
+            f"{variant}, {style}"
+            for variant in ordered_variants
         ]
+
+        # ==============================================================
+        # Neutral fallbacks.
+        # These are intentionally conservative.
+        # ==============================================================
         fallback = [
             "peaceful cinematic nature landscape, realistic",
             "calm natural scenery soft light, realistic",
             "quiet countryside morning atmosphere, realistic",
+            "wide peaceful landscape natural movement, realistic",
+            "cinematic mountains and sky natural footage, realistic",
+            "calm water landscape soft natural light, realistic",
         ]
-        avoid = "no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs"
-        queries = [f"{q}, {avoid}" for q in queries]
-        fallback = [f"{q}, {avoid}" for q in fallback]
+
+        # ==============================================================
+        # Keep searches clean and avoid unwanted visual material.
+        # ==============================================================
+        avoid = (
+            "no people, no faces, no religious figures, "
+            "no text, no logos, no crowds, no readable signs"
+        )
+        queries = [
+            f"{query}, {avoid}"
+            for query in queries
+        ]
+        fallback = [
+            f"{query}, {avoid}"
+            for query in fallback
+        ]
 
         log(
-            f"Meaning theme={theme} score={theme_score:.1f} "
-            f"queries={len(queries)}",
+            f"Meaning theme={theme} "
+            f"score={theme_score:.1f} "
+            f"historical_theme_usage={total_theme_usage} "
+            f"preferred_variant={variant_index + 1}/{len(variants)} "
+            f"queries={len(queries)} "
+            f"cycle={cycle}",
             "DEBUG",
         )
         return theme, queries, fallback
@@ -1227,47 +2198,129 @@ class VisualEngine:
             photographer_url=user.get("url") or "",
         )
 
-    def choose(
+    def find_candidates(
         self,
         queries: list[str],
         fallback_queries: list[str],
         audio_duration: float,
-    ) -> VisualCandidate:
+        limit: int = 8,
+    ) -> list[VisualCandidate]:
+        """Search Pexels and return a RANKED LIST of viable candidates.
+
+        This is the retry-safe counterpart to choose(): instead of handing
+        back a single video, it hands back an ordered shortlist so the
+        caller (QuranProduction.run) can fall through to the next candidate
+        if the first one fails to download or fails to render (corrupt
+        file, transient network error, codec issue, etc.). A single bad
+        Pexels asset should never be able to kill a production run.
+
+        Ordering rules (unchanged from the original single-pick logic):
+          1. NEW (never-used) visuals matching the meaning-aware queries,
+             best score first.
+          2. NEW visuals matching the neutral fallback queries, if the
+             meaning-aware search produced nothing fresh.
+          3. Previously-used visuals, ordered LEAST-recently-used first
+             (using visual_history), only if nothing fresh was found at
+             all. Reuse is a deliberate, permanent safety net — the build
+             must never fail just because every matching visual has been
+             seen before.
+        """
+
         fresh: list[VisualCandidate] = []
         reused: list[VisualCandidate] = []
 
-        def scan(query_list: list[str]) -> None:
+        # Same Pexels video can appear in several searches.
+        # Never evaluate the same video more than once.
+        seen_ids: set[int] = set()
+
+        def scan(
+            query_list: list[str],
+            *,
+            max_pages: int = 6,
+        ) -> None:
+
             for query in query_list:
-                # Stricter best_file() means fewer qualifying results per page,
-                # so scan a couple of pages deeper than before (was range(1,5)).
-                for page in range(1, 7):
+
+                query = str(query).strip()
+
+                if not query:
+                    continue
+
+                for page in range(1, max_pages + 1):
+
                     try:
-                        payload = self.client.search(query, page)
+                        payload = self.client.search(
+                            query,
+                            page,
+                        )
                     except Exception as exc:
-                        log(f"Pexels search failed: {query} page={page}: {exc}", "WARN")
+                        log(
+                            f"Pexels search failed: "
+                            f"{query} page={page}: {exc}",
+                            "WARN",
+                        )
                         continue
 
                     videos = payload.get("videos", [])
+
                     if not videos:
                         break
 
                     for raw in videos:
-                        candidate = self.candidate_from_video(raw, query, audio_duration)
+
+                        candidate = self.candidate_from_video(
+                            raw,
+                            query,
+                            audio_duration,
+                        )
+
                         if candidate is None:
                             continue
+
+                        if candidate.video_id <= 0:
+                            continue
+
+                        # Deduplicate across queries/pages.
+                        if candidate.video_id in seen_ids:
+                            continue
+
+                        seen_ids.add(candidate.video_id)
+
                         if candidate.video_id in self.progress.used_visuals:
                             reused.append(candidate)
                         else:
                             fresh.append(candidate)
 
-                    # Stop early once we have a healthy pool for this query.
-                    if len(fresh) >= 12:
-                        break
+        # ==============================================================
+        # 1. SEARCH ALL MEANING-AWARE QUERIES
+        # ==============================================================
 
-        scan(queries)
+        log(
+            f"Searching {len(queries)} meaning-aware Pexels queries "
+            f"for fresh backgrounds.",
+            "DEBUG",
+        )
+
+        scan(
+            queries,
+            max_pages=6,
+        )
+
+        # ==============================================================
+        # 2. NO FRESH THEME RESULT -> try neutral fallbacks too, so the
+        #    shortlist has more than one usable option whenever possible.
+        # ==============================================================
+
         if not fresh:
-            log("No fresh visual found in theme queries; trying neutral fallbacks.", "WARN")
-            scan(fallback_queries)
+            log(
+                "No fresh meaning-matched visual found; "
+                "trying fallback searches.",
+                "WARN",
+            )
+            scan(
+                fallback_queries,
+                max_pages=6,
+            )
 
         if fresh:
             fresh.sort(
@@ -1279,23 +2332,112 @@ class VisualEngine:
                 ),
                 reverse=True,
             )
-            return fresh[0]
 
-        if ALLOW_VISUAL_REUSE and reused:
-            reused.sort(
-                key=lambda c: (c.score, c.duration, c.height),
-                reverse=True,
-            )
+            top = fresh[0]
             log(
-                f"ALLOW_VISUAL_REUSE=1; reusing Pexels video {reused[0].video_id}.",
+                f"Top fresh Pexels candidate: {top.video_id} "
+                f"score={top.score:.1f} query={top.query!r} "
+                f"({len(fresh)} fresh candidate(s) available).",
+                "INFO",
+            )
+
+            return fresh[:limit]
+
+        # ==============================================================
+        # 3. NO FRESH VIDEO ANYWHERE
+        #
+        # NEVER CANCEL THE QURAN VIDEO JUST BECAUSE A PEXELS VIDEO
+        # WAS USED BEFORE. Reuse is a required, permanent safety net —
+        # not gated by ALLOW_VISUAL_REUSE. Order by staleness so the
+        # least-recently-used background comes first.
+        # ==============================================================
+
+        if reused:
+
+            visual_history = self.progress.state.get(
+                "visual_history",
+                [],
+            )
+
+            if not isinstance(visual_history, list):
+                visual_history = []
+
+            last_used_index: dict[int, int] = {}
+
+            for index, value in enumerate(visual_history):
+
+                try:
+                    visual_id = int(value)
+                except (TypeError, ValueError):
+                    continue
+
+                if visual_id > 0:
+                    last_used_index[visual_id] = index
+
+            def staleness(
+                candidate: VisualCandidate,
+            ) -> int:
+                """
+                Smaller = older usage = better candidate to reuse.
+
+                If a visual is not in the retained history, it is treated
+                as extremely old rather than recently used.
+                """
+                return last_used_index.get(
+                    candidate.video_id,
+                    -1,
+                )
+
+            reused.sort(
+                key=lambda candidate: (
+                    staleness(candidate),
+                    candidate.score,
+                    candidate.duration,
+                    candidate.height,
+                )
+            )
+
+            top = reused[0]
+            log(
+                f"No fresh Pexels visual available. "
+                f"Will REUSE oldest suitable visual(s), starting with "
+                f"{top.video_id} (query={top.query!r}). "
+                f"Production continues.",
                 "WARN",
             )
-            return reused[0]
 
-        raise RuntimeError(
-            "No fresh suitable Pexels video was found. "
-            "The build stops instead of silently repeating footage."
-        )
+            return reused[:limit]
+
+        # ==============================================================
+        # 4. ABSOLUTE LAST RESORT
+        #
+        # This means Pexels returned no usable video at all — not even a
+        # previously-used one. It is NOT a 'video was already used'
+        # failure; the caller must treat an empty list as a hard stop.
+        # ==============================================================
+
+        return []
+
+    def choose(
+        self,
+        queries: list[str],
+        fallback_queries: list[str],
+        audio_duration: float,
+    ) -> VisualCandidate:
+        """Backward-compatible single-pick wrapper around find_candidates().
+
+        Prefer find_candidates() directly when the caller can retry against
+        several candidates (e.g. the main render loop) — this method exists
+        for any code path that only ever wants one best answer.
+        """
+        candidates = self.find_candidates(queries, fallback_queries, audio_duration)
+        if not candidates:
+            raise RuntimeError(
+                "No suitable Pexels video was found at all "
+                "(fresh or reusable) across every meaning-aware "
+                "and fallback query."
+            )
+        return candidates[0]
 
     def download(self, candidate: VisualCandidate, destination: Path) -> None:
         self.http.download(candidate.file_url, destination)
@@ -1727,6 +2869,71 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 
 # ============================================================================
+# 10.5. Sidecar captions (.srt)
+# ============================================================================
+#
+# The ASS subtitles above are burned directly into the MP4, so the video is
+# always self-captioned. This engine additionally produces a plain .srt
+# sidecar file, timed against the EXACT SAME per-ayah audio timeline used to
+# burn the on-screen captions, so it can never drift out of sync with what
+# is shown in the video. This is for platforms (Instagram/YouTube Shorts/
+# TikTok-style uploaders, including automations like make.com) that accept
+# or prefer a separate caption/subtitle file alongside the video instead of
+# (or in addition to) burned-in text — e.g. for native closed captions,
+# accessibility, or auto-generated on-platform caption styling.
+
+
+class CaptionEngine:
+    @staticmethod
+    def srt_time(seconds: float) -> str:
+        millis = max(0, int(round(seconds * 1000)))
+        hours = millis // 3_600_000
+        millis %= 3_600_000
+        minutes = millis // 60_000
+        millis %= 60_000
+        secs = millis // 1000
+        millis %= 1000
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+    @classmethod
+    def make_srt(
+        cls,
+        path: Path,
+        verses: list[Verse],
+        audio_items: list[AudioItem],
+    ) -> None:
+        """Write an .srt whose cue timings match the burned-in captions
+        exactly, one cue per ayah, using the same audio_items durations
+        that drive the ASS timeline in TypographyEngine.make_ass().
+        """
+        if len(verses) != len(audio_items):
+            raise RuntimeError(
+                "CaptionEngine.make_srt: verses/audio_items length mismatch "
+                f"({len(verses)} vs {len(audio_items)}) — refusing to write "
+                "out-of-sync captions."
+            )
+
+        lines: list[str] = []
+        cursor = 0.0
+
+        for idx, (verse, audio) in enumerate(zip(verses, audio_items), start=1):
+            start = cursor
+            end = cursor + audio.duration
+            cursor = end
+
+            text = normalize_space(verse.translation.replace("\n", " "))
+            if not text:
+                text = normalize_space(verse.arabic_text) or f"Ayah {verse.verse_number}"
+
+            lines.append(str(idx))
+            lines.append(f"{cls.srt_time(start)} --> {cls.srt_time(end)}")
+            lines.append(text)
+            lines.append("")
+
+        path.write_text("\n".join(lines).rstrip("\n") + "\n", encoding="utf-8")
+
+
+# ============================================================================
 # 11. Video renderer
 # ============================================================================
 
@@ -1900,6 +3107,7 @@ class Publisher:
         first_ayah: int,
         last_ayah: int,
         cycle: int,
+        captions_source: Optional[Path] = None,
     ) -> tuple[Path, Path]:
         safe = safe_slug(chapter_name)
         if first_ayah == last_ayah:
@@ -1916,16 +3124,64 @@ class Publisher:
         metadata["metadata_file"] = metadata_path.name
         metadata["published_sha256"] = sha256_file(video_path)
         metadata["published_at"] = utc_now()
+
+        # ------------------------------------------------------------------
+        # Sidecar .srt captions, published next to the MP4 under the same
+        # stem. Timed against the exact same audio timeline as the burned-in
+        # captions (see CaptionEngine.make_srt), so uploaders/automation
+        # (e.g. make.com -> Instagram/YouTube Shorts) can attach a caption
+        # file that is guaranteed to match what's on screen.
+        # ------------------------------------------------------------------
+        captions_path: Optional[Path] = None
+        if captions_source is not None and captions_source.exists():
+            captions_path = PUBLISH / f"{video_path.stem}.srt"
+            shutil.copy2(captions_source, captions_path)
+            metadata["captions"] = {
+                "file": captions_path.name,
+                "format": "srt",
+                "synced_to": "audio_timeline",
+            }
+
         atomic_write_json(metadata_path, metadata)
         return video_path, metadata_path
 
-    def enqueue(self, metadata: dict[str, Any], video_path: Path, metadata_path: Path) -> None:
-        queue = load_json(self.queue_path, [])
+    def enqueue(
+        self,
+        metadata: dict[str, Any],
+        video_path: Path,
+        metadata_path: Path,
+    ) -> None:
+        queue = load_json(
+            self.queue_path,
+            [],
+        )
         if not isinstance(queue, list):
+            log(
+                "publish_queue.json was invalid; "
+                "rebuilding queue safely.",
+                "WARN",
+            )
             queue = []
 
-        key = metadata.get("published_sha256")
-        queue = [item for item in queue if item.get("published_sha256") != key]
+        key = metadata.get(
+            "published_sha256"
+        )
+
+        # ==============================================================
+        # Remove duplicate SHA entries.
+        # ==============================================================
+        cleaned: list[dict[str, Any]] = []
+        for item in queue:
+            if not isinstance(item, dict):
+                continue
+            if item.get("published_sha256") == key:
+                continue
+            cleaned.append(item)
+        queue = cleaned
+
+        # ==============================================================
+        # Add current publication.
+        # ==============================================================
         queue.append({
             "status": "pending",
             "video_file": video_path.name,
@@ -1935,10 +3191,45 @@ class Publisher:
             "surah": metadata.get("surah", {}).get("name"),
             "chapter": metadata.get("surah", {}).get("number"),
             "verse_keys": metadata.get("verse_keys", []),
-            "duration_seconds": metadata.get("section", {}).get("duration_seconds"),
+            "duration_seconds": metadata.get(
+                "section", {}
+            ).get("duration_seconds"),
+            "captions_file": metadata.get("captions", {}).get("file"),
             "created_at": utc_now(),
         })
-        atomic_write_json(self.queue_path, queue)
+
+        # ==============================================================
+        # SAFETY LIMIT
+        #
+        # Keep pending items, but cap the entire queue.
+        #
+        # If the queue is ever accidentally left untouched for months,
+        # the JSON still cannot grow without bound.
+        # ==============================================================
+        MAX_QUEUE_ITEMS = 500
+
+        pending = [
+            item
+            for item in queue
+            if item.get("status") == "pending"
+        ]
+        non_pending = [
+            item
+            for item in queue
+            if item.get("status") != "pending"
+        ]
+
+        # Keep the newest records.
+        pending = pending[-MAX_QUEUE_ITEMS:]
+        # Completed/other records don't need to accumulate forever.
+        non_pending = non_pending[-100:]
+
+        queue = non_pending + pending
+
+        atomic_write_json(
+            self.queue_path,
+            queue,
+        )
 
 
 # ============================================================================
@@ -2167,24 +3458,13 @@ class QuranProduction:
             section_dir,
         )
 
-        theme, queries, fallback_queries = self.meaning.visual_queries(selected, cycle)
-        visual = self.visuals.choose(
-            queries,
-            fallback_queries,
-            audio_duration,
-        )
-        source_video = section_dir / "pexels-source.mp4"
-        self.visuals.download(visual, source_video)
-
-        background = section_dir / "background.mp4"
-        camera_profile = self.renderer.prepare_background(
-            source_video,
-            background,
-            audio_duration,
-            cycle,
-            visual.video_id,
-        )
-
+        # --------------------------------------------------------------
+        # Overlay + burned-in subtitles + sidecar captions are entirely
+        # independent of which background visual is eventually chosen, so
+        # build them once, up front. The sidecar .srt is timed against the
+        # exact same audio_items durations as the burned-in ASS captions,
+        # so the two can never drift apart or say different things.
+        # --------------------------------------------------------------
         overlay = section_dir / "overlay.png"
         self.typography.make_overlay(overlay)
 
@@ -2198,20 +3478,82 @@ class QuranProduction:
             start_verse.chapter_name_arabic,
         )
 
-        final_video = section_dir / "quran-section.mp4"
-        self.renderer.render(
-            background,
-            overlay,
-            subtitles,
-            section_audio,
-            final_video,
-            audio_duration,
-        )
+        captions = section_dir / "captions.srt"
+        CaptionEngine.make_srt(captions, selected, audio_items)
 
-        qa = self.qa.validate_video(final_video, audio_duration)
+        # --------------------------------------------------------------
+        # Visual selection with retry: a fresh (never-used) background is
+        # strongly preferred, but a single bad Pexels asset (corrupt
+        # download, transient network failure, an unreadable codec, etc.)
+        # must never fail the whole production run. find_candidates()
+        # returns an ordered shortlist — fresh-first, then least-recently
+        # -used reuse as the last resort — and we walk it until one
+        # candidate downloads and renders successfully.
+        # --------------------------------------------------------------
+        theme, queries, fallback_queries = self.meaning.visual_queries(selected, cycle)
+        candidates = self.visuals.find_candidates(queries, fallback_queries, audio_duration)
+        if not candidates:
+            raise RuntimeError(
+                "No suitable Pexels video was found at all "
+                "(fresh or reusable) across every meaning-aware "
+                "and fallback query."
+            )
+
+        final_video = section_dir / "quran-section.mp4"
+        MAX_VISUAL_ATTEMPTS = min(5, len(candidates))
+
+        visual: Optional[VisualCandidate] = None
+        camera_profile: Optional[str] = None
+        qa: Optional[dict[str, Any]] = None
+        last_visual_error: Optional[Exception] = None
+
+        for attempt_index, candidate in enumerate(candidates[:MAX_VISUAL_ATTEMPTS], start=1):
+            try:
+                source_video = section_dir / f"pexels-source-{attempt_index}.mp4"
+                self.visuals.download(candidate, source_video)
+
+                background = section_dir / f"background-{attempt_index}.mp4"
+                camera_profile = self.renderer.prepare_background(
+                    source_video,
+                    background,
+                    audio_duration,
+                    cycle,
+                    candidate.video_id,
+                )
+
+                self.renderer.render(
+                    background,
+                    overlay,
+                    subtitles,
+                    section_audio,
+                    final_video,
+                    audio_duration,
+                )
+
+                qa = self.qa.validate_video(final_video, audio_duration)
+                visual = candidate
+                break
+            except Exception as exc:
+                last_visual_error = exc
+                final_video.unlink(missing_ok=True)
+                log(
+                    f"Visual candidate {candidate.video_id} "
+                    f"(attempt {attempt_index}/{MAX_VISUAL_ATTEMPTS}) failed "
+                    f"during download/render: {exc}. Trying next candidate.",
+                    "WARN",
+                )
+                continue
+
+        if visual is None or qa is None:
+            raise RuntimeError(
+                f"All {MAX_VISUAL_ATTEMPTS} visual candidate(s) failed to "
+                f"download or render. Last error: {last_visual_error}"
+            )
+
         log(
             f"Media QA PASSED: {qa['width']}x{qa['height']} "
-            f"{qa['duration']:.2f}s H.264/AAC"
+            f"{qa['duration']:.2f}s H.264/AAC "
+            f"(visual {visual.video_id})"
         )
 
         metadata: dict[str, Any] = {
@@ -2293,6 +3635,7 @@ class QuranProduction:
             selected[0].verse_number,
             selected[-1].verse_number,
             cycle,
+            captions_source=captions,
         )
         self.publisher.enqueue(metadata, publish_video, publish_metadata)
 
@@ -2310,12 +3653,33 @@ class QuranProduction:
                 "duration_seconds": round(audio_duration, 3),
                 "visual_id": visual.video_id,
                 "theme": theme,
+                "visual_query": visual.query,
                 "published_file": publish_video.name,
                 "published_sha256": metadata["published_sha256"],
             },
         )
 
         self.git.commit_if_enabled()
+
+        # --------------------------------------------------------------
+        # LONG-RUN DISK SAFETY.
+        #
+        # section_dir can hold several source/background MP4 attempts (one
+        # per visual candidate tried), the final render, raw audio, the
+        # overlay PNG, and subtitle/caption files. None of that is needed
+        # once the MP4 + metadata + captions have been copied into
+        # PUBLISH/. Left alone, this would grow output/production/ without
+        # bound across thousands of automated runs. Clean it up unless the
+        # operator explicitly asked to keep it (QURAN_KEEP_BUILD=1, e.g.
+        # for local debugging). The audio cache in BUILD/_audio-cache is
+        # NOT touched here — it is a small, bounded, reusable cache shared
+        # across every future run.
+        # --------------------------------------------------------------
+        if not KEEP_BUILD:
+            shutil.rmtree(section_dir, ignore_errors=True)
+            log("Build artifacts cleaned up (set QURAN_KEEP_BUILD=1 to keep them).", "DEBUG")
+        else:
+            log(f"QURAN_KEEP_BUILD=1; keeping build artifacts at {section_dir}", "INFO")
 
         elapsed = time.time() - start_time
         result = {
@@ -2332,6 +3696,7 @@ class QuranProduction:
             "visual_fresh": visual_is_fresh,
             "output": str(publish_video.relative_to(ROOT)),
             "metadata": str(publish_metadata.relative_to(ROOT)),
+            "captions_file": metadata.get("captions", {}).get("file"),
             "elapsed_seconds": round(elapsed, 2),
         }
 
@@ -2344,9 +3709,10 @@ class QuranProduction:
         log(f"Audio: {RECITER}")
         log(f"Translation: {TRANSLATION_NAME} ({TRANSLATION_ID})")
         log(f"Theme: {theme}")
-        log(f"Visual: Pexels {visual.video_id}")
+        log(f"Visual: Pexels {visual.video_id} (fresh={visual_is_fresh})")
         log(f"Duration: {audio_duration:.2f}s")
         log(f"Output: {publish_video}")
+        log(f"Captions: {metadata.get('captions', {}).get('file', '(none)')}")
         log(f"Elapsed: {elapsed:.2f}s")
         log("================================================")
         return result
