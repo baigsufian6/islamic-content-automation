@@ -31,8 +31,6 @@ jobs:
 
           endpoint = "https://api.buffer.com"
 
-          channel_id = "6a7884d3b2d9d57743451076"
-
           video_url = (
               "https://github.com/baigsufian6/"
               "islamic-content-automation/releases/download/"
@@ -68,10 +66,14 @@ jobs:
               ... on PostActionSuccess {
                 post {
                   id
-                  status
                   text
-                  type
+                  status
                   dueAt
+                  assets {
+                    id
+                    mimeType
+                    source
+                  }
                 }
               }
 
@@ -119,12 +121,7 @@ jobs:
               print(f"Request failed: {exc}")
               sys.exit(1)
 
-          print(
-              json.dumps(
-                  result,
-                  indent=2
-              )
-          )
+          print(json.dumps(result, indent=2))
 
           if result.get("errors"):
               print("")
@@ -155,7 +152,6 @@ jobs:
           print("INSTAGRAM TEST POST CREATED")
           print("========================================")
           print(f"Post ID: {post.get('id')}")
-          print(f"Type: {post.get('type')}")
           print(f"Status: {post.get('status')}")
           print("========================================")
           PY
