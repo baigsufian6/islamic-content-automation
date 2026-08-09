@@ -41,7 +41,10 @@
     "2:31",
     "2:32",
     "2:33",
-    "2:34"
+    "2:34",
+    "2:35",
+    "2:36",
+    "2:37"
   ],
   "published_sections": [
     {
@@ -209,17 +212,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:33",
-      "2:34"
+      "2:35",
+      "2:36",
+      "2:37"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 54.1,
-    "visual_id": 19948838,
-    "theme": "creation",
-    "visual_query": "vast star-filled sky over dramatic mountains, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-33-to-34-Cycle-1.mp4",
-    "published_sha256": "4d8470307d24f46c539c7bb407ebf6ad9d3a6f016ed255ba2a4f47c38323c028"
+    "duration_seconds": 51.749,
+    "visual_id": 33807471,
+    "theme": "paradise",
+    "visual_query": "golden clouds glowing sunset light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-35-to-37-Cycle-1.mp4",
+    "published_sha256": "be6b783b1f626863049a2b2f00a140909af728bec86fe4480549b1176c1bedb0"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -227,6 +231,7 @@
     13243682,
     19948838,
     28615722,
+    33807471,
     34464344,
     37127031,
     37694201,
@@ -238,12 +243,12 @@
     "guidance": 2,
     "creation": 3,
     "justice": 2,
-    "paradise": 1,
+    "paradise": 2,
     "earth": 1,
     "knowledge": 1
   },
   "completed_cycles": [],
-  "published_count": 10,
+  "published_count": 11,
   "history": [
     {
       "cycle": 1,
@@ -371,6 +376,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-33-to-34-Cycle-1.mp4",
       "published_sha256": "4d8470307d24f46c539c7bb407ebf6ad9d3a6f016ed255ba2a4f47c38323c028",
       "created_at": "2026-08-09T18:41:32Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:35",
+        "2:36",
+        "2:37"
+      ],
+      "visual_id": 33807471,
+      "theme": "paradise",
+      "visual_query": "golden clouds glowing sunset light, cinematic natural landscape, subtle movement, realistic, no people, no faces, no religious figures, no text, no logos, no crowds, no readable signs",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-35-to-37-Cycle-1.mp4",
+      "published_sha256": "be6b783b1f626863049a2b2f00a140909af728bec86fe4480549b1176c1bedb0",
+      "created_at": "2026-08-09T19:02:39Z"
     }
   ],
   "visual_history": [
@@ -383,6 +402,7 @@
     37904635,
     38430067,
     37894855,
-    19948838
+    19948838,
+    33807471
   ]
 }
