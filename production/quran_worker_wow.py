@@ -784,9 +784,19 @@ class ProgressStore:
 
                 cleaned_visual_history.append(visual_id)
 
+        # Preserve IDs from used_pexels_ids that are not in visual_history.
+        # Their exact recency is unknown, so they are treated as older.
+        for visual_id in cleaned_visuals:
+            if visual_id not in cleaned_visual_history:
+                cleaned_visual_history.append(visual_id)
+
         cleaned_visual_history = cleaned_visual_history[-MAX_VISUAL_MEMORY:]
 
         self.state["visual_history"] = cleaned_visual_history
+
+        # Keep visual memory synchronized and bounded.
+        self.used_visuals = set(cleaned_visual_history)
+        self.state["used_pexels_ids"] = cleaned_visual_history.copy()
 
         # ------------------------------------------------------------------
         # Theme intelligence
@@ -945,316 +955,315 @@ class ProgressStore:
         atomic_write_json(PROGRESS, self.state)
 
     def commit(
-    self,
-    *,
-    keys: list[str],
-    visual_id: int,
-    theme: str,
-    metadata: dict[str, Any],
-) -> None:
-    """
-    Atomically commit one successfully published Quran section.
+        self,
+        *,
+        keys: list[str],
+        visual_id: int,
+        theme: str,
+        metadata: dict[str, Any],
+    ) -> None:
+        """
+        Atomically commit one successfully published Quran section.
 
-    Safety guarantees:
-      - validates verse keys before changing state
-      - validates Pexels visual ID
-      - preserves Quran cycle integrity
-      - keeps theme intelligence across cycles
-      - keeps Pexels visual memory bounded
-      - keeps visual LRU history bounded
-      - keeps production history bounded
-      - keeps completed-cycle history bounded
-      - writes progress atomically
-    """
+        Safety guarantees:
+          - validates verse keys before changing state
+          - validates Pexels visual ID
+          - preserves Quran cycle integrity
+          - keeps theme intelligence across cycles
+          - keeps Pexels visual memory bounded
+          - keeps visual LRU history bounded
+          - keeps production history bounded
+          - keeps completed-cycle history bounded
+          - writes progress atomically
+        """
 
-    # ==============================================================
-    # 1. Validate Quran verse keys BEFORE modifying anything.
-    # ==============================================================
+        # ==============================================================
+        # 1. Validate Quran verse keys BEFORE modifying anything.
+        # ==============================================================
 
-    if not keys:
-        raise RuntimeError(
-            "Progress commit refused: no Quran verse keys supplied."
-        )
+        if not keys:
+            raise RuntimeError(
+                "Progress commit refused: no Quran verse keys supplied."
+            )
 
-    invalid_keys = [
-        key
-        for key in keys
-        if key not in self.valid_keys
-    ]
+        invalid_keys = [
+            key
+            for key in keys
+            if key not in self.valid_keys
+        ]
 
-    if invalid_keys:
-        raise RuntimeError(
-            "Progress commit refused: invalid Quran verse key(s): "
-            f"{invalid_keys[:5]}"
-        )
+        if invalid_keys:
+            raise RuntimeError(
+                "Progress commit refused: invalid Quran verse key(s): "
+                f"{invalid_keys[:5]}"
+            )
 
-    # Prevent accidental duplicate keys inside one production.
-    if len(keys) != len(set(keys)):
-        raise RuntimeError(
-            "Progress commit refused: duplicate Quran verse keys "
-            "were supplied."
-        )
+        # Prevent accidental duplicate keys inside one production.
+        if len(keys) != len(set(keys)):
+            raise RuntimeError(
+                "Progress commit refused: duplicate Quran verse keys "
+                "were supplied."
+            )
 
-    # ==============================================================
-    # 2. Validate Pexels visual ID.
-    # ==============================================================
+        # ==============================================================
+        # 2. Validate Pexels visual ID.
+        # ==============================================================
 
-    try:
-        visual_id = int(visual_id)
-    except (TypeError, ValueError) as exc:
-        raise RuntimeError(
-            f"Progress commit refused: invalid Pexels visual ID "
-            f"{visual_id!r}."
-        ) from exc
-
-    if visual_id <= 0:
-        raise RuntimeError(
-            f"Progress commit refused: invalid Pexels visual ID "
-            f"{visual_id}."
-        )
-
-    # ==============================================================
-    # 3. Normalize theme.
-    # ==============================================================
-
-    theme = str(theme or "reflection").strip()
-
-    if not theme:
-        theme = "reflection"
-
-    # ==============================================================
-    # 4. Update Quran usage.
-    # ==============================================================
-
-    self.used.update(keys)
-
-    # ==============================================================
-    # 5. Persistent theme intelligence.
-    #
-    # IMPORTANT:
-    # This is intentionally NOT reset when a new Quran cycle starts.
-    # Cycle 2 learns from Cycle 1, Cycle 3 learns from 1 + 2, etc.
-    # ==============================================================
-
-    current_theme_count = self.theme_usage.get(theme, 0)
-
-    try:
-        current_theme_count = int(current_theme_count)
-    except (TypeError, ValueError):
-        current_theme_count = 0
-
-    self.theme_usage[theme] = max(
-        0,
-        current_theme_count,
-    ) + 1
-
-    # ==============================================================
-    # 6. BOUNDED PEXELS VISUAL MEMORY.
-    #
-    # Never allow this set to grow forever during a long-running
-    # process.
-    # ==============================================================
-
-    MAX_VISUAL_MEMORY = 2000
-
-    visual_history = self.state.get(
-        "visual_history",
-        [],
-    )
-
-    if not isinstance(visual_history, list):
-        visual_history = []
-
-    # Clean visual history first.
-    cleaned_visual_history: list[int] = []
-
-    for value in visual_history:
         try:
-            existing_id = int(value)
+            visual_id = int(visual_id)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"Progress commit refused: invalid Pexels visual ID "
+                f"{visual_id!r}."
+            ) from exc
+
+        if visual_id <= 0:
+            raise RuntimeError(
+                f"Progress commit refused: invalid Pexels visual ID "
+                f"{visual_id}."
+            )
+
+        # ==============================================================
+        # 3. Normalize theme.
+        # ==============================================================
+
+        theme = str(theme or "reflection").strip()
+
+        if not theme:
+            theme = "reflection"
+
+        # ==============================================================
+        # 4. Update Quran usage.
+        # ==============================================================
+
+        self.used.update(keys)
+
+        # ==============================================================
+        # 5. Persistent theme intelligence.
+        #
+        # IMPORTANT:
+        # This is intentionally NOT reset when a new Quran cycle starts.
+        # Cycle 2 learns from Cycle 1, Cycle 3 learns from 1 + 2, etc.
+        # ==============================================================
+
+        current_theme_count = self.theme_usage.get(theme, 0)
+
+        try:
+            current_theme_count = int(current_theme_count)
         except (TypeError, ValueError):
-            continue
+            current_theme_count = 0
 
-        if existing_id <= 0:
-            continue
+        self.theme_usage[theme] = max(
+            0,
+            current_theme_count,
+        ) + 1
 
-        # Remove duplicate occurrence so the most recent occurrence
-        # can be placed at the end.
-        if existing_id in cleaned_visual_history:
-            cleaned_visual_history.remove(existing_id)
+        # ==============================================================
+        # 6. BOUNDED PEXELS VISUAL MEMORY.
+        #
+        # Never allow this set to grow forever during a long-running
+        # process.
+        # ==============================================================
 
-        cleaned_visual_history.append(existing_id)
+        MAX_VISUAL_MEMORY = 2000
 
-    # Current visual becomes the newest-used visual.
-    if visual_id in cleaned_visual_history:
-        cleaned_visual_history.remove(visual_id)
+        visual_history = self.state.get(
+            "visual_history",
+            [],
+        )
 
-    cleaned_visual_history.append(visual_id)
+        if not isinstance(visual_history, list):
+            visual_history = []
 
-    # Hard memory limit.
-    cleaned_visual_history = (
-        cleaned_visual_history[-MAX_VISUAL_MEMORY:]
-    )
+            # Merge explicit LRU history with used-ID memory so an upgrade/restart
+        # cannot accidentally forget previously-used visuals.
+        legacy_visuals = self.state.get("used_pexels_ids", [])
+        if not isinstance(legacy_visuals, list):
+            legacy_visuals = []
 
-    # Store the bounded usage order.
-    self.state["visual_history"] = cleaned_visual_history
+        cleaned_visual_history: list[int] = []
 
-    # The used-visual set is derived from the same bounded history.
-    #
-    # This is important:
-    # we do NOT simply keep adding forever to self.used_visuals.
-    self.used_visuals = set(
-        cleaned_visual_history
-    )
+        def append_visual_id(value: Any) -> None:
+            try:
+                existing_id = int(value)
+            except (TypeError, ValueError):
+                return
+            if existing_id <= 0:
+                return
+            if existing_id in cleaned_visual_history:
+                cleaned_visual_history.remove(existing_id)
+            cleaned_visual_history.append(existing_id)
+
+        for value in visual_history:
+            append_visual_id(value)
+
+        # Legacy IDs have less precise ordering; preserve only missing IDs.
+        for value in legacy_visuals:
+            try:
+                existing_id = int(value)
+            except (TypeError, ValueError):
+                continue
+            if existing_id > 0 and existing_id not in cleaned_visual_history:
+                cleaned_visual_history.insert(0, existing_id)
+
+        # Current visual becomes the newest-used visual.
+        if visual_id in cleaned_visual_history:
+            cleaned_visual_history.remove(visual_id)
+        cleaned_visual_history.append(visual_id)
+
+        cleaned_visual_history = cleaned_visual_history[-MAX_VISUAL_MEMORY:]
+        self.state["visual_history"] = cleaned_visual_history
+        self.used_visuals = set(cleaned_visual_history)
 
     # ==============================================================
     # 7. Keep Quran verse usage clean and deterministic.
     # ==============================================================
 
-    ordered_used_verses = sorted(
-        self.used,
-        key=lambda key: self.id_by_key[key],
-    )
+        ordered_used_verses = sorted(
+            self.used,
+            key=lambda key: self.id_by_key[key],
+        )
 
-    # ==============================================================
-    # 8. Production history.
-    # ==============================================================
+        # ==============================================================
+        # 8. Production history.
+        # ==============================================================
 
-    history = self.state.get(
-        "history",
-        [],
-    )
+        history = self.state.get(
+            "history",
+            [],
+        )
 
-    if not isinstance(history, list):
-        history = []
+        if not isinstance(history, list):
+            history = []
 
-    history_item = {
-        "cycle": self.cycle,
-        "verse_keys": list(keys),
-        "visual_id": visual_id,
-        "theme": theme,
-        "visual_query": metadata.get(
-            "visual_query"
-        ),
-        "published_file": metadata.get(
-            "published_file"
-        ),
-        "published_sha256": metadata.get(
-            "published_sha256"
-        ),
-        "created_at": utc_now(),
-    }
+        history_item = {
+            "cycle": self.cycle,
+            "verse_keys": list(keys),
+            "visual_id": visual_id,
+            "theme": theme,
+            "visual_query": metadata.get(
+                "visual_query"
+            ),
+            "published_file": metadata.get(
+                "published_file"
+            ),
+            "published_sha256": metadata.get(
+                "published_sha256"
+            ),
+            "created_at": utc_now(),
+        }
 
-    history.append(history_item)
+        history.append(history_item)
 
-    # Long-term safety limit.
-    MAX_HISTORY = 500
+        # Long-term safety limit.
+        MAX_HISTORY = 500
 
-    history = history[-MAX_HISTORY:]
+        history = history[-MAX_HISTORY:]
 
-    # ==============================================================
-    # 9. Completed cycle history.
-    # ==============================================================
+        # ==============================================================
+        # 9. Completed cycle history.
+        # ==============================================================
 
-    completed_cycles = self.state.get(
-        "completed_cycles",
-        [],
-    )
+        completed_cycles = self.state.get(
+            "completed_cycles",
+            [],
+        )
 
-    if not isinstance(completed_cycles, list):
-        completed_cycles = []
+        if not isinstance(completed_cycles, list):
+            completed_cycles = []
 
-    MAX_COMPLETED_CYCLES = 100
+        MAX_COMPLETED_CYCLES = 100
 
-    completed_cycles = (
-        completed_cycles[-MAX_COMPLETED_CYCLES:]
-    )
+        completed_cycles = (
+            completed_cycles[-MAX_COMPLETED_CYCLES:]
+        )
 
-    # ==============================================================
-    # 10. Published count.
-    # ==============================================================
+        # ==============================================================
+        # 10. Published count.
+        # ==============================================================
 
-    try:
-        published_count = int(
-            self.state.get(
-                "published_count",
-                0,
+        try:
+            published_count = int(
+                self.state.get(
+                    "published_count",
+                    0,
+                )
             )
-        )
-    except (TypeError, ValueError):
-        published_count = 0
+        except (TypeError, ValueError):
+            published_count = 0
 
-    published_count = max(
-        0,
-        published_count,
-    ) + 1
+        published_count = max(
+            0,
+            published_count,
+        ) + 1
 
-    # ==============================================================
-    # 11. Store the complete bounded state.
-    # ==============================================================
+        # ==============================================================
+        # 11. Store the complete bounded state.
+        # ==============================================================
 
-    self.state.update({
-        "schema_version": self.SCHEMA,
-        "cycle": self.cycle,
+        self.state.update({
+            "schema_version": self.SCHEMA,
+            "cycle": self.cycle,
 
-        # Quran progress
-        "used_verses": ordered_used_verses,
+            # Quran progress
+            "used_verses": ordered_used_verses,
 
-        # Bounded visual memory
-        "used_pexels_ids": sorted(
-            self.used_visuals
-        ),
-        "visual_history": cleaned_visual_history,
+            # Bounded visual memory
+            "used_pexels_ids": sorted(
+                self.used_visuals
+            ),
+            "visual_history": cleaned_visual_history,
 
-        # Persistent intelligence
-        "theme_usage": self.theme_usage,
+            # Persistent intelligence
+            "theme_usage": self.theme_usage,
 
-        # Bounded historical records
-        "history": history,
-        "completed_cycles": completed_cycles,
+            # Bounded historical records
+            "history": history,
+            "completed_cycles": completed_cycles,
 
-        # Counters / metadata
-        "published_count": published_count,
-        "last_section": metadata,
-    })
+            # Counters / metadata
+            "published_count": published_count,
+            "last_section": metadata,
+        })
 
-    # ==============================================================
-    # 12. Final sanity checks BEFORE writing.
-    # ==============================================================
+        # ==============================================================
+        # 12. Final sanity checks BEFORE writing.
+        # ==============================================================
 
-    if len(self.state["used_pexels_ids"]) > MAX_VISUAL_MEMORY:
-        raise RuntimeError(
-            "Internal safety check failed: "
-            "used_pexels_ids exceeded the configured limit."
-        )
+        if len(self.state["used_pexels_ids"]) > MAX_VISUAL_MEMORY:
+            raise RuntimeError(
+                "Internal safety check failed: "
+                "used_pexels_ids exceeded the configured limit."
+            )
 
-    if len(self.state["visual_history"]) > MAX_VISUAL_MEMORY:
-        raise RuntimeError(
-            "Internal safety check failed: "
-            "visual_history exceeded the configured limit."
-        )
+        if len(self.state["visual_history"]) > MAX_VISUAL_MEMORY:
+            raise RuntimeError(
+                "Internal safety check failed: "
+                "visual_history exceeded the configured limit."
+            )
 
-    if len(self.state["history"]) > MAX_HISTORY:
-        raise RuntimeError(
-            "Internal safety check failed: "
-            "history exceeded the configured limit."
-        )
+        if len(self.state["history"]) > MAX_HISTORY:
+            raise RuntimeError(
+                "Internal safety check failed: "
+                "history exceeded the configured limit."
+            )
 
-    if len(self.state["completed_cycles"]) > MAX_COMPLETED_CYCLES:
-        raise RuntimeError(
-            "Internal safety check failed: "
-            "completed_cycles exceeded the configured limit."
-        )
+        if len(self.state["completed_cycles"]) > MAX_COMPLETED_CYCLES:
+            raise RuntimeError(
+                "Internal safety check failed: "
+                "completed_cycles exceeded the configured limit."
+            )
 
-    # ==============================================================
-    # 13. Atomic persistence.
-    #
-    # Never directly overwrite progress.json.
-    # ==============================================================
+        # ==============================================================
+        # 13. Atomic persistence.
+        #
+        # Never directly overwrite progress.json.
+        # ==============================================================
     
-    atomic_write_json(
-        PROGRESS,
-        self.state,
-    )
+        atomic_write_json(
+            PROGRESS,
+            self.state,
+        )
 
 
 # ============================================================================
@@ -3639,6 +3648,8 @@ class QuranProduction:
         )
         self.publisher.enqueue(metadata, publish_video, publish_metadata)
 
+        # Capture freshness BEFORE commit(); commit() records the current
+        # visual as used, so checking afterward would always report reused.
         visual_is_fresh = visual.video_id not in self.progress.used_visuals
 
         self.progress.commit(
