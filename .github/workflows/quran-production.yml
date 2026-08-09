@@ -109,13 +109,7 @@ jobs:
 
 
       # ============================================================
-      # 4. READ WORKER RESULT
-      #
-      # Creates:
-      #   video_path
-      #   video_name
-      #   tag_name
-      #   caption
+      # 4. READ RUN RESULT
       # ============================================================
 
       - name: Read run result
@@ -129,63 +123,44 @@ jobs:
           from pathlib import Path
           from datetime import datetime, timezone
 
-
-          # --------------------------------------------------------
-          # Load worker result
-          # --------------------------------------------------------
-
-          result_path = Path(
-              "run-result.json"
-          )
+          result_path = Path("run-result.json")
 
           if not result_path.exists():
-
               raise SystemExit(
                   "ERROR: run-result.json was not created."
               )
-
 
           with result_path.open(
               "r",
               encoding="utf-8",
           ) as fh:
-
               meta = json.load(fh)
 
+          if meta.get("success") is False:
+              raise SystemExit(
+                  "ERROR: Quran worker reported failure:\n"
+                  + json.dumps(
+                      meta,
+                      indent=2,
+                      ensure_ascii=False,
+                  )
+              )
 
-          # --------------------------------------------------------
-          # Output video
-          # --------------------------------------------------------
-
-          output = meta.get(
-              "output"
-          )
+          output = meta.get("output")
 
           if not output:
-
               raise SystemExit(
                   "ERROR: run-result.json has no 'output' path."
               )
 
-
-          video_path = Path(
-              output
-          )
-
+          video_path = Path(output)
 
           if not video_path.exists():
-
               raise SystemExit(
                   f"ERROR: video does not exist: {video_path}"
               )
 
-
           video_name = video_path.name
-
-
-          # --------------------------------------------------------
-          # Release tag
-          # --------------------------------------------------------
 
           tag_name = (
               "section-"
@@ -196,51 +171,22 @@ jobs:
               )
           )
 
-
-          # --------------------------------------------------------
-          # Read optional metadata
-          # --------------------------------------------------------
-
           surah = (
               meta.get("surah")
               or meta.get("surah_name")
               or ""
           )
 
+          section = meta.get("section") or {}
 
-          section = (
-              meta.get("section")
-              or {}
-          )
+          first_ayah = section.get("first_ayah")
+          last_ayah = section.get("last_ayah")
 
+          cycle = meta.get("cycle") or 1
 
-          first_ayah = section.get(
-              "first_ayah"
-          )
-
-          last_ayah = section.get(
-              "last_ayah"
-          )
-
-
-          cycle = (
-              meta.get("cycle")
-              or 1
-          )
-
-
-          theme = (
-              meta.get("theme")
-              or ""
-          )
-
-
-          # --------------------------------------------------------
-          # Try to derive Surah from filename if metadata is absent
-          # --------------------------------------------------------
+          theme = meta.get("theme") or ""
 
           if not surah:
-
               match = re.search(
                   r"Surah-(.+?)-Chapter-\d+",
                   video_name,
@@ -248,40 +194,26 @@ jobs:
               )
 
               if match:
-
                   surah = (
                       match.group(1)
                       .replace("-", " ")
                   )
 
-
-          # --------------------------------------------------------
-          # Build Ayah reference
-          # --------------------------------------------------------
-
           ayah_text = ""
-
 
           if (
               first_ayah is not None
               and last_ayah is not None
           ):
-
               if first_ayah == last_ayah:
-
                   ayah_text = (
                       f"Ayah {first_ayah}"
                   )
-
               else:
-
                   ayah_text = (
                       f"Ayahs {first_ayah}–{last_ayah}"
                   )
-
-
           else:
-
               match = re.search(
                   r"-(?:Ayah|Ayahs)-(\d+)(?:-to-(\d+))?",
                   video_name,
@@ -289,26 +221,17 @@ jobs:
               )
 
               if match:
-
                   first = match.group(1)
                   last = match.group(2)
 
                   if last:
-
                       ayah_text = (
                           f"Ayahs {first}–{last}"
                       )
-
                   else:
-
                       ayah_text = (
                           f"Ayah {first}"
                       )
-
-
-          # --------------------------------------------------------
-          # Caption
-          # --------------------------------------------------------
 
           reference = (
               surah.strip()
@@ -316,27 +239,19 @@ jobs:
               else "Quran"
           )
 
-
           if ayah_text:
-
-              reference += (
-                  f" — {ayah_text}"
-              )
-
+              reference += f" — {ayah_text}"
 
           caption_lines = [
               f"📖 {reference}",
               "",
           ]
 
-
           if theme.strip():
-
               caption_lines.extend([
                   theme.strip(),
                   "",
               ])
-
 
           caption_lines.extend([
               "Listen, reflect, and let the words "
@@ -349,15 +264,7 @@ jobs:
               "#IslamicContent",
           ])
 
-
-          caption = "\n".join(
-              caption_lines
-          )
-
-
-          # --------------------------------------------------------
-          # GitHub outputs
-          # --------------------------------------------------------
+          caption = "\n".join(caption_lines)
 
           with open(
               os.environ["GITHUB_OUTPUT"],
@@ -412,29 +319,17 @@ jobs:
                   "QURAN_CAPTION\n"
               )
 
-
           print("")
-          print(
-              "========================================"
-          )
-
-          print(
-              "SOCIAL CAPTION"
-          )
-
-          print(
-              "========================================"
-          )
-
-          print(
-              caption
-          )
+          print("========================================")
+          print("SOCIAL CAPTION")
+          print("========================================")
+          print(caption)
 
           PY
 
 
       # ============================================================
-      # 5. UPLOAD ARTIFACT
+      # 5. UPLOAD PRODUCTION ARTIFACT
       # ============================================================
 
       - name: Upload production artifact
@@ -450,9 +345,6 @@ jobs:
 
       # ============================================================
       # 6. GITHUB RELEASE
-      #
-      # Backup/archive only.
-      # Buffer will use the R2 URL.
       # ============================================================
 
       - name: Publish finished video to GitHub Release
@@ -485,18 +377,13 @@ jobs:
 
 
       # ============================================================
-      # 7. UPLOAD VIDEO TO CLOUDFLARE R2
+      # 7. CLOUDFLARE R2
       #
-      # STORAGE POLICY
-      #
-      # Maximum target:
+      # Maximum storage:
       #   9 GB
       #
-      # If adding a new video would exceed 9 GB:
-      #
-      #   oldest MP4 is deleted
-      #   then next oldest if necessary
-      #   etc.
+      # When adding a new video would exceed 9 GB,
+      # oldest MP4 files are deleted first.
       #
       # JSON/SRT files are preserved.
       # ============================================================
@@ -505,9 +392,6 @@ jobs:
         id: r2
 
         env:
-
-          # IMPORTANT:
-          # This is the actual R2 S3 endpoint.
           R2_ENDPOINT: https://f628f290c08401d255823b7cfe41054c.r2.cloudflarestorage.com
 
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -522,25 +406,14 @@ jobs:
 
           VIDEO_NAME: ${{ steps.meta.outputs.video_name }}
 
-
         run: |
-
           python3 - <<'PY'
-
           import os
-
           from pathlib import Path
-
           from urllib.parse import quote
 
           import boto3
-
           import requests
-
-
-          # ========================================================
-          # CONFIG
-          # ========================================================
 
           ENDPOINT = (
               os.environ["R2_ENDPOINT"]
@@ -548,24 +421,20 @@ jobs:
               .rstrip("/")
           )
 
-
           ACCESS_KEY = (
               os.environ["R2_ACCESS_KEY_ID"]
               .strip()
           )
-
 
           SECRET_KEY = (
               os.environ["R2_SECRET_ACCESS_KEY"]
               .strip()
           )
 
-
           BUCKET = (
               os.environ["R2_BUCKET"]
               .strip()
           )
-
 
           PUBLIC_BASE = (
               os.environ["R2_PUBLIC_BASE_URL"]
@@ -573,70 +442,35 @@ jobs:
               .rstrip("/")
           )
 
-
           VIDEO_PATH = Path(
               os.environ["VIDEO_PATH"]
           )
-
 
           VIDEO_NAME = os.environ[
               "VIDEO_NAME"
           ]
 
-
-          # ========================================================
-          # VALIDATION
-          # ========================================================
-
           if not ACCESS_KEY:
-
               raise SystemExit(
                   "ERROR: R2_ACCESS_KEY_ID is empty."
               )
 
-
           if not SECRET_KEY:
-
               raise SystemExit(
                   "ERROR: R2_SECRET_ACCESS_KEY is empty."
               )
 
-
           if not VIDEO_PATH.exists():
-
               raise SystemExit(
                   f"ERROR: video does not exist: {VIDEO_PATH}"
               )
 
-
-          print(
-              "========================================"
-          )
-
-          print(
-              "R2 CONFIGURATION"
-          )
-
-          print(
-              "========================================"
-          )
-
-          print(
-              f"R2 endpoint: {ENDPOINT}"
-          )
-
-          print(
-              f"R2 bucket: {BUCKET}"
-          )
-
-          print(
-              f"Video: {VIDEO_NAME}"
-          )
-
-
-          # ========================================================
-          # CREATE S3/R2 CLIENT
-          # ========================================================
+          print("========================================")
+          print("R2 CONFIGURATION")
+          print("========================================")
+          print(f"R2 endpoint: {ENDPOINT}")
+          print(f"R2 bucket: {BUCKET}")
+          print(f"Video: {VIDEO_NAME}")
 
           s3 = boto3.client(
               "s3",
@@ -646,79 +480,29 @@ jobs:
               region_name="auto",
           )
 
+          print("Testing R2 connection...")
 
-          # ========================================================
-          # TEST BUCKET
-          # ========================================================
-
-          print(
-              "Testing R2 connection..."
+          s3.head_bucket(
+              Bucket=BUCKET
           )
 
-
-          try:
-
-              s3.head_bucket(
-                  Bucket=BUCKET
-              )
-
-          except Exception as exc:
-
-              raise SystemExit(
-                  "ERROR: Could not access R2 bucket.\n"
-                  + str(exc)
-              )
-
-
-          print(
-              "R2 bucket connection successful."
-          )
-
-
-          # ========================================================
-          # 9 GB LIMIT
-          # ========================================================
+          print("R2 bucket connection successful.")
 
           MAX_STORAGE = (
               9 * 1024 * 1024 * 1024
           )
 
-
-          new_size = (
-              VIDEO_PATH.stat().st_size
-          )
-
-
-          print("")
-          print(
-              "========================================"
-          )
-
-          print(
-              "R2 STORAGE CHECK"
-          )
-
-          print(
-              "========================================"
-          )
-
-
-          # ========================================================
-          # LIST OBJECTS
-          # ========================================================
+          new_size = VIDEO_PATH.stat().st_size
 
           objects = []
-
 
           paginator = s3.get_paginator(
               "list_objects_v2"
           )
 
-
           for page in paginator.paginate(
               Bucket=BUCKET
           ):
-
               objects.extend(
                   page.get(
                       "Contents",
@@ -726,50 +510,43 @@ jobs:
                   )
               )
 
-
           current_size = sum(
               obj["Size"]
               for obj in objects
           )
-
 
           projected_size = (
               current_size
               + new_size
           )
 
+          print("")
+          print("========================================")
+          print("R2 STORAGE CHECK")
+          print("========================================")
 
           print(
               f"Current storage: "
               f"{current_size / 1024 / 1024:.2f} MB"
           )
 
-
           print(
               f"New video: "
               f"{new_size / 1024 / 1024:.2f} MB"
           )
-
 
           print(
               f"Projected storage: "
               f"{projected_size / 1024 / 1024:.2f} MB"
           )
 
-
           print(
               f"Maximum: "
               f"{MAX_STORAGE / 1024 / 1024:.2f} MB"
           )
 
-
-          # ========================================================
-          # OLDEST-FIRST MP4 CLEANUP
-          # ========================================================
-
           if projected_size > MAX_STORAGE:
 
-              print("")
               print(
                   "9 GB limit would be exceeded."
               )
@@ -777,7 +554,6 @@ jobs:
               print(
                   "Deleting oldest MP4 files..."
               )
-
 
               mp4_objects = [
                   obj
@@ -787,75 +563,38 @@ jobs:
                   .endswith(".mp4")
               ]
 
-
               mp4_objects.sort(
                   key=lambda obj:
                   obj["LastModified"]
               )
 
-
               for obj in mp4_objects:
 
-                  if (
-                      projected_size
-                      <= MAX_STORAGE
-                  ):
-
+                  if projected_size <= MAX_STORAGE:
                       break
 
-
                   key = obj["Key"]
-
                   size = obj["Size"]
-
 
                   print(
                       f"Deleting: {key}"
                   )
-
-
-                  print(
-                      f"Freeing: "
-                      f"{size / 1024 / 1024:.2f} MB"
-                  )
-
 
                   s3.delete_object(
                       Bucket=BUCKET,
                       Key=key,
                   )
 
-
                   projected_size -= size
 
-
-              if (
-                  projected_size
-                  > MAX_STORAGE
-              ):
-
+              if projected_size > MAX_STORAGE:
                   raise SystemExit(
                       "ERROR: Could not reduce R2 "
                       "storage below 9 GB."
                   )
 
-
-          else:
-
-              print(
-                  "No cleanup required."
-              )
-
-
-          # ========================================================
-          # UPLOAD
-          # ========================================================
-
           print("")
-          print(
-              "Uploading video to R2..."
-          )
-
+          print("Uploading video to R2...")
 
           s3.upload_file(
               str(VIDEO_PATH),
@@ -866,36 +605,18 @@ jobs:
               },
           )
 
-
-          # ========================================================
-          # PUBLIC URL
-          # ========================================================
-
           video_url = (
               f"{PUBLIC_BASE}/"
               f"{quote(VIDEO_NAME, safe='/')}"
           )
 
-
-          print("")
-          print(
-              "R2 upload successful."
-          )
-
-
           print(
               f"Public URL: {video_url}"
           )
 
-
-          # ========================================================
-          # VERIFY PUBLIC URL
-          # ========================================================
-
           print(
               "Verifying public URL..."
           )
-
 
           verify = requests.head(
               video_url,
@@ -903,34 +624,24 @@ jobs:
               timeout=30,
           )
 
-
           if verify.status_code >= 400:
-
               raise SystemExit(
                   "ERROR: Public R2 URL returned "
                   f"HTTP {verify.status_code}"
               )
 
-
           print(
               "Public R2 URL verification passed."
           )
-
-
-          # ========================================================
-          # GITHUB OUTPUT
-          # ========================================================
 
           with open(
               os.environ["GITHUB_OUTPUT"],
               "a",
               encoding="utf-8",
           ) as fh:
-
               fh.write(
                   f"video_url={video_url}\n"
               )
-
 
           PY
 
@@ -938,18 +649,17 @@ jobs:
       # ============================================================
       # 8. CREATE BUFFER DRAFTS
       #
-      # IMPORTANT:
+      # Buffer flow:
       #
-      # Instagram:
-      #   type = reel
+      # API authentication
+      #       ↓
+      # account organizations
+      #       ↓
+      # channels
+      #       ↓
+      # Instagram / Facebook / YouTube
       #
-      # Facebook:
-      #   type = reel
-      #
-      # YouTube:
-      #   type = short
-      #
-      # Everything is saved as a Buffer DRAFT.
+      # Everything is saved as a DRAFT.
       #
       # Nothing is automatically published.
       # ============================================================
@@ -957,12 +667,9 @@ jobs:
       - name: Create Buffer drafts
 
         env:
-
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
 
           BUFFER_VIDEO_URL: ${{ steps.r2.outputs.video_url }}
-
-          BUFFER_ORGANIZATION_ID: "6a4a94cd8807be89129990e6"
 
           SURAH: ${{ steps.meta.outputs.surah }}
 
@@ -972,14 +679,11 @@ jobs:
 
           CAPTION: ${{ steps.meta.outputs.caption }}
 
-
         run: |
-
           python3 - <<'PY'
-
           import json
-
           import os
+          import sys
 
           import requests
 
@@ -988,35 +692,26 @@ jobs:
           # CONFIG
           # ========================================================
 
-          API = (
-              "https://api.buffer.com"
-          )
-
+          API = "https://api.buffer.com"
 
           API_KEY = (
-              os.environ[
-                  "BUFFER_API_KEY"
-              ].strip()
+              os.environ.get(
+                  "BUFFER_API_KEY",
+                  ""
+              ).strip()
           )
-
 
           VIDEO_URL = (
-              os.environ[
-                  "BUFFER_VIDEO_URL"
-              ].strip()
+              os.environ.get(
+                  "BUFFER_VIDEO_URL",
+                  ""
+              ).strip()
           )
 
-
-          ORGANIZATION_ID = (
-              os.environ[
-                  "BUFFER_ORGANIZATION_ID"
-              ].strip()
+          CAPTION = os.environ.get(
+              "CAPTION",
+              ""
           )
-
-
-          CAPTION = os.environ[
-              "CAPTION"
-          ]
 
 
           # ========================================================
@@ -1024,23 +719,20 @@ jobs:
           # ========================================================
 
           if not API_KEY:
-
               raise SystemExit(
                   "ERROR: BUFFER_API_KEY is empty."
               )
 
-
           if not VIDEO_URL:
-
               raise SystemExit(
                   "ERROR: BUFFER_VIDEO_URL is empty."
               )
 
-
-          if not ORGANIZATION_ID:
-
+          if not VIDEO_URL.startswith(
+              "https://"
+          ):
               raise SystemExit(
-                  "ERROR: BUFFER_ORGANIZATION_ID is empty."
+                  "ERROR: Buffer video URL must be HTTPS."
               )
 
 
@@ -1049,35 +741,188 @@ jobs:
           # ========================================================
 
           headers = {
-
-              "Content-Type":
-                  "application/json",
-
-              "Authorization":
-                  f"Bearer {API_KEY}",
+              "Content-Type": "application/json",
+              "Authorization": f"Bearer {API_KEY}",
           }
 
 
           # ========================================================
-          # GET BUFFER CHANNELS
+          # 1. GET ACCOUNT + ORGANIZATION
           #
-          # IMPORTANT:
+          # We deliberately do NOT hard-code the organization ID.
           #
-          # organizationId is passed directly as the
-          # OrganizationId scalar.
+          # This prevents the previous ...e6 / ...e4 mismatch.
+          # ========================================================
+
+          account_query = """
+          query GetAccount {
+            account {
+              id
+              organizations {
+                id
+                name
+              }
+            }
+          }
+          """
+
+          print("")
+          print("========================================")
+          print("BUFFER AUTHENTICATION")
+          print("========================================")
+
+          response = requests.post(
+              API,
+              headers=headers,
+              json={
+                  "query": account_query
+              },
+              timeout=30,
+          )
+
+          print(
+              f"Buffer HTTP status: "
+              f"{response.status_code}"
+          )
+
+          if response.status_code != 200:
+
+              print(
+                  response.text
+              )
+
+              raise SystemExit(
+                  "ERROR: Buffer authentication failed."
+              )
+
+          account_data = response.json()
+
+          if account_data.get("errors"):
+
+              raise SystemExit(
+                  "ERROR: Buffer account query failed:\n"
+                  + json.dumps(
+                      account_data["errors"],
+                      indent=2,
+                  )
+              )
+
+          account = (
+              account_data
+              .get("data", {})
+              .get("account")
+          )
+
+          if not account:
+
+              raise SystemExit(
+                  "ERROR: Buffer returned no account."
+              )
+
+          organizations = (
+              account.get(
+                  "organizations"
+              )
+              or []
+          )
+
+          if not organizations:
+
+              raise SystemExit(
+                  "ERROR: No Buffer organizations "
+                  "are available for this API key."
+              )
+
+          print(
+              f"Found {len(organizations)} "
+              "Buffer organization(s)."
+          )
+
+          for organization in organizations:
+
+              print(
+                  f"- {organization.get('name')} "
+                  f"({organization.get('id')})"
+              )
+
+
+          # ========================================================
+          # SELECT ORGANIZATION
           #
-          # This fixes the previous:
+          # The authentication test confirmed this organization:
           #
-          # String -> OrganizationId
+          # 6a4a94cd8807be89129990e4
           #
-          # GraphQL validation error.
+          # Prefer it when present.
+          #
+          # If it isn't present, and there is exactly one
+          # organization, use that one.
+          # ========================================================
+
+          EXPECTED_ORGANIZATION_ID = (
+              "6a4a94cd8807be89129990e4"
+          )
+
+          organization = next(
+              (
+                  org
+                  for org in organizations
+                  if org.get("id")
+                  == EXPECTED_ORGANIZATION_ID
+              ),
+              None,
+          )
+
+          if organization is None:
+
+              if len(organizations) == 1:
+
+                  organization = (
+                      organizations[0]
+                  )
+
+                  print(
+                      "Expected organization ID was "
+                      "not returned; using the only "
+                      "available organization."
+                  )
+
+              else:
+
+                  raise SystemExit(
+                      "ERROR: Expected Buffer organization "
+                      f"{EXPECTED_ORGANIZATION_ID} was not found, "
+                      "and multiple organizations are available."
+                  )
+
+
+          organization_id = organization[
+              "id"
+          ]
+
+          print("")
+          print(
+              f"Using Buffer organization: "
+              f"{organization.get('name')}"
+          )
+
+          print(
+              f"Organization ID: "
+              f"{organization_id}"
+          )
+
+
+          # ========================================================
+          # 2. GET CHANNELS
+          #
+          # This is Buffer's documented channel query.
           # ========================================================
 
           channel_query = f"""
           query GetChannels {{
             channels(
               input: {{
-                organizationId: "{ORGANIZATION_ID}"
+                organizationId: "{organization_id}"
               }}
             ) {{
               id
@@ -1085,24 +930,16 @@ jobs:
               displayName
               service
               isQueuePaused
+              isDisconnected
+              isLocked
             }}
           }}
           """
 
-
           print("")
-          print(
-              "========================================"
-          )
-
-          print(
-              "BUFFER CHANNEL DISCOVERY"
-          )
-
-          print(
-              "========================================"
-          )
-
+          print("========================================")
+          print("BUFFER CHANNEL DISCOVERY")
+          print("========================================")
 
           response = requests.post(
               API,
@@ -1113,30 +950,38 @@ jobs:
               timeout=30,
           )
 
+          print(
+              f"Buffer HTTP status: "
+              f"{response.status_code}"
+          )
 
-          response.raise_for_status()
+          if response.status_code != 200:
 
-
-          data = response.json()
-
-
-          if data.get("errors"):
+              print(
+                  response.text
+              )
 
               raise SystemExit(
-                  "Buffer channel query failed:\n"
+                  "ERROR: Buffer channel request failed."
+              )
+
+          channel_data = response.json()
+
+          if channel_data.get("errors"):
+
+              raise SystemExit(
+                  "ERROR: Buffer channel query failed:\n"
                   + json.dumps(
-                      data["errors"],
+                      channel_data["errors"],
                       indent=2,
                   )
               )
 
-
           channels = (
-              data
+              channel_data
               .get("data", {})
               .get("channels", [])
           )
-
 
           if not channels:
 
@@ -1144,22 +989,18 @@ jobs:
                   "ERROR: Buffer returned zero channels."
               )
 
-
           print(
               f"Found {len(channels)} Buffer channel(s)."
           )
 
 
           # ========================================================
-          # FIND CHANNELS
+          # FIND TARGET CHANNELS
           # ========================================================
 
           instagram = None
-
           facebook = None
-
           youtube = None
-
 
           for channel in channels:
 
@@ -1169,7 +1010,6 @@ jobs:
                   )
                   or ""
               ).lower()
-
 
               display_name = (
                   channel.get(
@@ -1183,36 +1023,43 @@ jobs:
                   )
               )
 
-
               print(
                   f"- {display_name} "
-                  f"[{service}]"
+                  f"[{service}] "
+                  f"id={channel.get('id')}"
               )
 
+              if channel.get(
+                  "isDisconnected"
+              ):
+                  print(
+                      "  WARNING: channel is disconnected."
+                  )
+
+              if channel.get(
+                  "isLocked"
+              ):
+                  print(
+                      "  WARNING: channel is locked."
+                  )
 
               if service == "instagram":
-
                   instagram = channel
 
-
               elif service == "facebook":
-
                   facebook = channel
 
-
               elif service == "youtube":
-
                   youtube = channel
 
 
           # ========================================================
-          # CREATE BUFFER DRAFT
+          # CREATE DRAFT
           # ========================================================
 
           def create_draft(
               channel,
               label,
-              metadata,
           ):
 
               if not channel:
@@ -1224,17 +1071,29 @@ jobs:
 
                   return
 
+              if channel.get(
+                  "isDisconnected"
+              ):
 
-              channel_id = (
-                  channel["id"]
-              )
+                  raise SystemExit(
+                      f"ERROR: {label} channel is disconnected."
+                  )
+
+              if channel.get(
+                  "isLocked"
+              ):
+
+                  raise SystemExit(
+                      f"ERROR: {label} channel is locked."
+                  )
+
+              channel_id = channel[
+                  "id"
+              ]
 
 
               # ----------------------------------------------------
-              # Convert metadata dictionary into GraphQL.
-              #
-              # Only trusted enum/string values generated below
-              # are used here.
+              # Platform-specific metadata
               # ----------------------------------------------------
 
               if label == "Instagram":
@@ -1248,7 +1107,6 @@ jobs:
                   }
                   """
 
-
               elif label == "Facebook":
 
                   metadata_graphql = """
@@ -1259,8 +1117,14 @@ jobs:
                   }
                   """
 
-
               elif label == "YouTube":
+
+                  youtube_title = (
+                      os.environ.get(
+                          "SURAH"
+                      )
+                      or "Quran Reminder"
+                  )
 
                   metadata_graphql = f"""
                   metadata: {{
@@ -1268,10 +1132,7 @@ jobs:
                       type: short
                       categoryId: "27"
                       title: {json.dumps(
-                          os.environ.get(
-                              "SURAH"
-                          )
-                          or "Quran Reminder"
+                          youtube_title
                       )}
                       privacy: private
                       madeForKids: false
@@ -1281,7 +1142,6 @@ jobs:
                   }}
                   """
 
-
               else:
 
                   raise SystemExit(
@@ -1290,20 +1150,10 @@ jobs:
 
 
               # ----------------------------------------------------
-              # Create mutation
+              # CreatePost
               #
-              # Buffer requires:
-              #
-              #   text
-              #   channelId
-              #   schedulingType
-              #   mode
-              #   assets
-              #   saveToDraft
-              #
-              # and Instagram additionally requires:
-              #
-              #   metadata.instagram.type
+              # Video URL is public R2 URL.
+              # Buffer requires public media URLs.
               # ----------------------------------------------------
 
               mutation = f"""
@@ -1335,42 +1185,36 @@ jobs:
                     {metadata_graphql}
                   }}
                 ) {{
-
                   ... on PostActionSuccess {{
-
                     post {{
-
                       id
-
                       text
-
                       status
-
                       channelId
-
                       type
-
                     }}
-
                   }}
 
                   ... on MutationError {{
-
                     message
-
                   }}
-
                 }}
-
               }}
               """
 
 
               print("")
               print(
+                  "----------------------------------------"
+              )
+
+              print(
                   f"Creating {label} draft..."
               )
 
+              print(
+                  f"Buffer channel ID: {channel_id}"
+              )
 
               result = requests.post(
                   API,
@@ -1381,15 +1225,27 @@ jobs:
                   timeout=60,
               )
 
+              print(
+                  f"Buffer HTTP status: "
+                  f"{result.status_code}"
+              )
 
-              result.raise_for_status()
+              if result.status_code != 200:
 
+                  print(
+                      result.text
+                  )
+
+                  raise SystemExit(
+                      f"ERROR: Buffer HTTP request "
+                      f"failed for {label}."
+                  )
 
               payload = result.json()
 
 
               # ----------------------------------------------------
-              # GraphQL-level errors
+              # GraphQL errors
               # ----------------------------------------------------
 
               if payload.get(
@@ -1397,7 +1253,7 @@ jobs:
               ):
 
                   raise SystemExit(
-                      f"Buffer GraphQL error "
+                      f"ERROR: Buffer GraphQL error "
                       f"for {label}:\n"
                       + json.dumps(
                           payload["errors"],
@@ -1416,13 +1272,13 @@ jobs:
               if not create_result:
 
                   raise SystemExit(
-                      f"Buffer returned no "
+                      f"ERROR: Buffer returned no "
                       f"createPost result for {label}."
                   )
 
 
               # ----------------------------------------------------
-              # Typed mutation error
+              # MutationError
               # ----------------------------------------------------
 
               if create_result.get(
@@ -1430,7 +1286,8 @@ jobs:
               ):
 
                   raise SystemExit(
-                      f"Buffer rejected {label}: "
+                      f"ERROR: Buffer rejected "
+                      f"{label}:\n"
                       f"{create_result['message']}"
                   )
 
@@ -1445,22 +1302,14 @@ jobs:
               if not post:
 
                   raise SystemExit(
-                      f"Buffer did not create "
+                      f"ERROR: Buffer did not create "
                       f"{label} draft."
                   )
 
 
               print("")
               print(
-                  "----------------------------------------"
-              )
-
-              print(
                   f"{label} DRAFT CREATED"
-              )
-
-              print(
-                  "----------------------------------------"
               )
 
               print(
@@ -1481,40 +1330,31 @@ jobs:
 
           # ========================================================
           # INSTAGRAM
-          #
-          # VIDEO → REEL
           # ========================================================
 
           create_draft(
               instagram,
               "Instagram",
-              None,
           )
 
 
           # ========================================================
           # FACEBOOK
-          #
-          # VIDEO → REEL
           # ========================================================
 
           create_draft(
               facebook,
               "Facebook",
-              None,
           )
 
 
           # ========================================================
           # YOUTUBE
-          #
-          # VIDEO → SHORT
           # ========================================================
 
           create_draft(
               youtube,
               "YouTube",
-              None,
           )
 
 
@@ -1523,17 +1363,9 @@ jobs:
           # ========================================================
 
           print("")
-          print(
-              "========================================"
-          )
-
-          print(
-              "BUFFER DRAFT CREATION PASSED"
-          )
-
-          print(
-              "========================================"
-          )
+          print("========================================")
+          print("BUFFER DRAFT CREATION PASSED")
+          print("========================================")
 
           print("")
           print(
