@@ -5,7 +5,7 @@ name: Quran Production Pipeline
 #
 # Flow:
 #
-# GitHub Actions
+# GitHub Actions (daily 08:00 UTC, automatic)
 #       ↓
 # Quran Worker
 #       ↓
@@ -25,14 +25,31 @@ name: Quran Production Pipeline
 #
 # Make.com is NOT used.
 #
+# Automatic daily trigger:
+#   schedule (cron)   <-- NEW: this is what makes the whole thing
+#                          run on its own every day, no manual click
+#                          needed.
+#
 # Manual testing:
 #   workflow_dispatch
 #
 # External triggering later:
 #   repository_dispatch
+#
+# NOTE on schedule timing:
+#   GitHub Actions cron runs in UTC and is best-effort, not exact —
+#   under platform load it can fire 10-20+ minutes late. It also
+#   auto-disables if this repo goes 60 days with zero commit
+#   activity, so keep COMMIT_PROGRESS/GIT_PUSH_PROGRESS enabled
+#   (they already are, below) so every run itself counts as activity.
 # ================================================================
 
 on:
+  schedule:
+    # 08:00 UTC every day. Adjust the hour here if you want the post
+    # to land at 8am in a specific timezone instead of UTC.
+    - cron: "0 8 * * *"
+
   workflow_dispatch: {}
 
   repository_dispatch:
@@ -80,6 +97,8 @@ jobs:
             ffmpeg \
             fonts-noto-core \
             fonts-noto-extra \
+            fonts-amiri \
+            fonts-sil-scheherazade \
             fontconfig
 
           python3 -m pip install --quiet \
@@ -109,7 +128,7 @@ jobs:
           GIT_BRANCH: ${{ github.ref_name }}
 
         run: |
-          python3 production/quran_worker_wow.py
+          python3 production/quran_worker.py
 
 
       # ============================================================
@@ -124,6 +143,7 @@ jobs:
           import json
           import os
           import re
+          import random
           from pathlib import Path
           from datetime import datetime, timezone
 
@@ -246,6 +266,25 @@ jobs:
           if ayah_text:
               reference += f" — {ayah_text}"
 
+          # ==============================================================
+          # ROTATING INTRO LINE
+          #
+          # Deterministic per (surah, cycle, ayah range) so re-running the
+          # same section never changes the caption, but different sections
+          # don't all read identically.
+          # ==============================================================
+
+          rng = random.Random(f"{surah}-{cycle}-{ayah_text}")
+
+          intros = [
+              "Listen, reflect, and let the words of the Quran reach your heart.",
+              "A moment to pause and reflect on the words of Allah.",
+              "Let these verses sit with you today.",
+              "Words worth returning to, again and again.",
+              "Take a moment to reflect on this reminder.",
+              "A gentle reminder from the Quran, for your heart today.",
+          ]
+
           caption_lines = [
               f"📖 {reference}",
               "",
@@ -253,13 +292,12 @@ jobs:
 
           if theme.strip():
               caption_lines.extend([
-                  theme.strip(),
+                  theme.strip().capitalize(),
                   "",
               ])
 
           caption_lines.extend([
-              "Listen, reflect, and let the words "
-              "of the Quran reach your heart.",
+              rng.choice(intros),
               "",
               f"Quran Cycle {cycle}",
               "",
