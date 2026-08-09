@@ -136,6 +136,45 @@ jobs:
 
 
       # ============================================================
+      # 2.5. DIAGNOSTIC: confirm quran_worker.py actually exists
+      #
+      # Added after a run failed with "can't open file
+      # .../production/quran_worker.py: No such file or directory".
+      # Note: GitHub masks the literal string "production" in logs
+      # because QF_ENV's value is "production", so that error showed
+      # up as "***" instead of "production" — that's just log
+      # redaction, not a clue about the real problem. This step
+      # prints the actual repo layout and searches for the file by
+      # name so a missing/misplaced/renamed script is obvious instead
+      # of guessed at.
+      # ============================================================
+
+      - name: Confirm quran_worker.py exists
+        run: |
+          echo "Current directory:"
+          pwd
+
+          echo ""
+          echo "Top-level contents:"
+          ls -la
+
+          echo ""
+          echo "Searching whole repo for quran_worker.py:"
+          find . -iname "quran_worker.py" -not -path "*/.git/*"
+
+          echo ""
+          if [ ! -f "production/quran_worker.py" ]; then
+            echo "ERROR: production/quran_worker.py does not exist at the expected path."
+            echo "See the 'find' output above for its actual location (if any),"
+            echo "then either move it to production/quran_worker.py or update"
+            echo "the 'Build and render next Quran section' step to match."
+            exit 1
+          fi
+
+          echo "production/quran_worker.py found as expected."
+
+
+      # ============================================================
       # 3. BUILD / RENDER / QA
       # ============================================================
 
