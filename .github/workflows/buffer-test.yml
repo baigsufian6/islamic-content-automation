@@ -1,0 +1,171 @@
+name: Buffer API Connection Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-buffer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test Buffer API
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import requests
+
+          api_key = os.environ.get("BUFFER_API_KEY")
+
+          if not api_key:
+              print("ERROR: BUFFER_API_KEY secret is missing.")
+              sys.exit(1)
+
+          endpoint = "https://api.buffer.com"
+
+          headers = {
+              "Content-Type": "application/json",
+              "Authorization": f"Bearer {api_key}",
+          }
+
+          # ------------------------------------------------------------
+          # 1. Get the Buffer organization(s)
+          # ------------------------------------------------------------
+          organization_query = """
+          query GetOrganizations {
+            account {
+              organizations {
+                id
+                name
+              }
+            }
+          }
+          """
+
+          response = requests.post(
+              endpoint,
+              headers=headers,
+              json={"query": organization_query},
+              timeout=30,
+          )
+
+          response.raise_for_status()
+
+          data = response.json()
+
+          if data.get("errors"):
+              print("Buffer API returned an error:")
+              print(json.dumps(data["errors"], indent=2))
+              sys.exit(1)
+
+          organizations = data.get("data", {}).get(
+              "account", {}
+          ).get("organizations", [])
+
+          if not organizations:
+              print("ERROR: No Buffer organizations were found.")
+              sys.exit(1)
+
+          print("")
+          print("========================================")
+          print("BUFFER ORGANIZATIONS")
+          print("========================================")
+
+          for org in organizations:
+              print(
+                  f"Organization: {org.get('name')}"
+              )
+              print(
+                  f"Organization ID: {org.get('id')}"
+              )
+              print("")
+
+          # ------------------------------------------------------------
+          # 2. Get channels for the first organization
+          # ------------------------------------------------------------
+          organization_id = organizations[0]["id"]
+
+          channel_query = """
+          query GetChannels($organizationId: String!) {
+            channels(
+              input: {
+                organizationId: $organizationId
+              }
+            ) {
+              id
+              name
+              displayName
+              service
+              isDisconnected
+              isLocked
+              isQueuePaused
+              timezone
+            }
+          }
+          """
+
+          response = requests.post(
+              endpoint,
+              headers=headers,
+              json={
+                  "query": channel_query,
+                  "variables": {
+                      "organizationId": organization_id
+                  },
+              },
+              timeout=30,
+          )
+
+          response.raise_for_status()
+
+          data = response.json()
+
+          if data.get("errors"):
+              print("Buffer channel query returned an error:")
+              print(json.dumps(data["errors"], indent=2))
+              sys.exit(1)
+
+          channels = data.get("data", {}).get("channels", [])
+
+          if not channels:
+              print("ERROR: No Buffer channels were found.")
+              sys.exit(1)
+
+          print("")
+          print("========================================")
+          print("BUFFER CHANNELS")
+          print("========================================")
+
+          for channel in channels:
+              print(
+                  f"Name: {channel.get('displayName') or channel.get('name')}"
+              )
+              print(
+                  f"Service: {channel.get('service')}"
+              )
+              print(
+                  f"Channel ID: {channel.get('id')}"
+              )
+              print(
+                  f"Disconnected: {channel.get('isDisconnected')}"
+              )
+              print(
+                  f"Locked: {channel.get('isLocked')}"
+              )
+              print(
+                  f"Queue paused: {channel.get('isQueuePaused')}"
+              )
+              print(
+                  f"Timezone: {channel.get('timezone')}"
+              )
+              print("----------------------------------------")
+
+          print("")
+          print("BUFFER API CONNECTION TEST PASSED.")
+          PY
