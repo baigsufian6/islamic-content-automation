@@ -225,5 +225,22 @@
     "duration_seconds": 38.322,
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-44-to-46-Cycle-1.srt",
     "created_at": "2026-08-09T21:20:41Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-47-to-49-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-47-to-49-Cycle-1.json",
+    "published_sha256": "fc1644d7cb811a91369cea8a58415a99999ff916daf003665e348c8174212256",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:47",
+      "2:48",
+      "2:49"
+    ],
+    "duration_seconds": 64.444,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-47-to-49-Cycle-1.srt",
+    "created_at": "2026-08-09T21:57:15Z"
   }
 ]
