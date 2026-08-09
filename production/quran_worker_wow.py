@@ -2506,15 +2506,25 @@ class TypographyEngine:
         ]) or self.english_font_path
 
         if not self.arabic_font_path or not self.english_font_path:
-            raise RuntimeError("Required Noto fonts were not found.")
+            raise RuntimeError(
+                "Required Arabic and Latin fonts were not found. "
+                "Install an Arabic Quran-capable font such as Amiri, "
+                "Scheherazade New, or Noto Naskh Arabic, plus Noto Sans."
+            )
+
+        # Resolve the actual internal font-family names from the font files.
+        # This is important: the file may fall back from Amiri to Noto Naskh
+        # Arabic when Amiri is not installed. ASS/libass must then be told the
+        # REAL family name; merely naming the style "Amiri" would bring back
+        # missing-glyph boxes on runners that do not have Amiri.
+        self.arabic_font_name = self.font_family(self.arabic_font_path, "Noto Naskh Arabic")
+        self.english_font_name = self.font_family(self.english_font_path, "Noto Sans")
+        self.bold_font_name = self.font_family(self.bold_font_path, self.english_font_name)
 
         # ffmpeg's `subtitles` filter only ever searches ONE fontsdir.
-        # Arabic fonts (Amiri/Scheherazade) and Latin fonts (Noto Sans)
-        # normally live in different system font folders, so pointing
-        # fontsdir at only one of them silently breaks the other script
-        # (missing-glyph "tofu" boxes instead of real text). Merging the
-        # exact fonts this render needs into one folder fixes that for
-        # both Arabic verse text and the Arabic-Indic ayah badge.
+        # Arabic fonts and Latin fonts normally live in different system font
+        # folders, so pointing fontsdir at only one of them can silently break
+        # one script. Merge the exact fonts this render needs into one folder.
         self.fonts_dir = self.build_fonts_dir()
 
     @staticmethod
@@ -2524,6 +2534,31 @@ class TypographyEngine:
             if matches:
                 return matches[0]
         return None
+
+    @staticmethod
+    def font_family(path: str, fallback: str) -> str:
+        """Return the font's real internal family name.
+
+        GitHub runners can have Amiri, Scheherazade New, or Noto Naskh Arabic
+        depending on which font packages are installed. ffmpeg/libass uses the
+        internal family name from the font metadata, not the filename.
+        """
+        try:
+            result = subprocess.run(
+                ["fc-scan", "--format=%{family}\n", path],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            for line in result.stdout.splitlines():
+                name = line.strip().split(',')[0].strip()
+                if name:
+                    return name
+        except (FileNotFoundError, subprocess.SubprocessError, OSError):
+            pass
+
+        return fallback
 
     def build_fonts_dir(self) -> Path:
         """Merge every font this render needs into one folder.
@@ -2545,8 +2580,14 @@ class TypographyEngine:
             source = Path(path_str)
             target = merged / source.name
 
-            if target.exists():
-                continue
+            # Replace stale files/symlinks from an earlier run. A cached build
+            # directory must never leave ffmpeg using an old font after the
+            # selected fallback font changes.
+            if target.exists() or target.is_symlink():
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
 
             try:
                 target.symlink_to(source)
@@ -2622,23 +2663,24 @@ class TypographyEngine:
         header_size, _header_lines, _ = self.fit(
             self.english_font_path,
             header,
-            W - 160,
-            74,
-            42,
-            26,
+            W - 180,
+            64,
+            34,
+            22,
             1.10,
         )
 
-        # Bigger, bolder Arabic block — this is the main visual focus now
-        # that the frame/watermark are gone.
+        # Arabic should be prominent but never oversized. Keep generous
+        # side margins and cap the maximum size so short ayahs do not become
+        # giant text blocks, while preserving a clear traditional Naskh look.
         arabic_size, arabic_lines, arabic_line_height = self.fit(
             self.arabic_font_path,
             arabic,
-            W - 120,
-            480,
-            110,
-            48,
-            1.5,
+            W - 180,
+            400,
+            72,
+            38,
+            1.34,
         )
         arabic_height = arabic_line_height * len(arabic_lines)
 
@@ -2651,11 +2693,11 @@ class TypographyEngine:
         english_size, english_lines, english_line_height = self.fit(
             self.english_font_path,
             english,
-            W - 176,
-            470,
-            50,
-            26,
-            1.30,
+            W - 190,
+            430,
+            42,
+            24,
+            1.26,
         )
         english_height = english_line_height * len(english_lines)
 
@@ -2670,11 +2712,11 @@ class TypographyEngine:
             english_size, english_lines, english_line_height = self.fit(
                 self.english_font_path,
                 english,
-                W - 176,
-                405,
-                min(english_size, 45),
-                24,
-                1.26,
+                W - 190,
+                390,
+                min(english_size, 40),
+                22,
+                1.22,
             )
 
         return LayoutResult(
@@ -2697,30 +2739,21 @@ class TypographyEngine:
         image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        for y in range(H):
-            if y < 380:
-                alpha = int(120 * (1 - y / 380) ** 1.5)
-            elif y < 1080:
-                alpha = 0
-            elif y < 1280:
-                t = (y - 1080) / 200
-                alpha = int(45 * t)
-            else:
-                t = min((y - 1280) / (H - 1280), 1.0)
-                alpha = int(45 + 175 * (t ** 1.15))
-            if alpha:
-                draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
-
-        verse_band = Image.new("RGBA", (W, 640), (0, 0, 0, 0))
+        # Keep the footage clean. The previous strong top gradient created
+        # a visible horizontal dark band above the Quran text. We now use
+        # only an extremely subtle wash around the text area and no top shadow.
+        verse_band = Image.new("RGBA", (W, 560), (0, 0, 0, 0))
         band_draw = ImageDraw.Draw(verse_band)
-        for y in range(640):
-            d = min(y, 640 - y) / 320.0
-            alpha = int(50 * (1 - d) ** 1.6)
-            band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], max(alpha, 0)))
-        verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=44))
-        image.alpha_composite(verse_band, (0, 260))
+        for y in range(560):
+            d = min(y, 560 - y) / 280.0
+            alpha = int(8 * (1 - d) ** 1.8)
+            if alpha:
+                band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
+        verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=52))
+        image.alpha_composite(verse_band, (0, 320))
 
-        image = image.filter(ImageFilter.GaussianBlur(radius=0.2))
+        # Do not blur the final overlay itself. A global blur softens edges
+        # and can make the overlay look like a visible shadow/band.
         image.save(path)
 
     @staticmethod
@@ -2791,6 +2824,9 @@ class TypographyEngine:
             # verse number are always visible together, in plain Latin
             # digits — legible even if Arabic-script rendering ever
             # breaks again.
+            # Keep the Surah and current ayah number together on EVERY ayah.
+            # The Arabic verse itself is separate, so the viewer can always see
+            # exactly which verse is being recited.
             header_text = (
                 f"SURAH {romanish(chapter_name)} "
                 f"— AYAH {verse.verse_number}"
@@ -2802,26 +2838,26 @@ class TypographyEngine:
 
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Header,,0,0,0,,"
-                f"{{\\an8\\pos(540,86)\\fs{layout.header_size}\\fad(180,180)}}"
+                f"{{\\an8\\pos(540,78)\\fs{layout.header_size}\\fad(120,120)}}"
                 f"{self.ass_escape(header_text)}"
             )
 
             events.append(
                 f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Arabic,,0,0,0,,"
                 f"{{\\an5\\pos(540,{layout.arabic_center_y})"
-                f"\\fs{layout.arabic_size}\\fad(220,220)}}"
+                f"\\fs{layout.arabic_size}\\fad(140,140)}}"
                 f"{self.ass_lines(layout.arabic_lines)}"
             )
 
             events.append(
                 f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Ornament,,0,0,0,,"
-                f"{{\\an5\\pos(540,{layout.ornament_y})\\fad(180,180)}}"
+                f"{{\\an5\\pos(540,{layout.ornament_y})\\fad(120,120)}}"
                 f"{self.ass_escape(arabic_badge)}"
             )
 
             events.append(
                 f"Dialogue: 2,{self.ass_time(start)},{self.ass_time(end)},English,,0,0,0,,"
-                f"{{\\an8\\pos(540,{layout.english_top_y})\\fs{layout.english_size}\\fad(220,220)}}"
+                f"{{\\an8\\pos(540,{layout.english_top_y})\\fs{layout.english_size}\\fad(140,140)}}"
                 f"{self.ass_lines(layout.english_lines)}"
             )
 
@@ -2838,16 +2874,12 @@ class TypographyEngine:
                 f"{{\\an8\\pos(540,1788)}}QURAN  •  SAHEEH INTERNATIONAL"
             )
 
-        # BorderStyle=1 (outline+shadow) everywhere — no opaque "plate"
-        # box behind any text; that flat box is exactly what made older
-        # renders look like a generic subtitle plate instead of text
-        # sitting on the footage.
+        # BorderStyle=1 gives a clean outline without an opaque subtitle plate.
+        # Shadow is deliberately zero on all text styles so there is no visible
+        # offset shadow/band around the Quran text.
         #
-        # NOTE: the Ornament style's font was changed from "Noto Sans" to
-        # "Amiri" — the badge text (﴿ ٨٣ ﴾) uses Arabic-Indic digits and
-        # Quranic ornamentation marks that Noto Sans does not reliably
-        # contain, which is the other half of why the badge rendered as
-        # empty boxes.
+        # The ornament uses the same detected Arabic font as the Quran text so
+        # Arabic-Indic digits and the Quranic ornament marks stay consistent.
         ass = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -2857,12 +2889,12 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Header,Noto Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,2,0,1,2.0,2,8,60,60,0,1
-Style: Arabic,Amiri,92,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,3.2,4,5,50,50,0,1
-Style: Ornament,Amiri,28,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.8,2,5,60,60,0,1
-Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,2.4,3,8,70,70,0,1
-Style: Progress,Noto Sans,18,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.4,1,8,60,60,0,1
-Style: Footer,Noto Sans,15,&H00D6CFC1,&H00D6CFC1,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.2,1,8,60,60,0,1
+Style: Header,{self.english_font_name},34,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,2,0,1,1.2,0,8,60,60,0,1
+Style: Arabic,{self.arabic_font_name},78,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.8,0,5,50,50,0,1
+Style: Ornament,{self.arabic_font_name},22,&H00E7C77D,&H00E7C77D,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.0,0,5,60,60,0,1
+Style: English,{self.english_font_name},40,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.4,0,8,70,70,0,1
+Style: Progress,{self.english_font_name},16,&H00E7C77D,&H00E7C77D,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,0.8,0,8,60,60,0,1
+Style: Footer,{self.english_font_name},13,&H00D6CFC1,&H00D6CFC1,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0.6,0,8,60,60,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
