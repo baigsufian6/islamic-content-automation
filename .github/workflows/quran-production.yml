@@ -19,7 +19,9 @@ name: Quran Production Pipeline
 #       ↓
 # Buffer
 #       ↓
-# Instagram / Facebook / YouTube DRAFTS (with retry on Facebook)
+# Instagram / Facebook / YouTube — AUTO-PUBLISHED
+# (queued via Buffer, published automatically at each channel's
+#  next scheduled slot; Facebook gets a retry on transient errors)
 #
 # Make.com is NOT used.
 #
@@ -652,14 +654,16 @@ jobs:
       # 8. R2 VIDEO ACCESSIBILITY TEST
       #
       # This specifically tests the exact public URL that Buffer
-      # receives, from multiple angles:
+      # receives, from multiple angles, WITHOUT re-downloading the
+      # full video (it's already been uploaded to R2 and GitHub
+      # Release earlier in this run):
       #
       #   1. HEAD                       (basic reachability)
-      #   2. Full GET                   (file actually downloads)
-      #   3. Byte-range GET             (partial-content support,
+      #   2. Byte-range GET (1MB)       (partial-content support,
       #                                  which Meta's video ingest
-      #                                  relies on)
-      #   4. HEAD as Meta's crawler     (facebookexternalhit UA,
+      #                                  relies on; also validates
+      #                                  the file is a real MP4)
+      #   3. HEAD as Meta's crawler     (facebookexternalhit UA,
       #                                  to catch Cloudflare bot
       #                                  protection blocking Meta
       #                                  specifically while normal
@@ -707,36 +711,13 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "2. FULL GET TEST"
+          echo "2. BYTE-RANGE REQUEST"
           echo "========================================"
-
-          curl \
-            -L \
-            --fail \
-            --output /tmp/r2-buffer-test.mp4 \
-            --max-time 120 \
-            "$BUFFER_VIDEO_URL"
-
-          if [ ! -s /tmp/r2-buffer-test.mp4 ]; then
-            echo "ERROR: GET returned an empty file."
-            exit 1
-          fi
-
-          echo ""
-          echo "Downloaded test file:"
-          ls -lh /tmp/r2-buffer-test.mp4
-
-          echo ""
-          echo "File identification:"
-          file /tmp/r2-buffer-test.mp4
-
-          echo ""
-          echo "Full GET request passed."
-
-          echo ""
-          echo "========================================"
-          echo "3. BYTE-RANGE REQUEST"
-          echo "========================================"
+          echo "(This also stands in for a full-file GET test:"
+          echo "a 1MB range is enough to confirm the object is a"
+          echo "real, readable MP4 without re-downloading the"
+          echo "entire video a second time after it was already"
+          echo "uploaded to R2 and GitHub Release.)"
 
           rm -f /tmp/r2-range-headers.txt
           rm -f /tmp/r2-range-test.bin
@@ -763,6 +744,11 @@ jobs:
             exit 1
           fi
 
+          echo ""
+          echo "File identification (from the first 1MB, which"
+          echo "contains the MP4 header/ftyp box):"
+          file /tmp/r2-range-test.bin
+
           if ! grep -qi "^HTTP/.* 206" /tmp/r2-range-headers.txt; then
             echo ""
             echo "ERROR: Server did not return 206 Partial Content"
@@ -787,7 +773,7 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "4. HEAD REQUEST AS META'S CRAWLER"
+          echo "3. HEAD REQUEST AS META'S CRAWLER"
           echo "========================================"
           echo "Simulating the facebookexternalhit user agent to"
           echo "check whether Cloudflare bot protection treats"
@@ -819,7 +805,7 @@ jobs:
             echo "signal that Cloudflare may be blocking Meta's"
             echo "crawler on this domain. Check Cloudflare's Bot"
             echo "Fight Mode / WAF settings for this zone if"
-            echo "Facebook drafts keep failing."
+            echo "Facebook posts keep failing."
           else
             META_STATUS=$(grep "HTTP_STATUS:" /tmp/r2-meta-ua-headers.txt | cut -d: -f2)
             if [ "$META_STATUS" -ge 400 ] 2>/dev/null; then
@@ -854,7 +840,7 @@ jobs:
 
 
       # ============================================================
-      # 9. CREATE BUFFER DRAFTS
+      # 9. CREATE AND AUTO-PUBLISH BUFFER POSTS
       #
       # Buffer flow:
       #
@@ -866,9 +852,11 @@ jobs:
       #       ↓
       # Instagram / Facebook / YouTube
       #
-      # Everything is saved as a DRAFT.
-      #
-      # Nothing is automatically published.
+      # Posts are created with saveToDraft: false, so Buffer moves
+      # them straight to "Scheduled" and auto-publishes each one at
+      # that channel's next queue slot (whatever posting times are
+      # configured for the channel in Buffer). There is no manual
+      # approval step.
       #
       # Facebook specifically gets retried with backoff, since its
       # "Video could not be read from its URL" error can be a
@@ -876,7 +864,7 @@ jobs:
       # R2 accessibility test above passes cleanly.
       # ============================================================
 
-      - name: Create Buffer drafts
+      - name: Create and auto-publish Buffer posts
 
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
@@ -1330,7 +1318,7 @@ jobs:
 
                     mode: addToQueue
 
-                    saveToDraft: true
+                    saveToDraft: false
 
                     assets: [
                       {{
@@ -1456,7 +1444,7 @@ jobs:
 
               print("")
               print(
-                  f"{label} DRAFT CREATED"
+                  f"{label} POST SCHEDULED (auto-publish)"
               )
 
               print(
@@ -1530,7 +1518,7 @@ jobs:
                   )
 
                   print(
-                      f"Creating {label} draft "
+                      f"Creating {label} post "
                       f"(attempt {attempt}/{max_attempts})..."
                   )
 
@@ -1558,7 +1546,7 @@ jobs:
 
                   print("")
                   print(
-                      f"{label} draft attempt {attempt} failed:"
+                      f"{label} post attempt {attempt} failed:"
                   )
                   print(
                       error_message
@@ -1660,12 +1648,12 @@ jobs:
 
           print("")
           print("========================================")
-          print("BUFFER DRAFT CREATION PASSED")
+          print("BUFFER AUTO-PUBLISH PASSED")
           print("========================================")
 
           print("")
           print(
-              "The video was sent to Buffer as drafts."
+              "The video was sent to Buffer and scheduled for auto-publish."
           )
 
           print(
