@@ -1882,8 +1882,9 @@ class MeaningEngine:
         # Keep searches clean and avoid unwanted visual material.
         # ==============================================================
         avoid = (
-            "no people, no faces, no religious figures, "
-            "no text, no logos, no crowds, no readable signs"
+            "no people, no person, no faces, no human, no man, no woman, "
+            "no religious figures, no crowd, no crowds"
+            "no text, no logos, no readable signs, empty landscape only"
         )
         queries = [
             f"{query}, {avoid}"
