@@ -87,6 +87,24 @@ jobs:
 
       # ============================================================
       # 2. INSTALL DEPENDENCIES
+      #
+      # NOTE on Arabic fonts:
+      #   Package availability for Arabic-script fonts (fonts-amiri,
+      #   fonts-sil-scheherazade, fonts-noto-naskh-arabic) can vary
+      #   between apt mirrors/pockets on a given runner image, and a
+      #   single unresolved package name makes `apt-get install` fail
+      #   ATOMICALLY for every package listed alongside it — even ones
+      #   that were perfectly installable. So the core, always-required
+      #   packages are installed in one atomic call, and each Arabic
+      #   font candidate is installed independently so a missing name
+      #   can't take down the ones that ARE available.
+      #
+      #   TypographyEngine.find_font() in quran_worker.py already
+      #   searches Amiri -> Scheherazade -> Noto Naskh Arabic and picks
+      #   whichever is present, so this only needs to guarantee that at
+      #   least one candidate lands — checked explicitly below so a
+      #   fully-missing-font situation fails loudly here, in CI, instead
+      #   of surfacing later as a cryptic renderer crash.
       # ============================================================
 
       - name: Install rendering and storage dependencies
@@ -95,11 +113,21 @@ jobs:
 
           sudo apt-get install -y \
             ffmpeg \
+            fontconfig \
             fonts-noto-core \
-            fonts-noto-extra \
-            fonts-amiri \
-            fonts-sil-scheherazade \
-            fontconfig
+            fonts-noto-extra
+
+          for pkg in fonts-amiri fonts-sil-scheherazade fonts-noto-naskh-arabic; do
+            sudo apt-get install -y "$pkg" \
+              || echo "WARNING: apt package '$pkg' unavailable on this mirror, skipping."
+          done
+
+          sudo fc-cache -f
+
+          if ! fc-list | grep -qiE "amiri|scheherazade|noto naskh arabic"; then
+            echo "ERROR: No Arabic-script font installed (Amiri / Scheherazade / Noto Naskh Arabic all missing)."
+            exit 1
+          fi
 
           python3 -m pip install --quiet \
             requests \
