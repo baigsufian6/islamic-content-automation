@@ -89,7 +89,7 @@ jobs:
       # 2. INSTALL DEPENDENCIES
       #
       # NOTE on Arabic fonts:
-      #   Package availability for Arabic-script fonts (fonts-amiri,
+      #   Package availability for Arabic-script fonts (fonts-hosny-amiri,
       #   fonts-sil-scheherazade, fonts-noto-naskh-arabic) can vary
       #   between apt mirrors/pockets on a given runner image, and a
       #   single unresolved package name makes `apt-get install` fail
@@ -117,7 +117,7 @@ jobs:
             fonts-noto-core \
             fonts-noto-extra
 
-          for pkg in fonts-amiri fonts-sil-scheherazade fonts-noto-naskh-arabic; do
+          for pkg in fonts-hosny-amiri fonts-sil-scheherazade fonts-noto-naskh-arabic; do
             sudo apt-get install -y "$pkg" \
               || echo "WARNING: apt package '$pkg' unavailable on this mirror, skipping."
           done
