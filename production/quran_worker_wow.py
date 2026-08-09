@@ -1880,10 +1880,18 @@ class MeaningEngine:
 
         # ==============================================================
         # Keep searches clean and avoid unwanted visual material.
+        #
+        # "no animals, no birds, no wildlife" was added after a run
+        # returned a duck floating on a pond for a verse with no water/
+        # animal theme match — the query had fallen through to the
+        # generic "reflection" fallback, which was not excluding
+        # wildlife, and Pexels' "peaceful nature" results skew toward
+        # animal footage more than plain landscape footage.
         # ==============================================================
         avoid = (
             "no people, no person, no faces, no human, no man, no woman, "
-            "no religious figures, no crowd, no crowds"
+            "no religious figures, no crowd, no crowds, "
+            "no animals, no birds, no wildlife, "
             "no text, no logos, no readable signs, empty landscape only"
         )
         queries = [
@@ -2462,9 +2470,9 @@ class VisualEngine:
 #     directly on the cinematic footage with only a soft feathered gradient
 #     behind it for legibility — this matches a clean, modern caption style
 #     instead of a "designed plaque" look.
-#   - One header line (Surah name), a larger/bolder Arabic block, a small
-#     ayah-number badge, and the English translation underneath. The ayah
-#     number is fully dynamic per on-screen verse, exactly as before.
+#   - One header line (Surah name + ayah number), a larger/bolder Arabic
+#     block, a small ayah-number badge, and the English translation
+#     underneath. Both the header and the badge update per on-screen verse.
 
 
 PALETTE = {
@@ -2500,6 +2508,15 @@ class TypographyEngine:
         if not self.arabic_font_path or not self.english_font_path:
             raise RuntimeError("Required Noto fonts were not found.")
 
+        # ffmpeg's `subtitles` filter only ever searches ONE fontsdir.
+        # Arabic fonts (Amiri/Scheherazade) and Latin fonts (Noto Sans)
+        # normally live in different system font folders, so pointing
+        # fontsdir at only one of them silently breaks the other script
+        # (missing-glyph "tofu" boxes instead of real text). Merging the
+        # exact fonts this render needs into one folder fixes that for
+        # both Arabic verse text and the Arabic-Indic ayah badge.
+        self.fonts_dir = self.build_fonts_dir()
+
     @staticmethod
     def find_font(patterns: list[str]) -> Optional[str]:
         for pattern in patterns:
@@ -2507,6 +2524,36 @@ class TypographyEngine:
             if matches:
                 return matches[0]
         return None
+
+    def build_fonts_dir(self) -> Path:
+        """Merge every font this render needs into one folder.
+
+        Symlinks are used when possible (cheap, no copy), falling back to
+        a real copy if the filesystem doesn't support symlinks.
+        """
+        merged = BUILD / "_fonts"
+        merged.mkdir(parents=True, exist_ok=True)
+
+        for path_str in {
+            self.arabic_font_path,
+            self.english_font_path,
+            self.bold_font_path,
+        }:
+            if not path_str:
+                continue
+
+            source = Path(path_str)
+            target = merged / source.name
+
+            if target.exists():
+                continue
+
+            try:
+                target.symlink_to(source)
+            except OSError:
+                shutil.copy2(source, target)
+
+        return merged
 
     def font(self, path: str, size: int) -> ImageFont.FreeTypeFont:
         key = (path, size)
@@ -2569,7 +2616,9 @@ class TypographyEngine:
         arabic: str,
         english: str,
     ) -> LayoutResult:
-        header = f"SURAH {romanish(chapter_name)}"
+        # Header now includes the ayah number so the size we fit here
+        # matches the text actually drawn per-verse in make_ass() below.
+        header = f"SURAH {romanish(chapter_name)} — AYAH {first_ayah}"
         header_size, _header_lines, _ = self.fit(
             self.english_font_path,
             header,
@@ -2709,7 +2758,10 @@ class TypographyEngine:
     ) -> None:
         """
         Clean layout, four elements per on-screen ayah:
-          1. Header — "SURAH <NAME>" (static per section)
+          1. Header — "SURAH <NAME> — AYAH <N>", fully DYNAMIC, updates
+             every single ayah (previously static per section, which is
+             why the video looked like it had no verse/chapter reference
+             beyond the tiny, hard-to-read badge).
           2. Arabic verse text (large, centered)
           3. Ayah-number badge — fully DYNAMIC, updates every single ayah
              exactly like the reference video (﴿ 83 ﴾ style)
@@ -2720,8 +2772,6 @@ class TypographyEngine:
         total_count = len(verses)
         events: list[str] = []
         cursor = 0.0
-
-        header_text = f"SURAH {romanish(chapter_name)}"
 
         for idx, (verse, audio) in enumerate(zip(verses, audio_items)):
             start = cursor
@@ -2735,6 +2785,15 @@ class TypographyEngine:
                 verse.verse_number,
                 verse.arabic_text,
                 verse.translation,
+            )
+
+            # Header is now per-ayah so the Surah name AND the current
+            # verse number are always visible together, in plain Latin
+            # digits — legible even if Arabic-script rendering ever
+            # breaks again.
+            header_text = (
+                f"SURAH {romanish(chapter_name)} "
+                f"— AYAH {verse.verse_number}"
             )
 
             # Dynamic ayah badge — recalculated every ayah, exactly like
@@ -2783,6 +2842,12 @@ class TypographyEngine:
         # box behind any text; that flat box is exactly what made older
         # renders look like a generic subtitle plate instead of text
         # sitting on the footage.
+        #
+        # NOTE: the Ornament style's font was changed from "Noto Sans" to
+        # "Amiri" — the badge text (﴿ ٨٣ ﴾) uses Arabic-Indic digits and
+        # Quranic ornamentation marks that Noto Sans does not reliably
+        # contain, which is the other half of why the badge rendered as
+        # empty boxes.
         ass = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -2794,7 +2859,7 @@ ScaledBorderAndShadow: yes
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Header,Noto Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,2,0,1,2.0,2,8,60,60,0,1
 Style: Arabic,Amiri,92,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,3.2,4,5,50,50,0,1
-Style: Ornament,Noto Sans,28,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.8,2,5,60,60,0,1
+Style: Ornament,Amiri,28,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,1.8,2,5,60,60,0,1
 Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,2.4,3,8,70,70,0,1
 Style: Progress,Noto Sans,18,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.4,1,8,60,60,0,1
 Style: Footer,Noto Sans,15,&H00D6CFC1,&H00D6CFC1,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1.2,1,8,60,60,0,1
@@ -2928,7 +2993,14 @@ class VideoRenderer:
         duration: float,
     ) -> None:
         fade_out_start = max(0.0, duration - 0.8)
-        font_dir = "/usr/share/fonts/truetype/noto"
+
+        # IMPORTANT: this must point at a folder containing BOTH the
+        # Arabic font (Amiri/Scheherazade) AND Noto Sans, or Arabic text
+        # renders as missing-glyph boxes while English still works fine.
+        # ffmpeg's subtitles filter only searches ONE fontsdir, so the two
+        # system font locations are merged in advance by
+        # TypographyEngine.build_fonts_dir().
+        font_dir = str(self.typography.fonts_dir)
         filter_complex = (
             "[0:v][1:v]overlay=0:0:shortest=1[bg];"
             f"[bg]subtitles={subtitles}:fontsdir={font_dir},"
@@ -3502,8 +3574,8 @@ class QuranProduction:
                 "audio_channels": qa["audio_channels"],
                 "audio_sample_rate": qa["audio_sample_rate"],
                 "layout": (
-                    "Surah title / Arabic verse / dynamic ayah badge / "
-                    "English translation / progress"
+                    "Surah title + ayah number / Arabic verse / dynamic "
+                    "ayah badge / English translation / progress"
                 ),
                 "fonts": {
                     "arabic": Path(self.typography.arabic_font_path).stem,
