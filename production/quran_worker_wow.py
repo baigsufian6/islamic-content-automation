@@ -2018,6 +2018,28 @@ class QuranProduction:
             cursor = end
         return timeline
 
+    def _select_passage_with_fallback(
+        self, start_index: int, duration_map: dict[str, float]
+    ) -> list[Verse]:
+        """Belt-and-suspenders wrapper around PassagePlanner.select_passage.
+
+        The prefetch loop in run() is written to fetch exactly the durations
+        select_passage can need. If those two ever drift out of sync again
+        (e.g. a future edit to one without the other), this retries once by
+        fetching whatever single duration was reported missing, rather than
+        failing the whole production run over one missing lookup.
+        """
+        try:
+            return self.planner.select_passage(start_index, duration_map)
+        except RuntimeError as exc:
+            match = re.search(r"Missing audio duration for (\d+:\d+)", str(exc))
+            if not match:
+                raise
+            missing_key = match.group(1)
+            log(f"Duration cache missed {missing_key}; fetching it directly.", "WARN")
+            duration_map[missing_key] = self.audio.fetch(missing_key).duration
+            return self.planner.select_passage(start_index, duration_map)
+
     def run(self) -> dict[str, Any]:
         start_time = time.time()
         cycle = self.progress.cycle
@@ -2032,6 +2054,16 @@ class QuranProduction:
 
         # Fetch enough audio metadata to decide the passage length. The actual
         # files are cached, so this is not an expensive repeat download.
+        #
+        # IMPORTANT: this loop's stopping conditions must exactly mirror
+        # PassagePlanner.select_passage's stopping conditions below. That
+        # method deliberately keeps consuming verses past TARGET_MIN as long
+        # as they're in the same ruku (so a passage doesn't cut off
+        # mid-thought), up to TARGET_MAX. If this loop stopped fetching the
+        # instant TARGET_MIN was reached, select_passage could later ask for
+        # a duration that was never fetched and crash with "Missing audio
+        # duration for X:Y" — which is exactly what used to happen on longer
+        # rukus. Keep both loops in sync if either one changes.
         duration_map: dict[str, float] = {}
         i = start_index
         while i < len(self.verses):
@@ -2040,21 +2072,36 @@ class QuranProduction:
                 break
             if verse.chapter_id != start_verse.chapter_id:
                 break
+
+            running_total = sum(duration_map.values())
             if (
-                i > start_index
+                duration_map
                 and start_verse.ruku_number is not None
                 and verse.ruku_number != start_verse.ruku_number
-                and sum(duration_map.values()) >= TARGET_MIN
+                and running_total >= TARGET_MIN
             ):
                 break
+
             item = self.audio.fetch(verse.verse_key)
-            duration_map[verse.verse_key] = item.duration
-            proposed = sum(duration_map.values())
-            if proposed >= TARGET_MIN:
+            d = item.duration
+
+            if duration_map and running_total + d > TARGET_MAX and running_total >= TARGET_MIN:
                 break
+
+            duration_map[verse.verse_key] = d
             i += 1
 
-        selected = self.planner.select_passage(start_index, duration_map)
+            running_total += d
+            if running_total >= TARGET_MIN:
+                if i >= len(self.verses):
+                    break
+                nxt = self.verses[i]
+                if nxt.chapter_id != start_verse.chapter_id:
+                    break
+                if start_verse.ruku_number is not None and nxt.ruku_number != start_verse.ruku_number:
+                    break
+
+        selected = self._select_passage_with_fallback(start_index, duration_map)
         keys = [v.verse_key for v in selected]
 
         # Ensure the duration planner has everything it needs; if the final
