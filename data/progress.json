@@ -56,7 +56,11 @@
     "2:46",
     "2:47",
     "2:48",
-    "2:49"
+    "2:49",
+    "2:50",
+    "2:51",
+    "2:52",
+    "2:53"
   ],
   "published_sections": [
     {
@@ -224,21 +228,23 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:47",
-      "2:48",
-      "2:49"
+      "2:50",
+      "2:51",
+      "2:52",
+      "2:53"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 64.444,
-    "visual_id": 37694068,
-    "theme": "warning",
-    "visual_query": "dark turbulent ocean beneath storm clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-47-to-49-Cycle-1.mp4",
-    "published_sha256": "fc1644d7cb811a91369cea8a58415a99999ff916daf003665e348c8174212256"
+    "duration_seconds": 46.184,
+    "visual_id": 10681857,
+    "theme": "guidance",
+    "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-50-to-53-Cycle-1.mp4",
+    "published_sha256": "b16314ca83d6164e7769866c31ec8d9a47985122135d2646c35df96df25648e8"
   },
   "schema_version": 4,
   "used_pexels_ids": [
+    10681857,
     11318637,
     13243682,
     19948838,
@@ -256,7 +262,7 @@
     38430067
   ],
   "theme_usage": {
-    "guidance": 3,
+    "guidance": 4,
     "creation": 3,
     "justice": 2,
     "paradise": 2,
@@ -267,7 +273,7 @@
     "warning": 1
   },
   "completed_cycles": [],
-  "published_count": 15,
+  "published_count": 16,
   "history": [
     {
       "cycle": 1,
@@ -465,6 +471,21 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-47-to-49-Cycle-1.mp4",
       "published_sha256": "fc1644d7cb811a91369cea8a58415a99999ff916daf003665e348c8174212256",
       "created_at": "2026-08-09T21:57:15Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:50",
+        "2:51",
+        "2:52",
+        "2:53"
+      ],
+      "visual_id": 10681857,
+      "theme": "guidance",
+      "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-50-to-53-Cycle-1.mp4",
+      "published_sha256": "b16314ca83d6164e7769866c31ec8d9a47985122135d2646c35df96df25648e8",
+      "created_at": "2026-08-09T22:25:37Z"
     }
   ],
   "visual_history": [
@@ -482,6 +503,7 @@
     27863479,
     29898627,
     37542312,
-    37694068
+    37694068,
+    10681857
   ]
 }
