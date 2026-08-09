@@ -5,7 +5,9 @@ Quran Production Worker — polished production edition.
 Purpose
 -------
 This worker is the production brain behind the Quran short-video pipeline.
-It can be invoked directly or by a Node/Express backend.
+It can be invoked directly or by a Node/Express backend, and it is the ONLY
+script the GitHub Actions workflow runs — there is no second, duplicate
+implementation living inside the workflow YAML anymore.
 
 The pipeline is deliberately deterministic and stateful:
 
@@ -52,6 +54,9 @@ Required:
 Optional:
   ALLOW_VISUAL_REUSE=1
   COMMIT_PROGRESS=1
+  GIT_PUSH_PROGRESS=1
+  GIT_REMOTE=origin
+  GIT_BRANCH=main
   QURAN_TARGET_MIN=35
   QURAN_TARGET_MAX=65
   QURAN_LOG_LEVEL=INFO
@@ -343,7 +348,7 @@ class HttpClient:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "quran-production-pipeline/3.0",
+            "User-Agent": "quran-production-pipeline/3.1",
         })
 
     def json(
@@ -437,7 +442,7 @@ class QuranFoundationClient:
         self.session.headers.update({
             "x-auth-token": token,
             "x-client-id": CLIENT_ID,
-            "User-Agent": "quran-production-pipeline/3.0",
+            "User-Agent": "quran-production-pipeline/3.1",
         })
         log("Quran Foundation authentication: SUCCESS")
 
@@ -456,7 +461,7 @@ class PexelsClient:
         self.session = requests.Session()
         self.session.headers.update({
             "Authorization": PEXELS_KEY,
-            "User-Agent": "quran-production-pipeline/3.0",
+            "User-Agent": "quran-production-pipeline/3.1",
         })
 
     def search(self, query: str, page: int = 1) -> dict[str, Any]:
@@ -1263,6 +1268,30 @@ class VisualEngine:
 # ============================================================================
 # 10. Typography and visual layout engine
 # ============================================================================
+#
+# Presentation notes (design pass):
+#   - Palette: warm ivory Arabic text, soft champagne-gold accents, pure white
+#     English translation. Everything sits on a deep charcoal scrim rather than
+#     flat black so it reads as "cinematic" instead of "subtitle box".
+#   - The gradient scrim is now stronger and asymmetric: heavier over the
+#     lower third (where the English line and progress dots live) so text
+#     always has contrast regardless of the background footage.
+#   - A slim double-line frame plus four minimal arabesque corner flourishes
+#     replace the old plain dots — this is what gives the frame its
+#     "designed", non-template feel.
+#   - A thin hairline divider sits directly under the header block, and a
+#     matching one sits above the footer, so the composition reads as three
+#     clear zones (header / verse / footer) at a glance.
+
+
+PALETTE = {
+    "scrim": (8, 8, 11),
+    "gold": (231, 199, 125),
+    "gold_soft": (212, 178, 108),
+    "ivory": (255, 241, 199),
+    "white": (255, 255, 255),
+}
+
 
 class TypographyEngine:
     def __init__(self):
@@ -1359,26 +1388,26 @@ class TypographyEngine:
             header,
             W - 160,
             74,
-            40,
-            24,
+            42,
+            26,
             1.10,
         )
 
         arabic_size, arabic_lines, arabic_line_height = self.fit(
             self.arabic_font_path,
             arabic,
-            W - 150,
-            455,
-            92,
-            42,
-            1.48,
+            W - 140,
+            460,
+            96,
+            44,
+            1.46,
         )
         arabic_height = arabic_line_height * len(arabic_lines)
 
         # The two text blocks are intentionally close: the ornament becomes the
         # breathing space, not an enormous empty gap.
-        arabic_top = 340
-        arabic_height_limit = 440
+        arabic_top = 336
+        arabic_height_limit = 448
         arabic_center = int(
             arabic_top + (arabic_height_limit - arabic_height) / 2 + arabic_height / 2
         )
@@ -1386,31 +1415,31 @@ class TypographyEngine:
         english_size, english_lines, english_line_height = self.fit(
             self.english_font_path,
             english,
-            W - 180,
+            W - 176,
             470,
-            48,
-            25,
-            1.28,
+            50,
+            26,
+            1.30,
         )
         english_height = english_line_height * len(english_lines)
 
         ornament_y = int(
-            max(745, min(820, arabic_center + arabic_height / 2 + 50))
+            max(742, min(818, arabic_center + arabic_height / 2 + 50))
         )
         english_top = int(
-            ornament_y + 52
+            ornament_y + 54
         )
 
         # If English would run into the footer, compact it rather than allowing overflow.
-        if english_top + english_height > 1505:
+        if english_top + english_height > 1500:
             english_size, english_lines, english_line_height = self.fit(
                 self.english_font_path,
                 english,
-                W - 180,
-                410,
-                min(english_size, 44),
-                23,
-                1.24,
+                W - 176,
+                405,
+                min(english_size, 45),
+                24,
+                1.26,
             )
 
         return LayoutResult(
@@ -1425,39 +1454,85 @@ class TypographyEngine:
         )
 
     def make_overlay(self, path: Path) -> None:
+        """Build the static PNG scrim + frame that sits over the background video.
+
+        This is the single biggest lever for how "premium" the final render
+        looks, since it controls legibility and the frame/border identity.
+        """
         image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        # Cinematic readability gradient.
+        top, bottom = 640, 1240  # gradient never touches, header/footer own their zones
+
+        # --- readability scrim -------------------------------------------------
+        # Asymmetric: the lower third (English line + progress + footer) needs
+        # the most contrast because it sits over the busiest part of most stock
+        # footage (horizon lines, water glare, moving foliage).
         for y in range(H):
             alpha = 0
-            if y < 360:
-                alpha = int(135 * (1 - y / 360))
-            elif y > 1320:
-                alpha = int(175 * ((y - 1320) / (H - 1320)))
+            if y < 400:
+                alpha = int(150 * (1 - y / 400))
+            elif y > 1200:
+                t = (y - 1200) / (H - 1200)
+                alpha = int(30 + 190 * t)
             if alpha:
-                draw.line([(0, y), (W, y)], fill=(6, 7, 10, alpha))
+                draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
 
-        # Very subtle inner frame. It gives the video a designed identity without
-        # looking like a generic social-media template.
+        # A soft secondary wash directly behind the Arabic block only, so the
+        # verse itself always sits on a slightly darker plate regardless of
+        # what's happening in the footage behind it.
+        verse_band = Image.new("RGBA", (W, 560), (0, 0, 0, 0))
+        band_draw = ImageDraw.Draw(verse_band)
+        for y in range(560):
+            d = min(y, 560 - y) / 280.0
+            alpha = int(70 * (1 - d))
+            band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], max(alpha, 0)))
+        image.alpha_composite(verse_band, (0, 300))
+
+        # --- frame ---------------------------------------------------------
         margin = 34
+        inner = margin + 10
         draw.rounded_rectangle(
             [margin, margin, W - margin, H - margin],
-            radius=24,
-            outline=(255, 255, 255, 26),
+            radius=26,
+            outline=(*PALETTE["gold"], 60),
             width=2,
         )
+        draw.rounded_rectangle(
+            [inner, inner, W - inner, H - inner],
+            radius=20,
+            outline=(255, 255, 255, 18),
+            width=1,
+        )
 
-        # Small corner ornaments.
-        corner = (229, 194, 122, 100)
-        size = 22
-        for x, y in [
-            (margin + 22, margin + 22),
-            (W - margin - 22, margin + 22),
-            (margin + 22, H - margin - 22),
-            (W - margin - 22, H - margin - 22),
-        ]:
-            draw.ellipse([x - size / 2, y - size / 2, x + size / 2, y + size / 2], fill=corner)
+        # --- minimal arabesque corner flourishes ---------------------------
+        # A short diagonal tick plus a small hollow diamond at each corner:
+        # reads as an intentional ornamental frame rather than plain dots.
+        def flourish(cx: float, cy: float, flip_x: int, flip_y: int) -> None:
+            gold = (*PALETTE["gold"], 130)
+            arm = 30
+            draw.line(
+                [
+                    (cx, cy + flip_y * arm * 0.35),
+                    (cx + flip_x * arm, cy),
+                    (cx, cy - flip_y * arm * 0.35),
+                ],
+                fill=gold,
+                width=2,
+                joint="curve",
+            )
+            r = 5
+            draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=gold, width=2)
+
+        pad = margin + 26
+        flourish(pad, pad, 1, 1)
+        flourish(W - pad, pad, -1, 1)
+        flourish(pad, H - pad, 1, -1)
+        flourish(W - pad, H - pad, -1, -1)
+
+        # --- hairline zone dividers -----------------------------------------
+        draw.line([(150, 224), (W - 150, 224)], fill=(*PALETTE["gold"], 55), width=1)
+        draw.line([(150, 1745), (W - 150, 1745)], fill=(*PALETTE["gold"], 45), width=1)
 
         # A very soft blur avoids hard overlay edges.
         image = image.filter(ImageFilter.GaussianBlur(radius=0.25))
@@ -1501,10 +1576,7 @@ class TypographyEngine:
         cursor = 0.0
 
         header_text = f"✦  SURAH {romanish(chapter_name)}  ✦"
-        if chapter_name_arabic:
-            arabic_chapter = chapter_name_arabic
-        else:
-            arabic_chapter = ""
+        arabic_chapter = chapter_name_arabic or ""
 
         for idx, (verse, audio) in enumerate(zip(verses, audio_items)):
             start = cursor
@@ -1545,18 +1617,18 @@ class TypographyEngine:
             if arabic_chapter:
                 events.append(
                     f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},ChapterArabic,,0,0,0,,"
-                    f"{{\\an8\\pos(540,116)\\fad(180,180)}}"
+                    f"{{\\an8\\pos(540,118)\\fad(180,180)}}"
                     f"{self.ass_escape(arabic_chapter)}"
                 )
 
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},SubHeader,,0,0,0,,"
-                f"{{\\an8\\pos(540,158)\\fad(180,180)}}"
+                f"{{\\an8\\pos(540,160)\\fad(180,180)}}"
                 f"{self.ass_escape(range_label)}"
             )
             events.append(
                 f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Source,,0,0,0,,"
-                f"{{\\an8\\pos(540,198)\\fad(180,180)}}"
+                f"{{\\an8\\pos(540,200)\\fad(180,180)}}"
                 f"SAHEEH INTERNATIONAL  •  SAAD AL-GHAMDI"
             )
 
@@ -1604,15 +1676,15 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Header,Noto Sans,40,&H00F4D58A,&H00F4D58A,&H00101010,&H78000000,1,0,0,0,100,100,1,0,3,1,2,8,60,60,0,1
-Style: ChapterArabic,Noto Naskh Arabic,26,&H00E7D6AE,&H00E7D6AE,&H00101010,&H60000000,0,0,0,0,100,100,0,0,3,1,1,8,60,60,0,1
-Style: SubHeader,Noto Sans,24,&H00FFFFFF,&H00FFFFFF,&H00101010,&H70000000,1,0,0,0,100,100,0,0,3,1,2,8,60,60,0,1
-Style: Source,Noto Sans,16,&H00D4CDBF,&H00D4CDBF,&H00101010,&H50000000,0,0,0,0,100,100,1,0,3,1,1,8,60,60,0,1
-Style: Arabic,Noto Naskh Arabic,80,&H00FFF1C7,&H00FFF1C7,&H00101010,&H35000000,0,0,0,0,100,100,0,0,1,3,2,5,60,60,0,1
-Style: Ornament,Noto Sans,25,&H00E7C77D,&H00E7C77D,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,2,1,5,60,60,0,1
-Style: English,Noto Sans,43,&H00FFFFFF,&H00FFFFFF,&H00101010,&H55000000,0,0,0,0,100,100,0,0,3,2,2,8,70,70,0,1
-Style: Progress,Noto Sans,18,&H00E7C77D,&H00E7C77D,&H00101010,&H30000000,0,0,0,0,100,100,2,0,3,1,1,8,60,60,0,1
-Style: Footer,Noto Sans,15,&H00C9C1B3,&H00C9C1B3,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1,0,8,60,60,0,1
+Style: Header,Noto Sans,42,&H007DC7E7,&H007DC7E7,&H00101010,&H78000000,1,0,0,0,100,100,1,0,3,1.4,2,8,60,60,0,1
+Style: ChapterArabic,Noto Naskh Arabic,27,&H00AED6E7,&H00AED6E7,&H00101010,&H60000000,0,0,0,0,100,100,0,0,3,1,1,8,60,60,0,1
+Style: SubHeader,Noto Sans,25,&H00FFFFFF,&H00FFFFFF,&H00101010,&H70000000,1,0,0,0,100,100,0,0,3,1.2,2,8,60,60,0,1
+Style: Source,Noto Sans,16,&H00E0D9CC,&H00E0D9CC,&H00101010,&H50000000,0,0,0,0,100,100,1,0,3,1,1,8,60,60,0,1
+Style: Arabic,Noto Naskh Arabic,84,&H00C7F1FF,&H00C7F1FF,&H00101010,&H35000000,0,0,0,0,100,100,0,0,1,3.4,2,5,60,60,0,1
+Style: Ornament,Noto Sans,26,&H007DC7E7,&H007DC7E7,&H00101010,&H00000000,1,0,0,0,100,100,0,0,1,2,1,5,60,60,0,1
+Style: English,Noto Sans,46,&H00FFFFFF,&H00FFFFFF,&H00101010,&H55000000,0,0,0,0,100,100,0,0,3,2.2,2,8,70,70,0,1
+Style: Progress,Noto Sans,18,&H007DC7E7,&H007DC7E7,&H00101010,&H30000000,0,0,0,0,100,100,2,0,3,1,1,8,60,60,0,1
+Style: Footer,Noto Sans,15,&H00D6CFC1,&H00D6CFC1,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,1,0,8,60,60,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -1656,7 +1728,8 @@ class VideoRenderer:
             (
                 "scale=1300:2311:force_original_aspect_ratio=increase,"
                 f"crop=1080:1920:{profile},"
-                f"fps={FPS},format=yuv420p"
+                f"fps={FPS},format=yuv420p,"
+                "eq=contrast=1.03:saturation=1.05"
             ),
             "-an",
             "-c:v", "libx264",
