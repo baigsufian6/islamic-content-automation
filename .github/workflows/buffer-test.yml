@@ -1,4 +1,4 @@
-name: Buffer Instagram Video Test
+name: Test Instagram via Buffer
 
 on:
   workflow_dispatch:
@@ -14,53 +14,109 @@ jobs:
       - name: Send test video to Instagram via Buffer
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
-
         run: |
           python3 - <<'PY'
           import json
           import os
           import sys
-          import urllib.request
-          import urllib.error
+          import requests
 
-          api_key = os.environ.get("BUFFER_API_KEY")
+          # ------------------------------------------------------------
+          # CONFIGURATION
+          # ------------------------------------------------------------
 
-          if not api_key:
-              print("ERROR: BUFFER_API_KEY is missing.")
-              sys.exit(1)
+          BUFFER_API_KEY = os.environ.get("BUFFER_API_KEY")
 
-          endpoint = "https://api.buffer.com"
+          INSTAGRAM_CHANNEL_ID = "6a7884d3b2d9d57743451076"
 
-          video_url = (
-              "https://github.com/baigsufian6/"
-              "islamic-content-automation/releases/download/"
-              "section-20260809-130603/"
+          VIDEO_URL = (
+              "https://pub-4ac1cf8ee6a44509bb69a39b67ba92b0.r2.dev/"
               "Surah-Al-Baqarah-Chapter-2-Ayahs-21-to-22-Cycle-1.mp4"
           )
 
-          query = """
-          mutation CreateInstagramTestPost {
+          CAPTION = """Surah Al-Baqarah — Ayahs 21–22
+
+          A reminder from the Quran.
+
+          #Quran #Islam #IslamicReminder #QuranVerses #AlBaqarah"""
+
+          # ------------------------------------------------------------
+          # VALIDATE SECRET
+          # ------------------------------------------------------------
+
+          if not BUFFER_API_KEY:
+              print("ERROR: BUFFER_API_KEY secret is missing.")
+              sys.exit(1)
+
+          # ------------------------------------------------------------
+          # VERIFY THE R2 VIDEO IS PUBLICLY ACCESSIBLE
+          # ------------------------------------------------------------
+
+          print("========================================")
+          print("STEP 1: VERIFY R2 VIDEO")
+          print("========================================")
+          print(f"Video URL: {VIDEO_URL}")
+
+          try:
+              r2_response = requests.head(
+                  VIDEO_URL,
+                  allow_redirects=True,
+                  timeout=30,
+              )
+
+              print(f"HTTP status: {r2_response.status_code}")
+              print(
+                  f"Content-Type: "
+                  f"{r2_response.headers.get('content-type')}"
+              )
+              print(
+                  f"Content-Length: "
+                  f"{r2_response.headers.get('content-length')}"
+              )
+
+              if r2_response.status_code != 200:
+                  print("ERROR: R2 video is not publicly accessible.")
+                  sys.exit(1)
+
+          except Exception as e:
+              print(f"ERROR checking R2 video: {e}")
+              sys.exit(1)
+
+          print("R2 VIDEO ACCESS TEST PASSED.")
+          print("")
+
+          # ------------------------------------------------------------
+          # BUFFER GRAPHQL MUTATION
+          # ------------------------------------------------------------
+
+          endpoint = "https://api.buffer.com"
+
+          headers = {
+              "Content-Type": "application/json",
+              "Authorization": f"Bearer {BUFFER_API_KEY}",
+          }
+
+          mutation = """
+          mutation CreateInstagramReel {
             createPost(
               input: {
-                text: "Quran production pipeline test — please ignore."
-                channelId: "6a7884d3b2d9d57743451076"
+                text: """ + json.dumps(CAPTION) + """
+                channelId: """ + json.dumps(INSTAGRAM_CHANNEL_ID) + """
                 schedulingType: automatic
                 mode: shareNow
-
+                assets: [
+                  {
+                    video: {
+                      url: """ + json.dumps(VIDEO_URL) + """
+                    }
+                  }
+                ]
                 metadata: {
                   instagram: {
                     type: reel
                     shouldShareToFeed: true
                   }
                 }
-
-                assets: [
-                  {
-                    video: {
-                      url: "https://github.com/baigsufian6/islamic-content-automation/releases/download/section-20260809-130603/Surah-Al-Baqarah-Chapter-2-Ayahs-21-to-22-Cycle-1.mp4"
-                    }
-                  }
-                ]
               }
             ) {
               ... on PostActionSuccess {
@@ -68,7 +124,8 @@ jobs:
                   id
                   text
                   status
-                  dueAt
+                  shareMode
+                  sharedNow
                   assets {
                     id
                     mimeType
@@ -84,74 +141,101 @@ jobs:
           }
           """
 
-          payload = json.dumps({
-              "query": query
-          }).encode("utf-8")
+          # ------------------------------------------------------------
+          # SEND TO BUFFER
+          # ------------------------------------------------------------
 
-          request = urllib.request.Request(
-              endpoint,
-              data=payload,
-              headers={
-                  "Content-Type": "application/json",
-                  "Authorization": f"Bearer {api_key}",
-              },
-              method="POST",
-          )
+          print("========================================")
+          print("STEP 2: SEND VIDEO TO BUFFER")
+          print("========================================")
 
           try:
-              with urllib.request.urlopen(
-                  request,
-                  timeout=120,
-              ) as response:
-                  result = json.loads(
-                      response.read().decode("utf-8")
-                  )
-
-          except urllib.error.HTTPError as exc:
-              print(f"Buffer HTTP error: {exc.code}")
-              print(
-                  exc.read().decode(
-                      "utf-8",
-                      errors="replace"
-                  )
+              response = requests.post(
+                  endpoint,
+                  headers=headers,
+                  json={"query": mutation},
+                  timeout=60,
               )
+          except Exception as e:
+              print(f"ERROR contacting Buffer API: {e}")
               sys.exit(1)
 
-          except Exception as exc:
-              print(f"Request failed: {exc}")
+          print(f"HTTP status: {response.status_code}")
+          print("")
+
+          try:
+              data = response.json()
+          except Exception:
+              print("ERROR: Buffer returned non-JSON response.")
+              print(response.text)
               sys.exit(1)
 
-          print(json.dumps(result, indent=2))
+          print(json.dumps(data, indent=2))
 
-          if result.get("errors"):
+          # ------------------------------------------------------------
+          # HTTP ERROR
+          # ------------------------------------------------------------
+
+          if response.status_code != 200:
               print("")
-              print("BUFFER GRAPHQL ERROR")
+              print("BUFFER HTTP REQUEST FAILED.")
               sys.exit(1)
 
-          post_result = (
-              result
-              .get("data", {})
-              .get("createPost", {})
+          # ------------------------------------------------------------
+          # GRAPHQL ERRORS
+          # ------------------------------------------------------------
+
+          if data.get("errors"):
+              print("")
+              print("BUFFER GRAPHQL ERROR:")
+              print(json.dumps(data["errors"], indent=2))
+              sys.exit(1)
+
+          # ------------------------------------------------------------
+          # CREATE POST RESULT
+          # ------------------------------------------------------------
+
+          create_post = (
+              data.get("data", {})
+                  .get("createPost")
           )
 
-          if "message" in post_result:
+          if not create_post:
               print("")
-              print("BUFFER REJECTED THE POST:")
-              print(post_result["message"])
+              print("ERROR: Buffer returned no createPost result.")
               sys.exit(1)
 
-          post = post_result.get("post")
+          # MutationError
+          if "message" in create_post and "post" not in create_post:
+              print("")
+              print("BUFFER REJECTED THE POST:")
+              print(create_post["message"])
+              sys.exit(1)
+
+          # Success
+          post = create_post.get("post")
 
           if not post:
               print("")
-              print("ERROR: Buffer did not return a post.")
+              print("ERROR: Buffer did not return a post object.")
+              print(json.dumps(create_post, indent=2))
               sys.exit(1)
+
+          # ------------------------------------------------------------
+          # SUCCESS
+          # ------------------------------------------------------------
 
           print("")
           print("========================================")
-          print("INSTAGRAM TEST POST CREATED")
+          print("BUFFER INSTAGRAM TEST PASSED")
           print("========================================")
-          print(f"Post ID: {post.get('id')}")
+          print(f"Buffer Post ID: {post.get('id')}")
           print(f"Status: {post.get('status')}")
-          print("========================================")
+          print(f"Share Mode: {post.get('shareMode')}")
+          print(f"Shared Now: {post.get('sharedNow')}")
+          print("")
+          print("The video was accepted by Buffer.")
+          print("Buffer is attempting to publish it to Instagram.")
+          print("")
+
           PY
