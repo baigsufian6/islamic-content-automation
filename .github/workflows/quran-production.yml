@@ -280,6 +280,43 @@ jobs:
 
           theme = meta.get("theme") or ""
 
+          # Read actual rendered duration so platform-specific limits are
+          # enforced before any Buffer post is created.
+          duration_seconds = None
+          for candidate in (
+              meta.get("duration_seconds"),
+              meta.get("duration"),
+              section.get("duration_seconds"),
+          ):
+              try:
+                  if candidate is not None:
+                      duration_seconds = float(candidate)
+                      break
+              except (TypeError, ValueError):
+                  pass
+
+          if duration_seconds is None:
+              import subprocess
+              probe = subprocess.run(
+                  [
+                      "ffprobe", "-v", "error",
+                      "-show_entries", "format=duration",
+                      "-of", "default=noprint_wrappers=1:nokey=1",
+                      str(video_path),
+                  ],
+                  capture_output=True,
+                  text=True,
+                  check=True,
+              )
+              duration_seconds = float(probe.stdout.strip())
+
+          if duration_seconds <= 0:
+              raise SystemExit(
+                  f"ERROR: Invalid video duration: {duration_seconds}"
+              )
+
+          facebook_compatible = duration_seconds <= 88.0
+
           if not surah:
               match = re.search(
                   r"Surah-(.+?)-Chapter-\d+",
@@ -416,6 +453,14 @@ jobs:
 
               fh.write(
                   f"cycle={cycle}\n"
+              )
+
+              fh.write(
+                  f"duration_seconds={duration_seconds:.3f}\n"
+              )
+
+              fh.write(
+                  f"facebook_compatible={'true' if facebook_compatible else 'false'}\n"
               )
 
               fh.write(
@@ -986,6 +1031,8 @@ jobs:
           CYCLE: ${{ steps.meta.outputs.cycle }}
 
           CAPTION: ${{ steps.meta.outputs.caption }}
+          VIDEO_DURATION_SECONDS: ${{ steps.meta.outputs.duration_seconds }}
+          FACEBOOK_COMPATIBLE: ${{ steps.meta.outputs.facebook_compatible }}
 
         run: |
           python3 - <<'PY'
@@ -1019,6 +1066,35 @@ jobs:
           CAPTION = os.environ.get(
               "CAPTION",
               ""
+          )
+
+          try:
+              VIDEO_DURATION_SECONDS = float(
+                  os.environ["VIDEO_DURATION_SECONDS"]
+              )
+          except (KeyError, ValueError):
+              raise SystemExit(
+                  "ERROR: VIDEO_DURATION_SECONDS is missing or invalid."
+              )
+
+          FACEBOOK_REELS_HARD_MAX_SECONDS = 90.0
+          FACEBOOK_REELS_SAFE_MAX_SECONDS = 88.0
+
+          FACEBOOK_COMPATIBLE = (
+              os.environ.get("FACEBOOK_COMPATIBLE", "false")
+              .strip()
+              .lower()
+              == "true"
+          )
+
+          # Never send a borderline or over-limit video to Facebook.
+          if VIDEO_DURATION_SECONDS > FACEBOOK_REELS_SAFE_MAX_SECONDS:
+              FACEBOOK_COMPATIBLE = False
+
+          print(f"Video duration: {VIDEO_DURATION_SECONDS:.2f}s")
+          print(
+              "Facebook compatible: "
+              + ("YES" if FACEBOOK_COMPATIBLE else "NO")
           )
 
           # Facebook-specific retry settings. "Video could not be
@@ -1730,14 +1806,32 @@ jobs:
           # ========================================================
           # FACEBOOK (with retry, since this is the channel that
           # has shown transient "could not be read" failures)
-          # ========================================================
 
-          create_draft(
-              facebook,
-              "Facebook",
-              max_attempts=FACEBOOK_MAX_ATTEMPTS,
-              retry_delay_seconds=FACEBOOK_RETRY_DELAY_SECONDS,
-          )
+          # FACEBOOK
+          #
+          # Facebook Reels has a 90-second hard limit. Use an 88-second
+          # safety threshold. A long complete Quran ayah is preserved and
+          # Facebook is skipped rather than cutting the ayah.
+          if FACEBOOK_COMPATIBLE:
+              create_draft(
+                  facebook,
+                  "Facebook",
+                  max_attempts=FACEBOOK_MAX_ATTEMPTS,
+                  retry_delay_seconds=FACEBOOK_RETRY_DELAY_SECONDS,
+              )
+          else:
+              print("")
+              print("Facebook skipped safely.")
+              print(
+                  f"Video is {VIDEO_DURATION_SECONDS:.2f}s; "
+                  "Facebook safety limit is "
+                  f"{FACEBOOK_REELS_SAFE_MAX_SECONDS:.0f}s."
+              )
+              print(
+                  "The complete Quran video is preserved; "
+                  "it will not be cut just to fit Facebook."
+              )
+
 
 
           # ========================================================
@@ -1761,7 +1855,7 @@ jobs:
 
           print("")
           print(
-              "The video was sent to Buffer and scheduled for auto-publish."
+              "Eligible channels were sent to Buffer and scheduled for auto-publish."
           )
 
           print(
