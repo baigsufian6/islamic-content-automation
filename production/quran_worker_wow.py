@@ -2528,7 +2528,7 @@ class TypographyEngine:
     SURAH_EN_Y = 340
     BADGE_Y = 505
     ARABIC_TOP = 610
-    ARABIC_MAX_H = 430
+    ARABIC_MAX_H = 480
     ORNAMENT_GAP = 36
     ENGLISH_GAP = 58
     ENGLISH_MAX_H = 390
@@ -2795,9 +2795,9 @@ class TypographyEngine:
                 font,
                 safe_width,
                 arabic=True,
-                stroke_width=2,
+                stroke_width=1,
             )
-            line_height = size * 1.36
+            line_height = size * 1.50
             block_height = line_height * len(lines)
 
             widest = max(
@@ -2806,7 +2806,7 @@ class TypographyEngine:
                     line,
                     font,
                     arabic=True,
-                    stroke_width=2,
+                    stroke_width=1,
                 )
                 for line in lines
             )
@@ -3106,8 +3106,8 @@ class TypographyEngine:
                 arabic_font,
                 arabic=True,
                 fill=(255, 255, 255, 248),
-                stroke_width=2,
-                stroke_fill=(0, 0, 0, 165),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 150),
             )
 
             arabic_bottom = (
