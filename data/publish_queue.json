@@ -346,5 +346,22 @@
     "duration_seconds": 142.916,
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-62-to-69-Cycle-1.srt",
     "created_at": "2026-08-10T22:03:21Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-70-to-71-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-70-to-71-Cycle-1.json",
+    "published_sha256": "f366ef9aa7dc8a2393abffd428b18f618e4d863b4ea75d5579739acfbae3e994",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:70",
+      "2:71"
+    ],
+    "duration_seconds": 41.091,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-70-to-71-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-08-10T22:47:11Z"
   }
 ]
