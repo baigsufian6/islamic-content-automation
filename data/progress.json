@@ -60,7 +60,10 @@
     "2:50",
     "2:51",
     "2:52",
-    "2:53"
+    "2:53",
+    "2:54",
+    "2:55",
+    "2:56"
   ],
   "published_sections": [
     {
@@ -228,19 +231,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:50",
-      "2:51",
-      "2:52",
-      "2:53"
+      "2:54",
+      "2:55",
+      "2:56"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 46.184,
-    "visual_id": 10681857,
-    "theme": "guidance",
-    "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-50-to-53-Cycle-1.mp4",
-    "published_sha256": "b16314ca83d6164e7769866c31ec8d9a47985122135d2646c35df96df25648e8"
+    "duration_seconds": 58.593,
+    "visual_id": 38423457,
+    "theme": "repentance",
+    "visual_query": "golden dawn appearing after dark clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-54-to-56-Cycle-1.mp4",
+    "published_sha256": "d316fb2af21b3573a7a27ac45dda7aa0820d39dac64ae7c912988125659b284b"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -259,6 +261,7 @@
     37694201,
     37894855,
     37904635,
+    38423457,
     38430067
   ],
   "theme_usage": {
@@ -270,10 +273,11 @@
     "knowledge": 1,
     "worship": 1,
     "patience": 1,
-    "warning": 1
+    "warning": 1,
+    "repentance": 1
   },
   "completed_cycles": [],
-  "published_count": 16,
+  "published_count": 17,
   "history": [
     {
       "cycle": 1,
@@ -486,6 +490,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-50-to-53-Cycle-1.mp4",
       "published_sha256": "b16314ca83d6164e7769866c31ec8d9a47985122135d2646c35df96df25648e8",
       "created_at": "2026-08-09T22:25:37Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:54",
+        "2:55",
+        "2:56"
+      ],
+      "visual_id": 38423457,
+      "theme": "repentance",
+      "visual_query": "golden dawn appearing after dark clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-54-to-56-Cycle-1.mp4",
+      "published_sha256": "d316fb2af21b3573a7a27ac45dda7aa0820d39dac64ae7c912988125659b284b",
+      "created_at": "2026-08-10T07:49:48Z"
     }
   ],
   "visual_history": [
@@ -504,6 +522,7 @@
     29898627,
     37542312,
     37694068,
-    10681857
+    10681857,
+    38423457
   ]
 }
