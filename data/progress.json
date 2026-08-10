@@ -67,7 +67,8 @@
     "2:57",
     "2:58",
     "2:59",
-    "2:60"
+    "2:60",
+    "2:61"
   ],
   "published_sections": [
     {
@@ -235,16 +236,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:60"
+      "2:61"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 25.025,
-    "visual_id": 10297371,
-    "theme": "water",
-    "visual_query": "peaceful waterfall surrounded by green landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-60-Cycle-1.mp4",
-    "published_sha256": "bc050915c978450db91aeba0581b4fd8668deb54815930e2cdae9a87b6d4c11c"
+    "duration_seconds": 66.873,
+    "visual_id": 35633884,
+    "theme": "creation",
+    "visual_query": "slow moving clouds across vast blue sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-61-Cycle-1.mp4",
+    "published_sha256": "ed11eb4af9a93a5dc27f0f1eb4b7445758b3dd4be7f1dec48455c5fd4a6c6853"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -258,6 +259,7 @@
     29898627,
     33807471,
     34464344,
+    35633884,
     37127031,
     37542312,
     37694068,
@@ -270,7 +272,7 @@
   ],
   "theme_usage": {
     "guidance": 4,
-    "creation": 3,
+    "creation": 4,
     "justice": 2,
     "paradise": 2,
     "earth": 1,
@@ -283,7 +285,7 @@
     "water": 1
   },
   "completed_cycles": [],
-  "published_count": 19,
+  "published_count": 20,
   "history": [
     {
       "cycle": 1,
@@ -536,6 +538,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-60-Cycle-1.mp4",
       "published_sha256": "bc050915c978450db91aeba0581b4fd8668deb54815930e2cdae9a87b6d4c11c",
       "created_at": "2026-08-10T09:16:09Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:61"
+      ],
+      "visual_id": 35633884,
+      "theme": "creation",
+      "visual_query": "slow moving clouds across vast blue sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-61-Cycle-1.mp4",
+      "published_sha256": "ed11eb4af9a93a5dc27f0f1eb4b7445758b3dd4be7f1dec48455c5fd4a6c6853",
+      "created_at": "2026-08-10T10:06:43Z"
     }
   ],
   "visual_history": [
@@ -557,6 +571,7 @@
     10681857,
     38423457,
     38182932,
-    10297371
+    10297371,
+    35633884
   ]
 }
