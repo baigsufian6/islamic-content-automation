@@ -23,7 +23,7 @@ The pipeline is deliberately deterministic and stateful:
           ↓
     cinematic 9:16 composition
           ↓
-    Arabic + English typography
+    Reference-style Arabic + English typography with Pillow/libraqm
           ↓
     hard media validation
           ↓
@@ -70,7 +70,7 @@ Optional:
   QURAN_RENDER_PREVIEW=1
   QURAN_KEEP_BUILD=1     (keep output/production/<section>/ after a
                           successful publish, for debugging. By default the
-                          per-section build folder — source/background MP4
+                          per-section build folder — source/background MP4 + timed transparent typography frames
                           attempts, raw audio, overlay, subtitles, captions —
                           is deleted right after publish so long-running
                           automation never fills up disk. The small, shared
@@ -104,7 +104,7 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import requests
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops, features
 
 
 # ============================================================================
@@ -2485,8 +2485,35 @@ PALETTE = {
 
 
 class TypographyEngine:
+    """
+    Reference-style typography renderer.
+
+    The important change from the previous renderer is that Quran text is
+    rendered by Pillow/libraqm directly into PNG frames instead of asking
+    ffmpeg/libass to shape Arabic. This gives us pixel-level control over
+    wrapping and guarantees that Arabic cannot escape the safe text area.
+    Each ayah gets its own full-frame overlay, while the Pexels background
+    remains fully dynamic underneath it.
+    """
+
+    SCRIM_ALPHA = 46          # ~18% black, applied uniformly to the whole frame
+    SAFE_X = 72
+    ARABIC_MAX_W = W - 144
+    ENGLISH_MAX_W = W - 150
+    HEADER_Y = 88
+    SURAH_AR_Y = 245
+    SURAH_EN_Y = 340
+    BADGE_Y = 505
+    ARABIC_TOP = 610
+    ARABIC_MAX_H = 430
+    ORNAMENT_GAP = 36
+    ENGLISH_GAP = 58
+    ENGLISH_MAX_H = 390
+    FOOT_SAFE_Y = 1700
+
     def __init__(self):
         self.font_cache: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
+
         self.arabic_font_path = self.find_font([
             "/usr/share/fonts/**/Amiri-Regular.ttf",
             "/usr/share/fonts/**/Amiri*Regular*.ttf",
@@ -2508,24 +2535,44 @@ class TypographyEngine:
         if not self.arabic_font_path or not self.english_font_path:
             raise RuntimeError(
                 "Required Arabic and Latin fonts were not found. "
-                "Install an Arabic Quran-capable font such as Amiri, "
-                "Scheherazade New, or Noto Naskh Arabic, plus Noto Sans."
+                "Install Amiri/Scheherazade/Noto Naskh Arabic and Noto Sans."
             )
 
-        # Resolve the actual internal font-family names from the font files.
-        # This is important: the file may fall back from Amiri to Noto Naskh
-        # Arabic when Amiri is not installed. ASS/libass must then be told the
-        # REAL family name; merely naming the style "Amiri" would bring back
-        # missing-glyph boxes on runners that do not have Amiri.
-        self.arabic_font_name = self.font_family(self.arabic_font_path, "Noto Naskh Arabic")
-        self.english_font_name = self.font_family(self.english_font_path, "Noto Sans")
-        self.bold_font_name = self.font_family(self.bold_font_path, self.english_font_name)
+        self.arabic_font_name = self.font_family(
+            self.arabic_font_path,
+            "Noto Naskh Arabic",
+        )
+        self.english_font_name = self.font_family(
+            self.english_font_path,
+            "Noto Sans",
+        )
+        self.bold_font_name = self.font_family(
+            self.bold_font_path,
+            self.english_font_name,
+        )
 
-        # ffmpeg's `subtitles` filter only ever searches ONE fontsdir.
-        # Arabic fonts and Latin fonts normally live in different system font
-        # folders, so pointing fontsdir at only one of them can silently break
-        # one script. Merge the exact fonts this render needs into one folder.
         self.fonts_dir = self.build_fonts_dir()
+
+        # Pillow wheels on many Linux runners include libraqm. If not, the
+        # optional pure-Python fallback is used when available.
+        self.has_raqm = bool(getattr(features, "check", lambda *_: False)("raqm"))
+
+        try:
+            from arabic_reshaper import reshape as arabic_reshape
+            from bidi.algorithm import get_display
+            self._arabic_reshape = arabic_reshape
+            self._bidi_display = get_display
+        except Exception:
+            self._arabic_reshape = None
+            self._bidi_display = None
+
+        if not self.has_raqm and not (
+            self._arabic_reshape and self._bidi_display
+        ):
+            raise RuntimeError(
+                "Arabic shaping is unavailable. Pillow/libraqm is missing and "
+                "the arabic-reshaper/python-bidi fallback is not installed."
+            )
 
     @staticmethod
     def find_font(patterns: list[str]) -> Optional[str]:
@@ -2537,12 +2584,6 @@ class TypographyEngine:
 
     @staticmethod
     def font_family(path: str, fallback: str) -> str:
-        """Return the font's real internal family name.
-
-        GitHub runners can have Amiri, Scheherazade New, or Noto Naskh Arabic
-        depending on which font packages are installed. ffmpeg/libass uses the
-        internal family name from the font metadata, not the filename.
-        """
         try:
             result = subprocess.run(
                 ["fc-scan", "--format=%{family}\n", path],
@@ -2552,20 +2593,14 @@ class TypographyEngine:
                 timeout=10,
             )
             for line in result.stdout.splitlines():
-                name = line.strip().split(',')[0].strip()
+                name = line.strip().split(",")[0].strip()
                 if name:
                     return name
         except (FileNotFoundError, subprocess.SubprocessError, OSError):
             pass
-
         return fallback
 
     def build_fonts_dir(self) -> Path:
-        """Merge every font this render needs into one folder.
-
-        Symlinks are used when possible (cheap, no copy), falling back to
-        a real copy if the filesystem doesn't support symlinks.
-        """
         merged = BUILD / "_fonts"
         merged.mkdir(parents=True, exist_ok=True)
 
@@ -2580,9 +2615,6 @@ class TypographyEngine:
             source = Path(path_str)
             target = merged / source.name
 
-            # Replace stale files/symlinks from an earlier run. A cached build
-            # directory must never leave ffmpeg using an old font after the
-            # selected fallback font changes.
             if target.exists() or target.is_symlink():
                 try:
                     target.unlink()
@@ -2602,315 +2634,489 @@ class TypographyEngine:
             self.font_cache[key] = ImageFont.truetype(path, size)
         return self.font_cache[key]
 
-    def width(self, path: str, text: str, size: int) -> float:
-        return self.font(path, size).getlength(text)
+    def _shape_fallback(self, text: str) -> str:
+        if self._arabic_reshape and self._bidi_display:
+            return self._bidi_display(self._arabic_reshape(text))
+        return text
 
-    def wrap(self, path: str, text: str, size: int, maximum: float) -> list[str]:
-        result: list[str] = []
-        for paragraph in text.split("\n"):
-            paragraph = paragraph.strip()
-            if not paragraph:
-                continue
-            words = paragraph.split()
-            line = ""
-            for word in words:
-                candidate = word if not line else line + " " + word
-                if not line or self.width(path, candidate, size) <= maximum:
-                    line = candidate
-                else:
-                    result.append(line)
-                    line = word
-            if line:
-                result.append(line)
-        return result or [""]
-
-    def fit(
+    def _bbox(
         self,
-        path: str,
+        draw: ImageDraw.ImageDraw,
         text: str,
-        maximum_width: int,
-        maximum_height: int,
-        start_size: int,
-        minimum_size: int,
-        line_gap: float,
-    ) -> tuple[int, list[str], float]:
-        safe_width = maximum_width * 0.90
-        safe_height = maximum_height * 0.90
-        best = (minimum_size, [text], minimum_size * line_gap)
-
-        for size in range(start_size, minimum_size - 1, -2):
-            lines = self.wrap(path, text, size, safe_width)
-            line_height = size * line_gap
-            block_height = line_height * len(lines)
-            widest = max(self.width(path, line, size) for line in lines)
-            best = (size, lines, line_height)
-            if widest <= safe_width and block_height <= safe_height:
-                return best
-        return best
-
-    def layout(
-        self,
-        chapter_name: str,
-        chapter_id: int,
-        first_ayah: int,
-        last_ayah: int,
-        arabic: str,
-        english: str,
-    ) -> LayoutResult:
-        # Header now includes the ayah number so the size we fit here
-        # matches the text actually drawn per-verse in make_ass() below.
-        header = f"SURAH {romanish(chapter_name)} — AYAH {first_ayah}"
-        header_size, _header_lines, _ = self.fit(
-            self.english_font_path,
-            header,
-            W - 180,
-            64,
-            34,
-            22,
-            1.10,
-        )
-
-        # Arabic should be prominent but never oversized. Keep generous
-        # side margins and cap the maximum size so short ayahs do not become
-        # giant text blocks, while preserving a clear traditional Naskh look.
-        arabic_size, arabic_lines, arabic_line_height = self.fit(
-            self.arabic_font_path,
-            arabic,
-            W - 180,
-            400,
-            72,
-            38,
-            1.34,
-        )
-        arabic_height = arabic_line_height * len(arabic_lines)
-
-        arabic_top = 340
-        arabic_height_limit = 460
-        arabic_center = int(
-            arabic_top + (arabic_height_limit - arabic_height) / 2 + arabic_height / 2
-        )
-
-        english_size, english_lines, english_line_height = self.fit(
-            self.english_font_path,
-            english,
-            W - 190,
-            430,
-            42,
-            24,
-            1.26,
-        )
-        english_height = english_line_height * len(english_lines)
-
-        ornament_y = int(
-            max(742, min(818, arabic_center + arabic_height / 2 + 46))
-        )
-        english_top = int(
-            ornament_y + 54
-        )
-
-        if english_top + english_height > 1500:
-            english_size, english_lines, english_line_height = self.fit(
-                self.english_font_path,
-                english,
-                W - 190,
-                390,
-                min(english_size, 40),
-                22,
-                1.22,
+        font: ImageFont.FreeTypeFont,
+        *,
+        arabic: bool = False,
+        stroke_width: int = 0,
+    ) -> tuple[int, int, int, int]:
+        if arabic and self.has_raqm:
+            return draw.textbbox(
+                (0, 0),
+                text,
+                font=font,
+                direction="rtl",
+                language="ar",
+                stroke_width=stroke_width,
             )
 
-        return LayoutResult(
-            arabic_size=arabic_size,
-            arabic_lines=arabic_lines,
-            english_size=english_size,
-            english_lines=english_lines,
-            arabic_center_y=arabic_center,
-            english_top_y=english_top,
-            ornament_y=ornament_y,
-            header_size=header_size,
+        if arabic and not self.has_raqm:
+            text = self._shape_fallback(text)
+
+        return draw.textbbox(
+            (0, 0),
+            text,
+            font=font,
+            stroke_width=stroke_width,
         )
 
-    def make_overlay(self, path: Path) -> None:
-        """Clean, minimal readability scrim — no frame, no flourishes,
-        no watermark. Just a soft top/bottom gradient plus a gentle
-        feathered wash behind the Arabic block, so the text sits directly
-        on the cinematic footage.
-        """
-        image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(image)
-
-        # Keep the footage clean. The previous strong top gradient created
-        # a visible horizontal dark band above the Quran text. We now use
-        # only an extremely subtle wash around the text area and no top shadow.
-        verse_band = Image.new("RGBA", (W, 560), (0, 0, 0, 0))
-        band_draw = ImageDraw.Draw(verse_band)
-        for y in range(560):
-            d = min(y, 560 - y) / 280.0
-            alpha = int(8 * (1 - d) ** 1.8)
-            if alpha:
-                band_draw.line([(0, y), (W, y)], fill=(*PALETTE["scrim"], alpha))
-        verse_band = verse_band.filter(ImageFilter.GaussianBlur(radius=52))
-        image.alpha_composite(verse_band, (0, 320))
-
-        # Do not blur the final overlay itself. A global blur softens edges
-        # and can make the overlay look like a visible shadow/band.
-        image.save(path)
-
-    @staticmethod
-    def ass_escape(text: str) -> str:
-        return (
-            str(text)
-            .replace("\\", r"\\")
-            .replace("{", r"\{")
-            .replace("}", r"\}")
-        )
-
-    @classmethod
-    def ass_lines(cls, lines: Iterable[str]) -> str:
-        return r"\N".join(cls.ass_escape(line) for line in lines)
-
-    @staticmethod
-    def ass_time(seconds: float) -> str:
-        centiseconds = max(0, int(round(seconds * 100)))
-        hours = centiseconds // 360000
-        centiseconds %= 360000
-        minutes = centiseconds // 6000
-        centiseconds %= 6000
-        seconds_part = centiseconds // 100
-        centiseconds %= 100
-        return f"{hours}:{minutes:02d}:{seconds_part:02d}.{centiseconds:02d}"
-
-    def make_ass(
+    def _draw_centered(
         self,
-        path: Path,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        y: float,
+        font: ImageFont.FreeTypeFont,
+        *,
+        arabic: bool = False,
+        fill: tuple[int, int, int, int] = (255, 255, 255, 245),
+        stroke_width: int = 1,
+        stroke_fill: tuple[int, int, int, int] = (0, 0, 0, 170),
+    ) -> None:
+        draw_kwargs: dict[str, Any] = {
+            "font": font,
+            "fill": fill,
+            "anchor": "mm",
+            "stroke_width": stroke_width,
+            "stroke_fill": stroke_fill,
+        }
+
+        if arabic and self.has_raqm:
+            draw_kwargs["direction"] = "rtl"
+            draw_kwargs["language"] = "ar"
+            shaped = text
+        elif arabic:
+            shaped = self._shape_fallback(text)
+        else:
+            shaped = text
+
+        draw.text((W / 2, y), shaped, **draw_kwargs)
+
+    def _width(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        *,
+        arabic: bool = False,
+        stroke_width: int = 0,
+    ) -> float:
+        box = self._bbox(
+            draw,
+            text,
+            font,
+            arabic=arabic,
+            stroke_width=stroke_width,
+        )
+        return float(box[2] - box[0])
+
+    def _wrap(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        maximum: float,
+        *,
+        arabic: bool = False,
+        stroke_width: int = 0,
+    ) -> list[str]:
+        words = normalize_space(text.replace("\n", " ")).split()
+        if not words:
+            return [""]
+
+        result: list[str] = []
+        line = ""
+
+        for word in words:
+            candidate = word if not line else f"{line} {word}"
+            if (
+                not line
+                or self._width(
+                    draw,
+                    candidate,
+                    font,
+                    arabic=arabic,
+                    stroke_width=stroke_width,
+                ) <= maximum
+            ):
+                line = candidate
+            else:
+                result.append(line)
+                line = word
+
+        if line:
+            result.append(line)
+
+        return result or [""]
+
+    def _fit_arabic(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+    ) -> tuple[int, list[str], float]:
+        for size in range(82, 43, -2):
+            font = self.font(self.arabic_font_path, size)
+            lines = self._wrap(
+                draw,
+                text,
+                font,
+                self.ARABIC_MAX_W,
+                arabic=True,
+                stroke_width=2,
+            )
+            line_height = size * 1.36
+            block_height = line_height * len(lines)
+
+            widest = max(
+                self._width(
+                    draw,
+                    line,
+                    font,
+                    arabic=True,
+                    stroke_width=2,
+                )
+                for line in lines
+            )
+
+            if widest <= self.ARABIC_MAX_W and block_height <= self.ARABIC_MAX_H:
+                return size, lines, line_height
+
+        raise RuntimeError(
+            "Arabic verse could not be fitted into the safe 9:16 text area."
+        )
+
+    def _fit_english(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        maximum_height: int,
+        start_size: int = 46,
+    ) -> tuple[int, list[str], float]:
+        for size in range(start_size, 25, -2):
+            font = self.font(self.english_font_path, size)
+            lines = self._wrap(
+                draw,
+                text,
+                font,
+                self.ENGLISH_MAX_W,
+                arabic=False,
+                stroke_width=1,
+            )
+            line_height = size * 1.28
+            block_height = line_height * len(lines)
+
+            widest = max(
+                self._width(
+                    draw,
+                    line,
+                    font,
+                    arabic=False,
+                    stroke_width=1,
+                )
+                for line in lines
+            )
+
+            if widest <= self.ENGLISH_MAX_W and block_height <= maximum_height:
+                return size, lines, line_height
+
+        raise RuntimeError(
+            "English translation could not be fitted into the safe 9:16 text area."
+        )
+
+    def _draw_multiline_centered(
+        self,
+        draw: ImageDraw.ImageDraw,
+        lines: list[str],
+        top: float,
+        line_height: float,
+        font: ImageFont.FreeTypeFont,
+        *,
+        arabic: bool = False,
+        fill: tuple[int, int, int, int] = (255, 255, 255, 245),
+        stroke_width: int = 1,
+        stroke_fill: tuple[int, int, int, int] = (0, 0, 0, 170),
+    ) -> None:
+        for index, line in enumerate(lines):
+            self._draw_centered(
+                draw,
+                line,
+                top + line_height * (index + 0.5),
+                font,
+                arabic=arabic,
+                fill=fill,
+                stroke_width=stroke_width,
+                stroke_fill=stroke_fill,
+            )
+
+    def _draw_badge(
+        self,
+        draw: ImageDraw.ImageDraw,
+        verse_number: int,
+    ) -> None:
+        cx = W / 2
+        cy = self.BADGE_Y
+
+        # Thin reference-style circular ayah marker. No opaque box.
+        draw.ellipse(
+            (cx - 34, cy - 34, cx + 34, cy + 34),
+            outline=(255, 255, 255, 175),
+            width=1,
+        )
+        draw.ellipse(
+            (cx - 40, cy - 40, cx + 40, cy + 40),
+            outline=(231, 199, 125, 120),
+            width=1,
+        )
+
+        badge_font = self.font(self.arabic_font_path, 30)
+        self._draw_centered(
+            draw,
+            arabic_digits(verse_number),
+            cy + 1,
+            badge_font,
+            arabic=True,
+            fill=(255, 255, 255, 245),
+            stroke_width=1,
+            stroke_fill=(0, 0, 0, 150),
+        )
+
+    @staticmethod
+    def _draw_ornament(
+        draw: ImageDraw.ImageDraw,
+        y: float,
+    ) -> None:
+        line_color = (231, 199, 125, 175)
+        diamond_color = (255, 247, 225, 210)
+
+        left_end = 355
+        left_start = 495
+        right_start = 585
+        right_end = 725
+
+        draw.line((left_end, y, left_start, y), fill=line_color, width=1)
+        draw.line((right_start, y, right_end, y), fill=line_color, width=1)
+
+        draw.polygon(
+            [
+                (540, y - 9),
+                (549, y),
+                (540, y + 9),
+                (531, y),
+            ],
+            outline=diamond_color,
+        )
+
+    def make_timed_overlay_frames(
+        self,
+        section_dir: Path,
         verses: list[Verse],
         audio_items: list[AudioItem],
         chapter_name: str,
-        chapter_id: int,
         chapter_name_arabic: str,
-    ) -> None:
-        """
-        Clean layout, four elements per on-screen ayah:
-          1. Header — "SURAH <NAME> — AYAH <N>", fully DYNAMIC, updates
-             every single ayah (previously static per section, which is
-             why the video looked like it had no verse/chapter reference
-             beyond the tiny, hard-to-read badge).
-          2. Arabic verse text (large, centered)
-          3. Ayah-number badge — fully DYNAMIC, updates every single ayah
-             exactly like the reference video (﴿ 83 ﴾ style)
-          4. English translation
-        No box, no ornament clutter, no extra chapter-Arabic/subheader/
-        source lines competing for attention.
-        """
-        total_count = len(verses)
-        events: list[str] = []
-        cursor = 0.0
+    ) -> list[tuple[Path, float, float]]:
+        if len(verses) != len(audio_items):
+            raise RuntimeError(
+                "Typography timeline mismatch: verses/audio_items lengths differ."
+            )
 
-        for idx, (verse, audio) in enumerate(zip(verses, audio_items)):
+        frames_dir = section_dir / "overlay-frames"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+
+        probe = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        probe_draw = ImageDraw.Draw(probe)
+
+        header_font = self.font(self.english_font_path, 34)
+        surah_ar_font = self.font(self.arabic_font_path, 78)
+        surah_en_font = self.font(self.english_font_path, 42)
+
+        if chapter_name_arabic:
+            chapter_ar = chapter_name_arabic.strip()
+            if not chapter_ar.startswith("سورة"):
+                chapter_ar = f"سُورَةُ {chapter_ar}"
+        else:
+            chapter_ar = ""
+
+        # Verify the fixed header pieces once before generating all frames.
+        if self._width(
+            probe_draw,
+            f"SURAH {romanish(chapter_name)} — AYAH 999",
+            header_font,
+            stroke_width=1,
+        ) > W - 120:
+            raise RuntimeError("Header cannot fit inside the safe 9:16 area.")
+
+        if chapter_ar and self._width(
+            probe_draw,
+            chapter_ar,
+            surah_ar_font,
+            arabic=True,
+            stroke_width=1,
+        ) > W - 170:
+            # Smaller Surah title is preferable to ever clipping Arabic.
+            surah_ar_font = self.font(self.arabic_font_path, 66)
+
+        output: list[tuple[Path, float, float]] = []
+        cursor = 0.0
+        total = len(verses)
+
+        for index, (verse, audio) in enumerate(zip(verses, audio_items), start=1):
             start = cursor
-            end = cursor + audio.duration
+            end = cursor + float(audio.duration)
             cursor = end
 
-            layout = self.layout(
-                chapter_name,
-                chapter_id,
-                verse.verse_number,
-                verse.verse_number,
+            image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(image)
+
+            # Uniform full-frame veil: no rectangular patch, no localized box.
+            # This is intentionally subtle so the moving footage stays visible.
+            draw.rectangle(
+                (0, 0, W, H),
+                fill=(8, 10, 14, self.SCRIM_ALPHA),
+            )
+
+            header = f"SURAH {romanish(chapter_name)} — AYAH {verse.verse_number}"
+            self._draw_centered(
+                draw,
+                header,
+                self.HEADER_Y,
+                header_font,
+                fill=(255, 255, 255, 242),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 150),
+            )
+
+            if chapter_ar:
+                self._draw_centered(
+                    draw,
+                    chapter_ar,
+                    self.SURAH_AR_Y,
+                    surah_ar_font,
+                    arabic=True,
+                    fill=(255, 255, 255, 242),
+                    stroke_width=1,
+                    stroke_fill=(0, 0, 0, 145),
+                )
+
+            self._draw_centered(
+                draw,
+                f"Surah {chapter_name}",
+                self.SURAH_EN_Y,
+                surah_en_font,
+                fill=(235, 235, 235, 232),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 135),
+            )
+
+            self._draw_badge(draw, verse.verse_number)
+
+            arabic_size, arabic_lines, arabic_line_height = self._fit_arabic(
+                draw,
                 verse.arabic_text,
-                verse.translation,
+            )
+            arabic_font = self.font(self.arabic_font_path, arabic_size)
+
+            self._draw_multiline_centered(
+                draw,
+                arabic_lines,
+                self.ARABIC_TOP,
+                arabic_line_height,
+                arabic_font,
+                arabic=True,
+                fill=(255, 255, 255, 248),
+                stroke_width=2,
+                stroke_fill=(0, 0, 0, 165),
             )
 
-            # Header is now per-ayah so the Surah name AND the current
-            # verse number are always visible together, in plain Latin
-            # digits — legible even if Arabic-script rendering ever
-            # breaks again.
-            # Keep the Surah and current ayah number together on EVERY ayah.
-            # The Arabic verse itself is separate, so the viewer can always see
-            # exactly which verse is being recited.
-            header_text = (
-                f"SURAH {romanish(chapter_name)} "
-                f"— AYAH {verse.verse_number}"
+            arabic_bottom = (
+                self.ARABIC_TOP
+                + arabic_line_height * len(arabic_lines)
             )
 
-            # Dynamic ayah badge — recalculated every ayah, exactly like
-            # the reference clip (updates as each verse plays).
-            arabic_badge = f"﴿ {arabic_digits(verse.verse_number)} ﴾"
+            ornament_y = int(arabic_bottom + self.ORNAMENT_GAP)
+            self._draw_ornament(draw, ornament_y)
 
-            events.append(
-                f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Header,,0,0,0,,"
-                f"{{\\an8\\pos(540,78)\\fs{layout.header_size}\\fad(120,120)}}"
-                f"{self.ass_escape(header_text)}"
+            english_top = ornament_y + self.ENGLISH_GAP
+            remaining_height = max(
+                260,
+                self.FOOT_SAFE_Y - english_top,
             )
 
-            events.append(
-                f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Arabic,,0,0,0,,"
-                f"{{\\an5\\pos(540,{layout.arabic_center_y})"
-                f"\\fs{layout.arabic_size}\\fad(140,140)}}"
-                f"{self.ass_lines(layout.arabic_lines)}"
+            english_size, english_lines, english_line_height = self._fit_english(
+                draw,
+                normalize_space(verse.translation.replace("\n", " ")),
+                remaining_height,
+            )
+            english_font = self.font(self.english_font_path, english_size)
+
+            self._draw_multiline_centered(
+                draw,
+                english_lines,
+                english_top,
+                english_line_height,
+                english_font,
+                fill=(255, 255, 255, 245),
+                stroke_width=1,
+                stroke_fill=(0, 0, 0, 155),
             )
 
-            events.append(
-                f"Dialogue: 1,{self.ass_time(start)},{self.ass_time(end)},Ornament,,0,0,0,,"
-                f"{{\\an5\\pos(540,{layout.ornament_y})\\fad(120,120)}}"
-                f"{self.ass_escape(arabic_badge)}"
-            )
+            # Hard pixel-level safety checks. These prevent the exact "Arabic
+            # noodles outside the box" failure the previous renderer allowed.
+            for line in arabic_lines:
+                width = self._width(
+                    draw,
+                    line,
+                    arabic_font,
+                    arabic=True,
+                    stroke_width=2,
+                )
+                if width > self.ARABIC_MAX_W + 1:
+                    raise RuntimeError(
+                        f"Arabic overflow detected in ayah {verse.verse_number}: "
+                        f"{width:.1f}px > {self.ARABIC_MAX_W}px"
+                    )
 
-            events.append(
-                f"Dialogue: 2,{self.ass_time(start)},{self.ass_time(end)},English,,0,0,0,,"
-                f"{{\\an8\\pos(540,{layout.english_top_y})\\fs{layout.english_size}\\fad(140,140)}}"
-                f"{self.ass_lines(layout.english_lines)}"
-            )
+            for line in english_lines:
+                width = self._width(
+                    draw,
+                    line,
+                    english_font,
+                    stroke_width=1,
+                )
+                if width > self.ENGLISH_MAX_W + 1:
+                    raise RuntimeError(
+                        f"English overflow detected in ayah {verse.verse_number}: "
+                        f"{width:.1f}px > {self.ENGLISH_MAX_W}px"
+                    )
 
-            dots = "".join("●" if j == idx else "○" for j in range(total_count))
-            progress = f"{idx + 1} / {total_count}"
-            events.append(
-                f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Progress,,0,0,0,,"
-                f"{{\\an8\\pos(540,1668)\\fad(180,180)}}"
-                f"{self.ass_escape(dots)}   {progress}"
-            )
+            if english_top + english_line_height * len(english_lines) > H - 150:
+                raise RuntimeError(
+                    f"English block is too low in ayah {verse.verse_number}."
+                )
 
-            events.append(
-                f"Dialogue: 0,{self.ass_time(start)},{self.ass_time(end)},Footer,,0,0,0,,"
-                f"{{\\an8\\pos(540,1788)}}QURAN  •  SAHEEH INTERNATIONAL"
-            )
+            frame_path = frames_dir / f"ayah-{index:03d}-{verse.verse_number:03d}.png"
+            image.save(frame_path, format="PNG", optimize=True)
 
-        # BorderStyle=1 gives a clean outline without an opaque subtitle plate.
-        # Shadow is deliberately zero on all text styles so there is no visible
-        # offset shadow/band around the Quran text.
-        #
-        # The ornament uses the same detected Arabic font as the Quran text so
-        # Arabic-Indic digits and the Quranic ornament marks stay consistent.
-        ass = f"""[Script Info]
-ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
-WrapStyle: 2
-ScaledBorderAndShadow: yes
+            output.append((frame_path, start, end))
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Header,{self.english_font_name},34,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,1,0,0,0,100,100,2,0,1,1.2,0,8,60,60,0,1
-Style: Arabic,{self.arabic_font_name},78,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.8,0,5,50,50,0,1
-Style: Ornament,{self.arabic_font_name},22,&H00E7C77D,&H00E7C77D,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.0,0,5,60,60,0,1
-Style: English,{self.english_font_name},40,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,1.4,0,8,70,70,0,1
-Style: Progress,{self.english_font_name},16,&H00E7C77D,&H00E7C77D,&H00101010,&H00000000,0,0,0,0,100,100,2,0,1,0.8,0,8,60,60,0,1
-Style: Footer,{self.english_font_name},13,&H00D6CFC1,&H00D6CFC1,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0.6,0,8,60,60,0,1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-""" + "\n".join(events) + "\n"
-
-        path.write_text(ass, encoding="utf-8")
+        return output
 
 
 # ============================================================================
 # 10.5. Sidecar captions (.srt)
 # ============================================================================
 #
-# The ASS subtitles above are burned directly into the MP4, so the video is
-# always self-captioned. This engine additionally produces a plain .srt
-# sidecar file, timed against the EXACT SAME per-ayah audio timeline used to
-# burn the on-screen captions, so it can never drift out of sync with what
+# The timed PNG typography frames above are burned directly into the MP4, so
+# the video is always self-captioned. This engine additionally produces a
+# plain .srt sidecar file, timed against the EXACT SAME per-ayah audio
+# timeline used to burn the on-screen captions, so it can never drift out of sync
+# with what
 # is shown in the video. This is for platforms (Instagram/YouTube Shorts/
 # TikTok-style uploaders, including automations like make.com) that accept
 # or prefer a separate caption/subtitle file alongside the video instead of
@@ -2984,6 +3190,9 @@ class VideoRenderer:
         cycle: int,
         visual_id: int,
     ) -> str:
+        # The source stays dynamic. We loop it only when it is shorter than the
+        # recitation and use a very slow, deterministic crop drift so the final
+        # 9:16 video never looks like a frozen image.
         profiles = [
             "x='(iw-1080)/2 + (iw-1080)/2*0.28*sin(2*PI*t/28)':y='(ih-1920)/2 + (ih-1920)/2*0.18*cos(2*PI*t/35)'",
             "x='(iw-1080)/2 + (iw-1080)/2*0.20*cos(2*PI*t/31)':y='(ih-1920)/2 + (ih-1920)/2*0.20*sin(2*PI*t/37)'",
@@ -3003,8 +3212,8 @@ class VideoRenderer:
                 f"crop=1620:2880:{profile},"
                 "scale=1080:1920:flags=lanczos,"
                 f"fps={FPS},format=yuv420p,"
-                "unsharp=5:5:0.6:5:5:0.0,"
-                "eq=contrast=1.05:saturation=1.08:brightness=0.01"
+                "unsharp=5:5:0.45:5:5:0.0,"
+                "eq=contrast=1.04:saturation=1.06:brightness=0.005"
             ),
             "-an",
             "-c:v", "libx264",
@@ -3018,34 +3227,79 @@ class VideoRenderer:
     def render(
         self,
         background: Path,
-        overlay: Path,
-        subtitles: Path,
+        overlay_frames: list[tuple[Path, float, float]],
         audio: Path,
         output: Path,
         duration: float,
     ) -> None:
+        if not overlay_frames:
+            raise RuntimeError("No timed typography frames were generated.")
+
         fade_out_start = max(0.0, duration - 0.8)
 
-        # IMPORTANT: this must point at a folder containing BOTH the
-        # Arabic font (Amiri/Scheherazade) AND Noto Sans, or Arabic text
-        # renders as missing-glyph boxes while English still works fine.
-        # ffmpeg's subtitles filter only searches ONE fontsdir, so the two
-        # system font locations are merged in advance by
-        # TypographyEngine.build_fonts_dir().
-        font_dir = str(self.typography.fonts_dir)
-        filter_complex = (
-            "[0:v][1:v]overlay=0:0:shortest=1[bg];"
-            f"[bg]subtitles={subtitles}:fontsdir={font_dir},"
-            f"fade=t=in:st=0:d=0.6,fade=t=out:st={fade_out_start:.3f}:d=0.8[vout];"
-            f"[2:a]afade=t=in:st=0:d=0.35,afade=t=out:st={fade_out_start:.3f}:d=0.8[aout]"
+        # Inputs:
+        #   0 = dynamic background
+        #   1..N = one transparent full-frame typography PNG per ayah
+        #   N+1 = recitation audio
+        command = ["ffmpeg", "-y", "-i", str(background)]
+
+        for frame_path, start, end in overlay_frames:
+            frame_duration = max(0.05, end - start)
+            command.extend([
+                "-loop", "1",
+                "-t", f"{frame_duration:.3f}",
+                "-i", str(frame_path),
+            ])
+
+        command.extend(["-i", str(audio)])
+
+        filters: list[str] = [
+            "[0:v]setpts=PTS-STARTPTS[base]"
+        ]
+        current = "base"
+
+        for index, (_frame_path, start, end) in enumerate(overlay_frames, start=1):
+            duration_local = max(0.05, end - start)
+            fade = min(0.24, max(0.08, duration_local / 4.0))
+            fade_out = max(0.0, duration_local - fade)
+
+            overlay_label = f"ov{index}"
+            next_label = f"mix{index}"
+
+            filters.append(
+                f"[{index}:v]"
+                f"format=rgba,"
+                f"fade=t=in:st=0:d={fade:.3f}:alpha=1,"
+                f"fade=t=out:st={fade_out:.3f}:d={fade:.3f}:alpha=1,"
+                f"setpts=PTS+{start:.3f}/TB"
+                f"[{overlay_label}]"
+            )
+
+            filters.append(
+                f"[{current}][{overlay_label}]"
+                f"overlay=0:0:eof_action=pass:shortest=0"
+                f"[{next_label}]"
+            )
+            current = next_label
+
+        filters.append(
+            f"[{current}]"
+            f"fade=t=in:st=0:d=0.6,"
+            f"fade=t=out:st={fade_out_start:.3f}:d=0.8"
+            f"[vout]"
         )
 
-        run_cmd([
-            "ffmpeg", "-y",
-            "-i", str(background),
-            "-loop", "1",
-            "-i", str(overlay),
-            "-i", str(audio),
+        audio_input_index = 1 + len(overlay_frames)
+        filters.append(
+            f"[{audio_input_index}:a]"
+            f"afade=t=in:st=0:d=0.35,"
+            f"afade=t=out:st={fade_out_start:.3f}:d=0.8"
+            f"[aout]"
+        )
+
+        filter_complex = ";".join(filters)
+
+        command.extend([
             "-filter_complex", filter_complex,
             "-map", "[vout]",
             "-map", "[aout]",
@@ -3059,6 +3313,8 @@ class VideoRenderer:
             "-movflags", "+faststart",
             str(output),
         ])
+
+        run_cmd(command)
 
 
 # ============================================================================
@@ -3468,16 +3724,14 @@ class QuranProduction:
             section_dir,
         )
 
-        overlay = section_dir / "overlay.png"
-        self.typography.make_overlay(overlay)
-
-        subtitles = section_dir / "subtitles.ass"
-        self.typography.make_ass(
-            subtitles,
+        # Build the reference-style typography as transparent PNG frames.
+        # Arabic is shaped by Pillow/libraqm, not ffmpeg/libass, so there are
+        # no missing-glyph boxes and no Arabic text can escape the safe area.
+        overlay_frames = self.typography.make_timed_overlay_frames(
+            section_dir,
             selected,
             audio_items,
             start_verse.chapter_name,
-            start_verse.chapter_id,
             start_verse.chapter_name_arabic,
         )
 
@@ -3517,8 +3771,7 @@ class QuranProduction:
 
                 self.renderer.render(
                     background,
-                    overlay,
-                    subtitles,
+                    overlay_frames,
                     section_audio,
                     final_video,
                     audio_duration,
@@ -3606,8 +3859,9 @@ class QuranProduction:
                 "audio_channels": qa["audio_channels"],
                 "audio_sample_rate": qa["audio_sample_rate"],
                 "layout": (
-                    "Surah title + ayah number / Arabic verse / dynamic "
-                    "ayah badge / English translation / progress"
+                    "reference-style full-frame scrim / Surah header / "
+                    "Arabic Surah title / ayah badge / safely wrapped "
+                    "Arabic verse / ornament / English translation"
                 ),
                 "fonts": {
                     "arabic": Path(self.typography.arabic_font_path).stem,
