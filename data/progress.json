@@ -68,7 +68,15 @@
     "2:58",
     "2:59",
     "2:60",
-    "2:61"
+    "2:61",
+    "2:62",
+    "2:63",
+    "2:64",
+    "2:65",
+    "2:66",
+    "2:67",
+    "2:68",
+    "2:69"
   ],
   "published_sections": [
     {
@@ -236,16 +244,23 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:61"
+      "2:62",
+      "2:63",
+      "2:64",
+      "2:65",
+      "2:66",
+      "2:67",
+      "2:68",
+      "2:69"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 66.873,
-    "visual_id": 35633884,
-    "theme": "creation",
-    "visual_query": "slow moving clouds across vast blue sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-61-Cycle-1.mp4",
-    "published_sha256": "ed11eb4af9a93a5dc27f0f1eb4b7445758b3dd4be7f1dec48455c5fd4a6c6853"
+    "duration_seconds": 142.916,
+    "visual_id": 35497914,
+    "theme": "mercy",
+    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-62-to-69-Cycle-1.mp4",
+    "published_sha256": "0576f4584f373a4363a0805d6673d7c1cf3ebcbeab234f65b752f496eb0820ac"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -259,6 +274,7 @@
     29898627,
     33807471,
     34464344,
+    35497914,
     35633884,
     37127031,
     37542312,
@@ -281,11 +297,11 @@
     "patience": 1,
     "warning": 1,
     "repentance": 1,
-    "mercy": 1,
+    "mercy": 2,
     "water": 1
   },
   "completed_cycles": [],
-  "published_count": 20,
+  "published_count": 21,
   "history": [
     {
       "cycle": 1,
@@ -550,6 +566,25 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-61-Cycle-1.mp4",
       "published_sha256": "ed11eb4af9a93a5dc27f0f1eb4b7445758b3dd4be7f1dec48455c5fd4a6c6853",
       "created_at": "2026-08-10T10:06:43Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:62",
+        "2:63",
+        "2:64",
+        "2:65",
+        "2:66",
+        "2:67",
+        "2:68",
+        "2:69"
+      ],
+      "visual_id": 35497914,
+      "theme": "mercy",
+      "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-62-to-69-Cycle-1.mp4",
+      "published_sha256": "0576f4584f373a4363a0805d6673d7c1cf3ebcbeab234f65b752f496eb0820ac",
+      "created_at": "2026-08-10T22:03:21Z"
     }
   ],
   "visual_history": [
@@ -572,6 +607,7 @@
     38423457,
     38182932,
     10297371,
-    35633884
+    35633884,
+    35497914
   ]
 }
