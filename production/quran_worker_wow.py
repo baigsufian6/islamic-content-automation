@@ -153,9 +153,9 @@ if RECITER.lower() != "saad al-ghamdi":
     )
 
 TARGET_MIN = float(os.environ.get("QURAN_TARGET_MIN", "35"))
-TARGET_MAX = float(os.environ.get("QURAN_TARGET_MAX", "70"))
-if TARGET_MIN <= 0 or TARGET_MAX < TARGET_MIN:
-    raise SystemExit("ERROR: Invalid QURAN_TARGET_MIN/QURAN_TARGET_MAX range.")
+TARGET_CLOSE_TOLERANCE = max(8.0, TARGET_MIN * 0.25)
+if TARGET_MIN <= 0:
+    raise SystemExit("ERROR: Invalid QURAN_TARGET_MIN; it should be greater than 0.")
 LOG_LEVEL = os.environ.get("QURAN_LOG_LEVEL", "INFO").upper()
 ALLOW_VISUAL_REUSE = os.environ.get("ALLOW_VISUAL_REUSE", "").strip() == "1"
 COMMIT_PROGRESS = os.environ.get("COMMIT_PROGRESS", "").strip() == "1"
@@ -2016,8 +2016,6 @@ class PassagePlanner:
             if d is None:
                 raise RuntimeError(f"Missing audio duration for {verse.verse_key}")
 
-            if selected and total + d > TARGET_MAX:
-                break
 
             selected.append(verse)
             total += d
@@ -2797,7 +2795,7 @@ class TypographyEngine:
                 arabic=True,
                 stroke_width=1,
             )
-            line_height = size * 1.50
+            line_height = size * 1.60
             block_height = line_height * len(lines)
 
             widest = max(
@@ -3745,8 +3743,7 @@ class QuranProduction:
             item = self.audio.fetch(verse.verse_key)
             d = item.duration
 
-            if duration_map and running_total + d > TARGET_MAX:
-                break
+        
 
             duration_map[verse.verse_key] = d
             i += 1
@@ -3775,10 +3772,7 @@ class QuranProduction:
                 "the next semantic boundary would be crossed. Keeping coherence.",
                 "WARN",
             )
-        if planned_duration > TARGET_MAX + 0.05:
-            raise RuntimeError(
-                f"Planner exceeded target maximum: {planned_duration:.2f}s"
-            )
+    
 
         section_id = (
             f"cycle-{cycle}-"
