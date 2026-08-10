@@ -2465,14 +2465,25 @@ class VisualEngine:
 # 10. Typography and visual layout engine
 # ============================================================================
 #
-# Presentation notes (design pass v4 — clean/minimal):
-#   - No gold frame, no corner flourishes, no tiled watermark. Text sits
-#     directly on the cinematic footage with only a soft feathered gradient
-#     behind it for legibility — this matches a clean, modern caption style
-#     instead of a "designed plaque" look.
-#   - One header line (Surah name + ayah number), a larger/bolder Arabic
-#     block, a small ayah-number badge, and the English translation
-#     underneath. Both the header and the badge update per on-screen verse.
+# Presentation notes (design pass v5 — even coverage, zero overflow):
+#   - The dark veil behind the text is now a SEPARATE, STATIC full-frame
+#     image (built once per section) instead of being baked into every
+#     per-ayah PNG. Each per-ayah PNG used to fade its own alpha in/out at
+#     every ayah change, which meant the veil itself briefly faded too —
+#     that is what produced the "patchy"/uneven darkening between ayahs.
+#     Now the veil is composited ONCE, for the full clip duration, and only
+#     the text on top of it fades between ayahs, so the background darkening
+#     is perfectly even for the entire video, edge to edge, start to finish.
+#   - The veil is a soft vertical gradient (slightly lighter near the very
+#     top, stronger behind the text block in the middle/lower two-thirds),
+#     matching the reference composition where the sky stays readable while
+#     the Arabic/English block always sits on a clearly legible dark base.
+#   - Font fitting now searches in 1pt steps (not 2pt) and reserves an
+#     extra safety margin inside the text box, so a line that is a pixel or
+#     two over budget shrinks one more notch instead of ever being drawn
+#     outside the safe area. Combined with the existing hard post-render
+#     overflow check (which still raises instead of silently shipping a
+#     bad frame), Arabic can no longer render as "noodles" outside the box.
 
 
 PALETTE = {
@@ -2496,7 +2507,19 @@ class TypographyEngine:
     remains fully dynamic underneath it.
     """
 
-    SCRIM_ALPHA = 46          # ~18% black, applied uniformly to the whole frame
+    # Even, edge-to-edge veil. Built once as a static image (see
+    # build_static_scrim) and composited for the FULL clip duration, so
+    # coverage never flickers or looks patchy between ayahs.
+    SCRIM_TOP_ALPHA = 60       # ~24% black near the very top of the frame
+    SCRIM_MID_ALPHA = 100      # transition zone above the text block
+    SCRIM_BOTTOM_ALPHA = 150   # ~59% black behind the busiest text area
+
+    # A small safety margin (fraction of the nominal safe width) that is
+    # subtracted before fitting text, so a font size that is only a hair
+    # too wide gets rejected and the next-smaller size is used instead of
+    # ever touching the true edge of the safe area.
+    TEXT_SAFETY_MARGIN = 0.965
+
     SAFE_X = 72
     ARABIC_MAX_W = W - 144
     ENGLISH_MAX_W = W - 150
@@ -2761,13 +2784,16 @@ class TypographyEngine:
         draw: ImageDraw.ImageDraw,
         text: str,
     ) -> tuple[int, list[str], float]:
-        for size in range(82, 43, -2):
+        safe_width = self.ARABIC_MAX_W * self.TEXT_SAFETY_MARGIN
+        safe_height = self.ARABIC_MAX_H * self.TEXT_SAFETY_MARGIN
+
+        for size in range(84, 29, -1):
             font = self.font(self.arabic_font_path, size)
             lines = self._wrap(
                 draw,
                 text,
                 font,
-                self.ARABIC_MAX_W,
+                safe_width,
                 arabic=True,
                 stroke_width=2,
             )
@@ -2785,11 +2811,13 @@ class TypographyEngine:
                 for line in lines
             )
 
-            if widest <= self.ARABIC_MAX_W and block_height <= self.ARABIC_MAX_H:
+            if widest <= safe_width and block_height <= safe_height:
                 return size, lines, line_height
 
         raise RuntimeError(
-            "Arabic verse could not be fitted into the safe 9:16 text area."
+            "Arabic verse could not be fitted into the safe 9:16 text area "
+            "even at the smallest permitted size — the ayah text may be "
+            "unusually long for a single section."
         )
 
     def _fit_english(
@@ -2799,13 +2827,16 @@ class TypographyEngine:
         maximum_height: int,
         start_size: int = 46,
     ) -> tuple[int, list[str], float]:
-        for size in range(start_size, 25, -2):
+        safe_width = self.ENGLISH_MAX_W * self.TEXT_SAFETY_MARGIN
+        safe_height = maximum_height * self.TEXT_SAFETY_MARGIN
+
+        for size in range(start_size, 19, -1):
             font = self.font(self.english_font_path, size)
             lines = self._wrap(
                 draw,
                 text,
                 font,
-                self.ENGLISH_MAX_W,
+                safe_width,
                 arabic=False,
                 stroke_width=1,
             )
@@ -2823,11 +2854,12 @@ class TypographyEngine:
                 for line in lines
             )
 
-            if widest <= self.ENGLISH_MAX_W and block_height <= maximum_height:
+            if widest <= safe_width and block_height <= safe_height:
                 return size, lines, line_height
 
         raise RuntimeError(
-            "English translation could not be fitted into the safe 9:16 text area."
+            "English translation could not be fitted into the safe 9:16 "
+            "text area even at the smallest permitted size."
         )
 
     def _draw_multiline_centered(
@@ -2913,6 +2945,53 @@ class TypographyEngine:
             outline=diamond_color,
         )
 
+    def build_static_scrim(self, section_dir: Path) -> Path:
+        """
+        Build ONE static, full-frame darkening veil for the whole section.
+
+        This is composited a single time in VideoRenderer.render() and held
+        for the entire clip duration, so every frame of the video — from the
+        first ayah to the last — is darkened by exactly the same amount in
+        exactly the same places. Nothing about this image changes per ayah,
+        which is what makes the coverage perfectly even instead of the old
+        "patchy" look caused by re-fading a scrim baked into every text PNG.
+
+        The gradient is soft: slightly lighter near the very top (so the sky/
+        background stays visible, matching the reference image) and stronger
+        through the middle and lower two-thirds where the Surah header,
+        Arabic verse, and English translation all sit.
+        """
+        scrim = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        pixels = scrim.load()
+
+        top = self.SCRIM_TOP_ALPHA
+        mid = self.SCRIM_MID_ALPHA
+        bottom = self.SCRIM_BOTTOM_ALPHA
+
+        # Precompute one alpha value per row, then paint each row in one
+        # shot instead of touching every pixel individually (fast + simple).
+        row_alphas: list[int] = []
+        for y in range(H):
+            t = y / max(1, H - 1)
+            if t <= 0.30:
+                # top band: top -> mid
+                local_t = t / 0.30
+                alpha = top + (mid - top) * local_t
+            else:
+                # remaining band: mid -> bottom
+                local_t = (t - 0.30) / 0.70
+                alpha = mid + (bottom - mid) * local_t
+            row_alphas.append(int(round(alpha)))
+
+        row = Image.new("RGBA", (W, 1))
+        for y, alpha in enumerate(row_alphas):
+            row.paste((8, 10, 14, alpha), (0, 0, W, 1))
+            scrim.paste(row, (0, y))
+
+        scrim_path = section_dir / "scrim.png"
+        scrim.save(scrim_path, format="PNG", optimize=True)
+        return scrim_path
+
     def make_timed_overlay_frames(
         self,
         section_dir: Path,
@@ -2971,15 +3050,12 @@ class TypographyEngine:
             end = cursor + float(audio.duration)
             cursor = end
 
+            # NOTE: the frame starts fully transparent. The dark veil is NOT
+            # drawn here anymore — it is a separate static layer (see
+            # build_static_scrim) composited once for the whole clip, so
+            # this per-ayah PNG only ever contains text/ornament pixels.
             image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
             draw = ImageDraw.Draw(image)
-
-            # Uniform full-frame veil: no rectangular patch, no localized box.
-            # This is intentionally subtle so the moving footage stays visible.
-            draw.rectangle(
-                (0, 0, W, H),
-                fill=(8, 10, 14, self.SCRIM_ALPHA),
-            )
 
             header = f"SURAH {romanish(chapter_name)} — AYAH {verse.verse_number}"
             self._draw_centered(
@@ -3227,6 +3303,7 @@ class VideoRenderer:
     def render(
         self,
         background: Path,
+        scrim: Path,
         overlay_frames: list[tuple[Path, float, float]],
         audio: Path,
         output: Path,
@@ -3239,9 +3316,16 @@ class VideoRenderer:
 
         # Inputs:
         #   0 = dynamic background
-        #   1..N = one transparent full-frame typography PNG per ayah
-        #   N+1 = recitation audio
+        #   1 = static full-duration scrim (even coverage, no per-ayah fade)
+        #   2..N+1 = one transparent full-frame typography PNG per ayah
+        #   N+2 = recitation audio
         command = ["ffmpeg", "-y", "-i", str(background)]
+
+        command.extend([
+            "-loop", "1",
+            "-t", f"{duration:.3f}",
+            "-i", str(scrim),
+        ])
 
         for frame_path, start, end in overlay_frames:
             frame_duration = max(0.05, end - start)
@@ -3254,11 +3338,15 @@ class VideoRenderer:
         command.extend(["-i", str(audio)])
 
         filters: list[str] = [
-            "[0:v]setpts=PTS-STARTPTS[base]"
+            "[0:v]setpts=PTS-STARTPTS[base]",
+            # Static veil, held for the entire clip — this is what makes the
+            # darkening perfectly even instead of flickering per ayah.
+            "[1:v]format=rgba,setpts=PTS-STARTPTS[scrim]",
+            "[base][scrim]overlay=0:0:eof_action=pass[based]",
         ]
-        current = "base"
+        current = "based"
 
-        for index, (_frame_path, start, end) in enumerate(overlay_frames, start=1):
+        for index, (_frame_path, start, end) in enumerate(overlay_frames, start=2):
             duration_local = max(0.05, end - start)
             fade = min(0.24, max(0.08, duration_local / 4.0))
             fade_out = max(0.0, duration_local - fade)
@@ -3289,7 +3377,7 @@ class VideoRenderer:
             f"[vout]"
         )
 
-        audio_input_index = 1 + len(overlay_frames)
+        audio_input_index = 2 + len(overlay_frames)
         filters.append(
             f"[{audio_input_index}:a]"
             f"afade=t=in:st=0:d=0.35,"
@@ -3735,6 +3823,11 @@ class QuranProduction:
             start_verse.chapter_name_arabic,
         )
 
+        # One static, full-duration darkening veil for the whole section —
+        # composited once in the renderer instead of baked into every ayah
+        # frame, so the coverage is perfectly even from first frame to last.
+        scrim_path = self.typography.build_static_scrim(section_dir)
+
         captions = section_dir / "captions.srt"
         CaptionEngine.make_srt(captions, selected, audio_items)
 
@@ -3771,6 +3864,7 @@ class QuranProduction:
 
                 self.renderer.render(
                     background,
+                    scrim_path,
                     overlay_frames,
                     section_audio,
                     final_video,
@@ -3859,7 +3953,7 @@ class QuranProduction:
                 "audio_channels": qa["audio_channels"],
                 "audio_sample_rate": qa["audio_sample_rate"],
                 "layout": (
-                    "reference-style full-frame scrim / Surah header / "
+                    "reference-style full-frame static veil / Surah header / "
                     "Arabic Surah title / ayah badge / safely wrapped "
                     "Arabic verse / ornament / English translation"
                 ),
