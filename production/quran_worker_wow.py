@@ -63,7 +63,15 @@ Optional:
   GIT_REMOTE=origin
   GIT_BRANCH=main
   QURAN_TARGET_MIN=35
-  QURAN_TARGET_MAX=65
+  QURAN_TARGET_MAX=82     (default; how long a BUNDLED multi-ayah section
+                          is allowed to grow. Kept under Facebook Reels'
+                          90s cap by default. A single ayah longer than
+                          this is still rendered in full — never cut.)
+  QURAN_FACEBOOK_MAX_SECONDS=88
+                          (safety threshold used only to LABEL a finished
+                          video as Facebook-Reels-compatible or not in its
+                          metadata / publish_queue.json entry. Never causes
+                          an ayah to be trimmed or a run to fail.)
   QURAN_LOG_LEVEL=INFO
   QURAN_FORCE_REINDEX=1
   QURAN_DRY_RUN=1
@@ -153,9 +161,27 @@ if RECITER.lower() != "saad al-ghamdi":
     )
 
 TARGET_MIN = float(os.environ.get("QURAN_TARGET_MIN", "35"))
-TARGET_MAX = float(os.environ.get("QURAN_TARGET_MAX", "153"))
+# Facebook Reels hard-rejects any video longer than 90s. We never cut an
+# ayah short to satisfy that limit, but there is no reason for a *bundled*
+# multi-ayah section to run anywhere near 153s either — so the default
+# bundling ceiling is now kept safely under 90s. Raise QURAN_TARGET_MAX via
+# env if a given run doesn't need to stay Facebook-Reels-compatible.
+TARGET_MAX = float(os.environ.get("QURAN_TARGET_MAX", "82"))
 if TARGET_MIN <= 0 or TARGET_MAX < TARGET_MIN:
     raise SystemExit("ERROR: Invalid QURAN_TARGET_MIN/QURAN_TARGET_MAX range.")
+
+# A single ayah's own recitation can still legitimately run longer than
+# this (ayat like 2:282 are minutes long). We NEVER cut an ayah short to
+# force it under this number — see PassagePlanner.select_passage(), which
+# always keeps the first ayah of a section in full regardless of TARGET_MAX.
+# Instead, any section whose final audio exceeds this is simply flagged as
+# not Facebook-Reels-compatible in its metadata / publish_queue.json entry,
+# so the publishing layer (e.g. your Buffer script) can skip the Facebook
+# channel for that one video instead of retrying it forever and failing.
+FACEBOOK_REELS_MAX_SECONDS = float(os.environ.get("QURAN_FACEBOOK_MAX_SECONDS", "88"))
+if FACEBOOK_REELS_MAX_SECONDS <= 0:
+    raise SystemExit("ERROR: QURAN_FACEBOOK_MAX_SECONDS must be positive.")
+
 LOG_LEVEL = os.environ.get("QURAN_LOG_LEVEL", "INFO").upper()
 ALLOW_VISUAL_REUSE = os.environ.get("ALLOW_VISUAL_REUSE", "").strip() == "1"
 COMMIT_PROGRESS = os.environ.get("COMMIT_PROGRESS", "").strip() == "1"
@@ -3000,6 +3026,20 @@ class TypographyEngine:
         chapter_name: str,
         chapter_name_arabic: str,
     ) -> list[tuple[Path, float, float]]:
+        """
+        Build timed transparent text overlays.
+
+        Normal ayahs use one clean static text frame for the full ayah audio.
+        If an unusually long ayah cannot fit safely on one screen, the ayah is
+        NOT shortened, split in Quran sequencing, or split in audio. Instead,
+        its visual text is shown progressively across several screens while the
+        original ayah audio continues uninterrupted.
+
+        The progressive split is purely a presentation mechanism: every word
+        from the Arabic ayah and translation remains represented exactly once,
+        and the complete ayah remains one Verse in the production metadata and
+        audio timeline.
+        """
         if len(verses) != len(audio_items):
             raise RuntimeError(
                 "Typography timeline mismatch: verses/audio_items lengths differ."
@@ -3022,7 +3062,6 @@ class TypographyEngine:
         else:
             chapter_ar = ""
 
-        # Verify the fixed header pieces once before generating all frames.
         if self._width(
             probe_draw,
             f"SURAH {romanish(chapter_name)} — AYAH 999",
@@ -3038,22 +3077,82 @@ class TypographyEngine:
             arabic=True,
             stroke_width=1,
         ) > W - 170:
-            # Smaller Surah title is preferable to ever clipping Arabic.
             surah_ar_font = self.font(self.arabic_font_path, 66)
 
-        output: list[tuple[Path, float, float]] = []
-        cursor = 0.0
-        total = len(verses)
+        def partition_words(text: str, count: int) -> list[str]:
+            words = normalize_space(text.replace("\n", " ")).split()
+            if not words:
+                return [""] * count
+            count = max(1, count)
+            chunks: list[str] = []
+            for idx in range(count):
+                a = round(idx * len(words) / count)
+                b = round((idx + 1) * len(words) / count)
+                if idx < len(words) and b <= a:
+                    b = a + 1
+                b = min(len(words), b)
+                chunks.append(" ".join(words[a:b]))
+            return chunks
 
-        for index, (verse, audio) in enumerate(zip(verses, audio_items), start=1):
-            start = cursor
-            end = cursor + float(audio.duration)
-            cursor = end
+        def layout_text(
+            draw: ImageDraw.ImageDraw,
+            arabic_text: str,
+            english_text: str,
+        ) -> tuple[
+            int,
+            list[str],
+            float,
+            ImageFont.FreeTypeFont,
+            int,
+            list[str],
+            float,
+            ImageFont.FreeTypeFont,
+            int,
+        ]:
+            arabic_size, arabic_lines, arabic_line_height = self._fit_arabic(
+                draw,
+                arabic_text,
+            )
+            arabic_font = self.font(self.arabic_font_path, arabic_size)
 
-            # NOTE: the frame starts fully transparent. The dark veil is NOT
-            # drawn here anymore — it is a separate static layer (see
-            # build_static_scrim) composited once for the whole clip, so
-            # this per-ayah PNG only ever contains text/ornament pixels.
+            arabic_bottom = (
+                self.ARABIC_TOP
+                + arabic_line_height * len(arabic_lines)
+            )
+            ornament_y = int(arabic_bottom + self.ORNAMENT_GAP)
+            english_top = ornament_y + self.ENGLISH_GAP
+            remaining_height = max(260, self.FOOT_SAFE_Y - english_top)
+
+            english_size, english_lines, english_line_height = self._fit_english(
+                draw,
+                normalize_space(english_text.replace("\n", " ")),
+                remaining_height,
+            )
+            english_font = self.font(self.english_font_path, english_size)
+
+            if english_top + english_line_height * len(english_lines) > H - 150:
+                raise RuntimeError("English block is too low in the safe 9:16 area.")
+
+            return (
+                arabic_size,
+                arabic_lines,
+                arabic_line_height,
+                arabic_font,
+                ornament_y,
+                english_lines,
+                english_line_height,
+                english_font,
+                english_top,
+            )
+
+        def render_frame(
+            frame_index: int,
+            verse: Verse,
+            arabic_text: str,
+            english_text: str,
+            start: float,
+            end: float,
+        ) -> tuple[Path, float, float]:
             image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
             draw = ImageDraw.Draw(image)
 
@@ -3092,11 +3191,17 @@ class TypographyEngine:
 
             self._draw_badge(draw, verse.verse_number)
 
-            arabic_size, arabic_lines, arabic_line_height = self._fit_arabic(
-                draw,
-                verse.arabic_text,
-            )
-            arabic_font = self.font(self.arabic_font_path, arabic_size)
+            (
+                _arabic_size,
+                arabic_lines,
+                arabic_line_height,
+                arabic_font,
+                ornament_y,
+                english_lines,
+                english_line_height,
+                english_font,
+                english_top,
+            ) = layout_text(draw, arabic_text, english_text)
 
             self._draw_multiline_centered(
                 draw,
@@ -3110,26 +3215,7 @@ class TypographyEngine:
                 stroke_fill=(0, 0, 0, 150),
             )
 
-            arabic_bottom = (
-                self.ARABIC_TOP
-                + arabic_line_height * len(arabic_lines)
-            )
-
-            ornament_y = int(arabic_bottom + self.ORNAMENT_GAP)
             self._draw_ornament(draw, ornament_y)
-
-            english_top = ornament_y + self.ENGLISH_GAP
-            remaining_height = max(
-                260,
-                self.FOOT_SAFE_Y - english_top,
-            )
-
-            english_size, english_lines, english_line_height = self._fit_english(
-                draw,
-                normalize_space(verse.translation.replace("\n", " ")),
-                remaining_height,
-            )
-            english_font = self.font(self.english_font_path, english_size)
 
             self._draw_multiline_centered(
                 draw,
@@ -3142,8 +3228,6 @@ class TypographyEngine:
                 stroke_fill=(0, 0, 0, 155),
             )
 
-            # Hard pixel-level safety checks. These prevent the exact "Arabic
-            # noodles outside the box" failure the previous renderer allowed.
             for line in arabic_lines:
                 width = self._width(
                     draw,
@@ -3171,16 +3255,119 @@ class TypographyEngine:
                         f"{width:.1f}px > {self.ENGLISH_MAX_W}px"
                     )
 
-            if english_top + english_line_height * len(english_lines) > H - 150:
-                raise RuntimeError(
-                    f"English block is too low in ayah {verse.verse_number}."
+            frame_path = frames_dir / (
+                f"ayah-{frame_index:03d}-{verse.verse_number:03d}.png"
+            )
+            image.save(frame_path, format="PNG", optimize=True)
+            return frame_path, start, end
+
+        def render_ayah(
+            index: int,
+            verse: Verse,
+            audio: AudioItem,
+            start: float,
+            end: float,
+        ) -> list[tuple[Path, float, float]]:
+            # First attempt: preserve the existing one-frame-per-ayah design.
+            try:
+                path, s, e = render_frame(
+                    index,
+                    verse,
+                    verse.arabic_text,
+                    verse.translation,
+                    start,
+                    end,
+                )
+                return [(path, s, e)]
+            except RuntimeError as full_error:
+                log(
+                    f"Ayah {verse.verse_key} does not fit as one text frame; "
+                    f"switching to progressive presentation: {full_error}",
+                    "WARN",
                 )
 
-            frame_path = frames_dir / f"ayah-{index:03d}-{verse.verse_number:03d}.png"
-            image.save(frame_path, format="PNG", optimize=True)
+            arabic_words = normalize_space(verse.arabic_text.replace("\n", " ")).split()
+            english_words = normalize_space(verse.translation.replace("\n", " ")).split()
+            if not arabic_words:
+                raise RuntimeError(
+                    f"Ayah {verse.verse_key} has no Arabic text to render."
+                )
 
-            output.append((frame_path, start, end))
+            # Find the smallest number of presentation screens that can hold
+            # the complete Arabic and English text safely. This keeps long
+            # ayahs spacious instead of shrinking them into unreadability.
+            chosen: Optional[tuple[list[str], list[str]]] = None
+            max_chunks = min(16, max(2, len(arabic_words)))
+            for count in range(2, max_chunks + 1):
+                ar_chunks = partition_words(verse.arabic_text, count)
+                en_chunks = partition_words(verse.translation, count)
+                try:
+                    for ar_chunk, en_chunk in zip(ar_chunks, en_chunks):
+                        test = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                        test_draw = ImageDraw.Draw(test)
+                        layout_text(test_draw, ar_chunk, en_chunk)
+                    chosen = (ar_chunks, en_chunks)
+                    break
+                except RuntimeError:
+                    continue
 
+            if chosen is None:
+                raise RuntimeError(
+                    f"Ayah {verse.verse_key} could not be fitted even with "
+                    "progressive text presentation. No Quran text was cut."
+                )
+
+            ar_chunks, en_chunks = chosen
+            weights = [
+                max(1, len(ar_chunks[i].split()) + len(en_chunks[i].split()))
+                for i in range(len(ar_chunks))
+            ]
+            weight_total = float(sum(weights))
+            duration = end - start
+            output: list[tuple[Path, float, float]] = []
+            cursor = start
+
+            for chunk_index, (ar_chunk, en_chunk, weight) in enumerate(
+                zip(ar_chunks, en_chunks, weights),
+                start=1,
+            ):
+                chunk_start = cursor
+                if chunk_index == len(ar_chunks):
+                    chunk_end = end
+                else:
+                    chunk_end = cursor + duration * (weight / weight_total)
+                cursor = chunk_end
+
+                frame_number = index * 100 + chunk_index
+                output.append(
+                    render_frame(
+                        frame_number,
+                        verse,
+                        ar_chunk,
+                        en_chunk,
+                        chunk_start,
+                        chunk_end,
+                    )
+                )
+
+            log(
+                f"Ayah {verse.verse_key}: progressive presentation using "
+                f"{len(output)} screens across {duration:.2f}s; full ayah/audio preserved.",
+                "INFO",
+            )
+            return output
+
+        output: list[tuple[Path, float, float]] = []
+        cursor = 0.0
+
+        for index, (verse, audio) in enumerate(zip(verses, audio_items), start=1):
+            start = cursor
+            end = cursor + float(audio.duration)
+            cursor = end
+            output.extend(render_ayah(index, verse, audio, start, end))
+
+        if not output:
+            raise RuntimeError("No typography frames were generated.")
         return output
 
 
@@ -3559,6 +3746,9 @@ class Publisher:
                 "section", {}
             ).get("duration_seconds"),
             "captions_file": metadata.get("captions", {}).get("file"),
+            "facebook_compatible": metadata.get("distribution", {}).get(
+                "facebook_reels_compatible", True
+            ),
             "created_at": utc_now(),
         })
 
@@ -3775,9 +3965,13 @@ class QuranProduction:
                 "the next semantic boundary would be crossed. Keeping coherence.",
                 "WARN",
             )
-        if planned_duration > TARGET_MAX + 0.05:
+        # TARGET_MAX is a bundling ceiling, not a ban on naturally long single ayahs.
+        # A single ayah must remain complete even when its own recitation exceeds
+        # TARGET_MAX; only multi-ayah bundles are rejected above the ceiling.
+        if len(selected) > 1 and planned_duration > TARGET_MAX + 0.05:
             raise RuntimeError(
-                f"Planner exceeded target maximum: {planned_duration:.2f}s"
+                f"Planner exceeded target maximum for a multi-ayah section: "
+                f"{planned_duration:.2f}s"
             )
 
         section_id = (
@@ -3897,6 +4091,18 @@ class QuranProduction:
             f"(visual {visual.video_id})"
         )
 
+        if audio_duration > FACEBOOK_REELS_MAX_SECONDS:
+            log(
+                f"This section is {audio_duration:.2f}s, which is longer than "
+                f"Facebook Reels' 90s limit (safety threshold "
+                f"{FACEBOOK_REELS_MAX_SECONDS:.0f}s). The ayah is NOT being cut — "
+                "the full video will still be produced and published, but it is "
+                "flagged facebook_reels_compatible=false in its metadata and "
+                "publish_queue.json so the Facebook channel can be skipped for "
+                "this one video instead of being rejected on upload.",
+                "WARN",
+            )
+
         metadata: dict[str, Any] = {
             "schema_version": 4,
             "cycle": cycle,
@@ -3954,8 +4160,9 @@ class QuranProduction:
                 "audio_sample_rate": qa["audio_sample_rate"],
                 "layout": (
                     "reference-style full-frame static veil / Surah header / "
-                    "Arabic Surah title / ayah badge / safely wrapped "
-                    "Arabic verse / ornament / English translation"
+                    "Arabic Surah title / ayah badge / safely wrapped Arabic "
+                    "verse / progressive long-ayah presentation when needed / "
+                    "ornament / English translation"
                 ),
                 "fonts": {
                     "arabic": Path(self.typography.arabic_font_path).stem,
@@ -3966,6 +4173,16 @@ class QuranProduction:
                 "status": "passed",
                 "final_sha256": sha256_file(final_video),
                 "validated_at": utc_now(),
+            },
+            "distribution": {
+                # This is a LABEL only. Ayahs are never cut to satisfy it.
+                # A section that exceeds FACEBOOK_REELS_MAX_SECONDS is still
+                # fully rendered and published (Instagram/YouTube have no
+                # such limit) — it is simply marked ineligible here so the
+                # publishing layer can skip the Facebook channel for this
+                # one video instead of it being rejected and retried.
+                "facebook_reels_max_seconds": FACEBOOK_REELS_MAX_SECONDS,
+                "facebook_reels_compatible": audio_duration <= FACEBOOK_REELS_MAX_SECONDS,
             },
         }
 
@@ -4022,6 +4239,7 @@ class QuranProduction:
             "theme": theme,
             "visual_id": visual.video_id,
             "visual_fresh": visual_is_fresh,
+            "facebook_reels_compatible": audio_duration <= FACEBOOK_REELS_MAX_SECONDS,
             "output": str(publish_video.relative_to(ROOT)),
             "metadata": str(publish_metadata.relative_to(ROOT)),
             "captions_file": metadata.get("captions", {}).get("file"),
