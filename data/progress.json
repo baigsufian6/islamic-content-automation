@@ -66,7 +66,8 @@
     "2:56",
     "2:57",
     "2:58",
-    "2:59"
+    "2:59",
+    "2:60"
   ],
   "published_sections": [
     {
@@ -234,21 +235,20 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:57",
-      "2:58",
-      "2:59"
+      "2:60"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 62.511,
-    "visual_id": 38182932,
-    "theme": "mercy",
-    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-57-to-59-Cycle-1.mp4",
-    "published_sha256": "93278aa028ea877cb33186bb93eeb82364962e32a69fed56d0f8fa54c281b1ac"
+    "duration_seconds": 25.025,
+    "visual_id": 10297371,
+    "theme": "water",
+    "visual_query": "peaceful waterfall surrounded by green landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-60-Cycle-1.mp4",
+    "published_sha256": "bc050915c978450db91aeba0581b4fd8668deb54815930e2cdae9a87b6d4c11c"
   },
   "schema_version": 4,
   "used_pexels_ids": [
+    10297371,
     10681857,
     11318637,
     13243682,
@@ -279,10 +279,11 @@
     "patience": 1,
     "warning": 1,
     "repentance": 1,
-    "mercy": 1
+    "mercy": 1,
+    "water": 1
   },
   "completed_cycles": [],
-  "published_count": 18,
+  "published_count": 19,
   "history": [
     {
       "cycle": 1,
@@ -523,6 +524,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-57-to-59-Cycle-1.mp4",
       "published_sha256": "93278aa028ea877cb33186bb93eeb82364962e32a69fed56d0f8fa54c281b1ac",
       "created_at": "2026-08-10T09:01:04Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:60"
+      ],
+      "visual_id": 10297371,
+      "theme": "water",
+      "visual_query": "peaceful waterfall surrounded by green landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-60-Cycle-1.mp4",
+      "published_sha256": "bc050915c978450db91aeba0581b4fd8668deb54815930e2cdae9a87b6d4c11c",
+      "created_at": "2026-08-10T09:16:09Z"
     }
   ],
   "visual_history": [
@@ -543,6 +556,7 @@
     37694068,
     10681857,
     38423457,
-    38182932
+    38182932,
+    10297371
   ]
 }
