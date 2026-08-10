@@ -1398,7 +1398,7 @@ jobs:
                       title: {json.dumps(
                           youtube_title
                       )}
-                      privacy: private
+                      privacy: public
                       madeForKids: false
                       notifySubscribers: false
                       embeddable: true
