@@ -153,7 +153,7 @@ if RECITER.lower() != "saad al-ghamdi":
     )
 
 TARGET_MIN = float(os.environ.get("QURAN_TARGET_MIN", "35"))
-TARGET_MAX = float(os.environ.get("QURAN_TARGET_MAX", "65"))
+TARGET_MAX = float(os.environ.get("QURAN_TARGET_MAX", "70"))
 if TARGET_MIN <= 0 or TARGET_MAX < TARGET_MIN:
     raise SystemExit("ERROR: Invalid QURAN_TARGET_MIN/QURAN_TARGET_MAX range.")
 LOG_LEVEL = os.environ.get("QURAN_LOG_LEVEL", "INFO").upper()
