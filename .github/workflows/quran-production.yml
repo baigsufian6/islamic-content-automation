@@ -132,7 +132,9 @@ jobs:
           python3 -m pip install --quiet \
             requests \
             pillow \
-            boto3
+            boto3 \
+            arabic-reshaper \
+            python-bidi
 
 
       # ============================================================
