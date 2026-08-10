@@ -277,5 +277,22 @@
     "duration_seconds": 58.593,
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-54-to-56-Cycle-1.srt",
     "created_at": "2026-08-10T07:49:48Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-57-to-59-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-57-to-59-Cycle-1.json",
+    "published_sha256": "93278aa028ea877cb33186bb93eeb82364962e32a69fed56d0f8fa54c281b1ac",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:57",
+      "2:58",
+      "2:59"
+    ],
+    "duration_seconds": 62.511,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-57-to-59-Cycle-1.srt",
+    "created_at": "2026-08-10T09:01:04Z"
   }
 ]
