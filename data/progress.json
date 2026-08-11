@@ -78,7 +78,10 @@
     "2:68",
     "2:69",
     "2:70",
-    "2:71"
+    "2:71",
+    "2:72",
+    "2:73",
+    "2:74"
   ],
   "published_sections": [
     {
@@ -246,17 +249,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:70",
-      "2:71"
+      "2:72",
+      "2:73",
+      "2:74"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 41.091,
-    "visual_id": 37903577,
-    "theme": "guidance",
-    "visual_query": "winding desert path toward distant golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-70-to-71-Cycle-1.mp4",
-    "published_sha256": "f366ef9aa7dc8a2393abffd428b18f618e4d863b4ea75d5579739acfbae3e994"
+    "duration_seconds": 64.81,
+    "visual_id": 24818388,
+    "theme": "water",
+    "visual_query": "peaceful waterfall surrounded by green landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-72-to-74-Cycle-1.mp4",
+    "published_sha256": "ac2e3a1af50bd4876fc5d25f7a20c1b940ac97c1d6f7dd7ea0f5b2733b914ba7"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -265,6 +269,7 @@
     11318637,
     13243682,
     19948838,
+    24818388,
     27863479,
     28615722,
     29898627,
@@ -295,10 +300,10 @@
     "warning": 1,
     "repentance": 1,
     "mercy": 2,
-    "water": 1
+    "water": 2
   },
   "completed_cycles": [],
-  "published_count": 22,
+  "published_count": 23,
   "history": [
     {
       "cycle": 1,
@@ -595,6 +600,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-70-to-71-Cycle-1.mp4",
       "published_sha256": "f366ef9aa7dc8a2393abffd428b18f618e4d863b4ea75d5579739acfbae3e994",
       "created_at": "2026-08-10T22:47:11Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:72",
+        "2:73",
+        "2:74"
+      ],
+      "visual_id": 24818388,
+      "theme": "water",
+      "visual_query": "peaceful waterfall surrounded by green landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-72-to-74-Cycle-1.mp4",
+      "published_sha256": "ac2e3a1af50bd4876fc5d25f7a20c1b940ac97c1d6f7dd7ea0f5b2733b914ba7",
+      "created_at": "2026-08-11T08:55:54Z"
     }
   ],
   "visual_history": [
@@ -619,6 +638,7 @@
     10297371,
     35633884,
     35497914,
-    37903577
+    37903577,
+    24818388
   ]
 }
