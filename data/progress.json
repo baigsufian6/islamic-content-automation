@@ -84,7 +84,10 @@
     "2:74",
     "2:75",
     "2:76",
-    "2:77"
+    "2:77",
+    "2:78",
+    "2:79",
+    "2:80"
   ],
   "published_sections": [
     {
@@ -252,18 +255,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:75",
-      "2:76",
-      "2:77"
+      "2:78",
+      "2:79",
+      "2:80"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 68.31,
-    "visual_id": 27604262,
-    "theme": "hope",
-    "visual_query": "light breaking through clouds over peaceful valley, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-75-to-77-Cycle-1.mp4",
-    "published_sha256": "2f3c913994e9b90d8f6f3655d21f2316136b9477bc7833c42785a6b0c6cc43da"
+    "duration_seconds": 69.669,
+    "visual_id": 35666006,
+    "theme": "knowledge",
+    "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-78-to-80-Cycle-1.mp4",
+    "published_sha256": "159616e57f6bad13eca45b648a6e90b69392136692f28104c4f9ae50a398205d"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -281,6 +284,7 @@
     34464344,
     35497914,
     35633884,
+    35666006,
     37127031,
     37542312,
     37694068,
@@ -298,7 +302,7 @@
     "justice": 2,
     "paradise": 2,
     "earth": 1,
-    "knowledge": 1,
+    "knowledge": 2,
     "worship": 1,
     "patience": 1,
     "warning": 1,
@@ -308,7 +312,7 @@
     "hope": 1
   },
   "completed_cycles": [],
-  "published_count": 24,
+  "published_count": 25,
   "history": [
     {
       "cycle": 1,
@@ -633,6 +637,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-75-to-77-Cycle-1.mp4",
       "published_sha256": "2f3c913994e9b90d8f6f3655d21f2316136b9477bc7833c42785a6b0c6cc43da",
       "created_at": "2026-08-12T09:26:46Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:78",
+        "2:79",
+        "2:80"
+      ],
+      "visual_id": 35666006,
+      "theme": "knowledge",
+      "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-78-to-80-Cycle-1.mp4",
+      "published_sha256": "159616e57f6bad13eca45b648a6e90b69392136692f28104c4f9ae50a398205d",
+      "created_at": "2026-08-12T10:04:40Z"
     }
   ],
   "visual_history": [
@@ -659,6 +677,7 @@
     35497914,
     37903577,
     24818388,
-    27604262
+    27604262,
+    35666006
   ]
 }
