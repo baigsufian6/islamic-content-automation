@@ -2823,7 +2823,7 @@ class TypographyEngine:
                 arabic=True,
                 stroke_width=1,
             )
-            line_height = size * 1.80
+            line_height = size * 1.85
             block_height = line_height * len(lines)
 
             widest = max(
