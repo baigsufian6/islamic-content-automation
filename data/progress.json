@@ -87,7 +87,10 @@
     "2:77",
     "2:78",
     "2:79",
-    "2:80"
+    "2:80",
+    "2:81",
+    "2:82",
+    "2:83"
   ],
   "published_sections": [
     {
@@ -255,18 +258,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:78",
-      "2:79",
-      "2:80"
+      "2:81",
+      "2:82",
+      "2:83"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 69.669,
-    "visual_id": 35666006,
-    "theme": "knowledge",
-    "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-78-to-80-Cycle-1.mp4",
-    "published_sha256": "159616e57f6bad13eca45b648a6e90b69392136692f28104c4f9ae50a398205d"
+    "duration_seconds": 68.885,
+    "visual_id": 38963559,
+    "theme": "worship",
+    "visual_query": "geometric mosque architecture in golden hour, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-81-to-83-Cycle-1.mp4",
+    "published_sha256": "f703494deb47f4bbb37151b41cea1d38f179357b40354c93e0b06ad5b378d9ec"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -294,7 +297,8 @@
     37904635,
     38182932,
     38423457,
-    38430067
+    38430067,
+    38963559
   ],
   "theme_usage": {
     "guidance": 5,
@@ -303,7 +307,7 @@
     "paradise": 2,
     "earth": 1,
     "knowledge": 2,
-    "worship": 1,
+    "worship": 2,
     "patience": 1,
     "warning": 1,
     "repentance": 1,
@@ -312,7 +316,7 @@
     "hope": 1
   },
   "completed_cycles": [],
-  "published_count": 25,
+  "published_count": 26,
   "history": [
     {
       "cycle": 1,
@@ -651,6 +655,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-78-to-80-Cycle-1.mp4",
       "published_sha256": "159616e57f6bad13eca45b648a6e90b69392136692f28104c4f9ae50a398205d",
       "created_at": "2026-08-12T10:04:40Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:81",
+        "2:82",
+        "2:83"
+      ],
+      "visual_id": 38963559,
+      "theme": "worship",
+      "visual_query": "geometric mosque architecture in golden hour, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-81-to-83-Cycle-1.mp4",
+      "published_sha256": "f703494deb47f4bbb37151b41cea1d38f179357b40354c93e0b06ad5b378d9ec",
+      "created_at": "2026-08-12T15:25:08Z"
     }
   ],
   "visual_history": [
@@ -678,6 +696,7 @@
     37903577,
     24818388,
     27604262,
-    35666006
+    35666006,
+    38963559
   ]
 }
