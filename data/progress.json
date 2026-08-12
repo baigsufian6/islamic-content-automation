@@ -90,7 +90,9 @@
     "2:80",
     "2:81",
     "2:82",
-    "2:83"
+    "2:83",
+    "2:84",
+    "2:85"
   ],
   "published_sections": [
     {
@@ -258,18 +260,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:81",
-      "2:82",
-      "2:83"
+      "2:84",
+      "2:85"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 68.885,
-    "visual_id": 38963559,
-    "theme": "worship",
-    "visual_query": "geometric mosque architecture in golden hour, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-81-to-83-Cycle-1.mp4",
-    "published_sha256": "f703494deb47f4bbb37151b41cea1d38f179357b40354c93e0b06ad5b378d9ec"
+    "duration_seconds": 81.685,
+    "visual_id": 34823867,
+    "theme": "afterlife",
+    "visual_query": "dramatic sunrise over vast empty landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-84-to-85-Cycle-1.mp4",
+    "published_sha256": "dd7bb387e1eb7ca8d711cd49ea8d7965028b1c05264bb21c5de45a8abc7fa3b5"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -285,6 +286,7 @@
     29898627,
     33807471,
     34464344,
+    34823867,
     35497914,
     35633884,
     35666006,
@@ -313,10 +315,11 @@
     "repentance": 1,
     "mercy": 2,
     "water": 2,
-    "hope": 1
+    "hope": 1,
+    "afterlife": 1
   },
   "completed_cycles": [],
-  "published_count": 26,
+  "published_count": 27,
   "history": [
     {
       "cycle": 1,
@@ -669,6 +672,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-81-to-83-Cycle-1.mp4",
       "published_sha256": "f703494deb47f4bbb37151b41cea1d38f179357b40354c93e0b06ad5b378d9ec",
       "created_at": "2026-08-12T15:25:08Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:84",
+        "2:85"
+      ],
+      "visual_id": 34823867,
+      "theme": "afterlife",
+      "visual_query": "dramatic sunrise over vast empty landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-84-to-85-Cycle-1.mp4",
+      "published_sha256": "dd7bb387e1eb7ca8d711cd49ea8d7965028b1c05264bb21c5de45a8abc7fa3b5",
+      "created_at": "2026-08-12T16:11:48Z"
     }
   ],
   "visual_history": [
@@ -697,6 +713,7 @@
     24818388,
     27604262,
     35666006,
-    38963559
+    38963559,
+    34823867
   ]
 }
