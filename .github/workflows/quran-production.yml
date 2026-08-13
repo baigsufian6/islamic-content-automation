@@ -26,7 +26,7 @@ name: Quran Production Pipeline
 # Make.com is NOT used.
 #
 # Automatic daily trigger:
-#   schedule (cron)   <-- NEW: this is what makes the whole thing
+#   schedule (cron)   <-- this is what makes the whole thing
 #                          run on its own every day, no manual click
 #                          needed.
 #
@@ -42,6 +42,32 @@ name: Quran Production Pipeline
 #   auto-disables if this repo goes 60 days with zero commit
 #   activity, so keep COMMIT_PROGRESS/GIT_PUSH_PROGRESS enabled
 #   (they already are, below) so every run itself counts as activity.
+#
+# ----------------------------------------------------------------
+# SAFETY / HARDENING CHANGELOG (read this if you're wondering what
+# changed from the previous version):
+#
+#   1. action-gh-release is now referenced with a version comment
+#      and a TODO to pin it to a full commit SHA (mutable tags are
+#      a supply-chain risk for any action that runs with
+#      `contents: write` and access to your GITHUB_TOKEN).
+#   2. Fixed a GraphQL-injection inconsistency: organizationId is
+#      now escaped with json.dumps() like every other interpolated
+#      value in the Buffer script, instead of being dropped into
+#      the query as a raw f-string.
+#   3. R2 auto-cleanup now has a retention floor (MIN_RETAINED_MP4S)
+#      and a per-run delete cap (MAX_DELETES_PER_RUN) as circuit
+#      breakers, plus explicit logging of what was deleted. It will
+#      no longer silently mass-delete your history if a bug ever
+#      produces oversized files repeatedly.
+#   4. Added a "Run summary" step (GitHub Step Summary, free, no new
+#      secrets needed) so every run leaves a human-visible record of
+#      what got published where — since nothing here waits for
+#      human review before going live on Instagram/Facebook/YouTube.
+#   5. Pip installs are now version-pinned so a breaking upstream
+#      release can't silently change behavior in daily production
+#      runs. Update these pins deliberately, on your own schedule.
+# ----------------------------------------------------------------
 # ================================================================
 
 on:
@@ -105,6 +131,12 @@ jobs:
       #   least one candidate lands — checked explicitly below so a
       #   fully-missing-font situation fails loudly here, in CI, instead
       #   of surfacing later as a cryptic renderer crash.
+      #
+      # NOTE on pip pins:
+      #   Versions are pinned so an upstream release can't silently
+      #   change behavior of a daily, unattended, auto-publishing
+      #   pipeline. Bump these deliberately (e.g. via Dependabot or a
+      #   manual PR) rather than letting `pip install` float.
       # ============================================================
 
       - name: Install rendering and storage dependencies
@@ -130,11 +162,11 @@ jobs:
           fi
 
           python3 -m pip install --quiet \
-            requests \
-            pillow \
-            boto3 \
-            arabic-reshaper \
-            python-bidi
+            requests==2.32.3 \
+            pillow==10.4.0 \
+            boto3==1.35.36 \
+            arabic-reshaper==3.0.0 \
+            python-bidi==0.4.2
 
 
       # ============================================================
@@ -487,12 +519,27 @@ jobs:
 
       # ============================================================
       # 6. GITHUB RELEASE
+      #
+      # SAFETY NOTE: this action runs with `contents: write` and the
+      # repo's GITHUB_TOKEN. It is currently pinned to the floating
+      # `v2` tag, which the maintainer can (and eventually will, per
+      # their own changelog — v2.6.2 is the final v2 release) stop
+      # updating, or which could in principle be repointed if the
+      # upstream repo/tag were ever compromised.
+      #
+      # TODO: pin to an exact commit SHA instead of a tag. Get it
+      # yourself with:
+      #   git ls-remote https://github.com/softprops/action-gh-release v2.6.2
+      # then use:
+      #   uses: softprops/action-gh-release@<full-40-char-sha> # v2.6.2
+      # (Longer term, softprops/action-gh-release@v3 is the actively
+      # maintained line — v2 is now frozen/unmaintained.)
       # ============================================================
 
       - name: Publish finished video to GitHub Release
         id: release
 
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2 # TODO: pin to commit SHA — see note above
 
         with:
           tag_name: ${{ steps.meta.outputs.tag_name }}
@@ -525,9 +572,19 @@ jobs:
       #   9 GB
       #
       # When adding a new video would exceed 9 GB,
-      # oldest MP4 files are deleted first.
+      # oldest MP4 files are deleted first, subject to two circuit
+      # breakers so a bug elsewhere can't silently wipe out the
+      # whole history in one run:
       #
-      # JSON/SRT files are preserved.
+      #   MIN_RETAINED_MP4S    — never delete below this many MP4s,
+      #                           even if still over budget. Fails
+      #                           loudly instead.
+      #   MAX_DELETES_PER_RUN  — never delete more than this many
+      #                           MP4s in a single run. Fails loudly
+      #                           instead of continuing to delete.
+      #
+      # JSON/SRT files are preserved (and everything is separately
+      # backed up to GitHub Releases before this step ever runs).
       # ============================================================
 
       - name: Upload video to Cloudflare R2
@@ -591,6 +648,13 @@ jobs:
           VIDEO_NAME = os.environ[
               "VIDEO_NAME"
           ]
+
+          # Circuit breakers for the auto-cleanup below. Tune these to
+          # taste, but keep both: they protect against a bug elsewhere
+          # (e.g. duration/size miscalculation) turning into silent,
+          # runaway deletion of your media history.
+          MIN_RETAINED_MP4S = 5
+          MAX_DELETES_PER_RUN = 10
 
           if not ACCESS_KEY:
               raise SystemExit(
@@ -687,14 +751,12 @@ jobs:
               f"{MAX_STORAGE / 1024 / 1024:.2f} MB"
           )
 
+          deleted_keys = []
+
           if projected_size > MAX_STORAGE:
 
               print(
                   "9 GB limit would be exceeded."
-              )
-
-              print(
-                  "Deleting oldest MP4 files..."
               )
 
               mp4_objects = [
@@ -710,16 +772,54 @@ jobs:
                   obj["LastModified"]
               )
 
+              print(
+                  f"MP4s currently in bucket: {len(mp4_objects)}"
+              )
+              print(
+                  f"Retention floor (MIN_RETAINED_MP4S): {MIN_RETAINED_MP4S}"
+              )
+              print(
+                  f"Per-run delete cap (MAX_DELETES_PER_RUN): {MAX_DELETES_PER_RUN}"
+              )
+              print(
+                  "Deleting oldest MP4 files (subject to the above limits)..."
+              )
+
               for obj in mp4_objects:
 
                   if projected_size <= MAX_STORAGE:
+                      break
+
+                  if len(deleted_keys) >= MAX_DELETES_PER_RUN:
+                      print(
+                          "STOPPING: reached MAX_DELETES_PER_RUN "
+                          f"({MAX_DELETES_PER_RUN}) for this run. "
+                          "Refusing to delete more in one go — this "
+                          "usually means something upstream is "
+                          "producing far more/larger video than "
+                          "expected and deserves a look before more "
+                          "history is removed."
+                      )
+                      break
+
+                  remaining_mp4s = len(mp4_objects) - len(deleted_keys)
+                  if remaining_mp4s <= MIN_RETAINED_MP4S:
+                      print(
+                          "STOPPING: retention floor "
+                          f"(MIN_RETAINED_MP4S={MIN_RETAINED_MP4S}) "
+                          "reached. Refusing to delete the last "
+                          f"{MIN_RETAINED_MP4S} MP4s even though "
+                          "still over the storage budget."
+                      )
                       break
 
                   key = obj["Key"]
                   size = obj["Size"]
 
                   print(
-                      f"Deleting: {key}"
+                      f"Deleting: {key} "
+                      f"({size / 1024 / 1024:.2f} MB, "
+                      f"last modified {obj['LastModified']})"
                   )
 
                   s3.delete_object(
@@ -727,12 +827,28 @@ jobs:
                       Key=key,
                   )
 
+                  deleted_keys.append(key)
                   projected_size -= size
+
+              print("")
+              if deleted_keys:
+                  print(
+                      f"Deleted {len(deleted_keys)} MP4(s) this run:"
+                  )
+                  for key in deleted_keys:
+                      print(f"  - {key}")
+              else:
+                  print("No MP4s were deleted this run.")
 
               if projected_size > MAX_STORAGE:
                   raise SystemExit(
-                      "ERROR: Could not reduce R2 "
-                      "storage below 9 GB."
+                      "ERROR: Could not reduce R2 storage below 9 GB "
+                      "within the configured safety limits "
+                      f"(MIN_RETAINED_MP4S={MIN_RETAINED_MP4S}, "
+                      f"MAX_DELETES_PER_RUN={MAX_DELETES_PER_RUN}). "
+                      "Raise the storage budget, review why files are "
+                      "larger than expected, or manually clear out "
+                      "old media before re-running."
                   )
 
           print("")
@@ -783,6 +899,10 @@ jobs:
           ) as fh:
               fh.write(
                   f"video_url={video_url}\n"
+              )
+
+              fh.write(
+                  f"r2_deleted_count={len(deleted_keys)}\n"
               )
 
           PY
@@ -994,15 +1114,24 @@ jobs:
       # them straight to "Scheduled" and auto-publishes each one at
       # that channel's next queue slot (whatever posting times are
       # configured for the channel in Buffer). There is no manual
-      # approval step.
+      # approval step — see the "Run summary" step at the end of this
+      # job for a lightweight, after-the-fact visibility mechanism.
       #
       # Facebook specifically gets retried with backoff, since its
       # "Video could not be read from its URL" error can be a
       # transient CDN-propagation or Meta-side hiccup even when the
       # R2 accessibility test above passes cleanly.
+      #
+      # SAFETY NOTE: organizationId is interpolated into the GraphQL
+      # query below using json.dumps(), matching every other
+      # interpolated value in this script (caption, video URL,
+      # channel ID). Keep it that way if you add new interpolated
+      # fields — building GraphQL strings by hand without escaping is
+      # how you get injection bugs.
       # ============================================================
 
       - name: Create and auto-publish Buffer posts
+        id: buffer
 
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
@@ -1271,13 +1400,19 @@ jobs:
           # 2. GET CHANNELS
           #
           # This is Buffer's documented channel query.
+          #
+          # organization_id is escaped with json.dumps() below, same
+          # as every other value interpolated into a GraphQL query in
+          # this script. It comes from Buffer's own API response, but
+          # there's no good reason for this one field to be the only
+          # unescaped interpolation, so it's fixed here.
           # ========================================================
 
           channel_query = f"""
           query GetChannels {{
             channels(
               input: {{
-                organizationId: "{organization_id}"
+                organizationId: {json.dumps(organization_id)}
               }}
             ) {{
               id
@@ -1631,11 +1766,16 @@ jobs:
                   f"{post.get('channelId')}"
               )
 
-              return (True, None)
+              return (True, post)
 
 
           # ========================================================
           # CREATE DRAFT WITH RETRY (Facebook only, by default)
+          #
+          # Returns the Buffer post dict on success, or None if the
+          # channel was skipped/not found. Raises SystemExit on a
+          # hard failure. The returned dict is used to build the
+          # end-of-run summary.
           # ========================================================
 
           def create_draft(
@@ -1652,7 +1792,7 @@ jobs:
                       "skipping."
                   )
 
-                  return
+                  return None
 
               if channel.get(
                   "isDisconnected"
@@ -1695,20 +1835,20 @@ jobs:
                       f"Buffer channel ID: {channel_id}"
                   )
 
-                  success, error_message = attempt_create_draft(
+                  success, result = attempt_create_draft(
                       channel_id,
                       label,
                   )
 
                   if success:
-                      return
+                      return result
 
-                  last_error = error_message
+                  last_error = result
 
                   is_retryable = (
-                      error_message is not None
+                      last_error is not None
                       and any(
-                          fragment in error_message.lower()
+                          fragment in last_error.lower()
                           for fragment in RETRYABLE_MESSAGE_FRAGMENTS
                       )
                   )
@@ -1718,7 +1858,7 @@ jobs:
                       f"{label} post attempt {attempt} failed:"
                   )
                   print(
-                      error_message
+                      last_error
                   )
 
                   if (
@@ -1782,23 +1922,24 @@ jobs:
           # INSTAGRAM
           # ========================================================
 
-          create_draft(
+          published = {}
+
+          published["Instagram"] = create_draft(
               instagram,
               "Instagram",
           )
 
 
           # ========================================================
-          # FACEBOOK (with retry, since this is the channel that
-          # has shown transient "could not be read" failures)
-
           # FACEBOOK
           #
           # Facebook Reels has a 90-second hard limit. Use an 88-second
           # safety threshold. A long complete Quran ayah is preserved and
           # Facebook is skipped rather than cutting the ayah.
+          # ========================================================
+
           if FACEBOOK_COMPATIBLE:
-              create_draft(
+              published["Facebook"] = create_draft(
                   facebook,
                   "Facebook",
                   max_attempts=FACEBOOK_MAX_ATTEMPTS,
@@ -1816,22 +1957,38 @@ jobs:
                   "The complete Quran video is preserved; "
                   "it will not be cut just to fit Facebook."
               )
-
+              published["Facebook"] = None
 
 
           # ========================================================
           # YOUTUBE
           # ========================================================
 
-          create_draft(
+          published["YouTube"] = create_draft(
               youtube,
               "YouTube",
           )
 
 
           # ========================================================
-          # COMPLETE
+          # COMPLETE — write a machine-readable summary for the
+          # "Run summary" step to render as a human-readable one,
+          # since nothing in this pipeline pauses for review before
+          # going live.
           # ========================================================
+
+          summary_path = os.environ.get("GITHUB_OUTPUT")
+
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as fh:
+                  for label, post in published.items():
+                      status = "not attempted / skipped"
+                      post_id = ""
+                      if post:
+                          status = post.get("status", "scheduled")
+                          post_id = post.get("id", "")
+                      fh.write(f"{label.lower()}_status={status}\n")
+                      fh.write(f"{label.lower()}_post_id={post_id}\n")
 
           print("")
           print("========================================")
@@ -1844,7 +2001,58 @@ jobs:
           )
 
           print(
-              "Nothing was automatically published."
+              "Nothing was automatically published by this script — "
+              "Buffer publishes each post at the channel's next queue slot."
           )
 
           PY
+
+
+      # ============================================================
+      # 10. RUN SUMMARY
+      #
+      # Nothing in this pipeline pauses for human review before a
+      # video is scheduled to auto-publish on Instagram/Facebook/
+      # YouTube. This step writes a plain-language summary to the
+      # GitHub Actions run's Step Summary page, so every run leaves
+      # a quick, human-checkable record of what was produced and
+      # what was sent to Buffer for each channel — useful for
+      # catching a bad ayah reference, wrong surah, or caption issue
+      # soon after the fact rather than only when a follower flags it.
+      #
+      # This uses only the built-in GITHUB_STEP_SUMMARY mechanism —
+      # no new secrets or external services required. If you later
+      # want a push notification (Slack/email/etc.) instead of a
+      # page you have to check, that's a natural next step here.
+      # ============================================================
+
+      - name: Run summary
+        if: always()
+        run: |
+          {
+            echo "## Quran Production Run Summary"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Surah | ${{ steps.meta.outputs.surah }} |"
+            echo "| Ayah(s) | ${{ steps.meta.outputs.ayah_text }} |"
+            echo "| Cycle | ${{ steps.meta.outputs.cycle }} |"
+            echo "| Duration (s) | ${{ steps.meta.outputs.duration_seconds }} |"
+            echo "| Facebook-compatible | ${{ steps.meta.outputs.facebook_compatible }} |"
+            echo "| R2 video URL | ${{ steps.r2.outputs.video_url }} |"
+            echo "| R2 old MP4s deleted this run | ${{ steps.r2.outputs.r2_deleted_count }} |"
+            echo ""
+            echo "### Buffer channel status"
+            echo ""
+            echo "| Channel | Status | Post ID |"
+            echo "|---|---|---|"
+            echo "| Instagram | ${{ steps.buffer.outputs.instagram_status }} | ${{ steps.buffer.outputs.instagram_post_id }} |"
+            echo "| Facebook | ${{ steps.buffer.outputs.facebook_status }} | ${{ steps.buffer.outputs.facebook_post_id }} |"
+            echo "| YouTube | ${{ steps.buffer.outputs.youtube_status }} | ${{ steps.buffer.outputs.youtube_post_id }} |"
+            echo ""
+            echo "_Caption used for this run:_"
+            echo ""
+            echo '```'
+            echo "${{ steps.meta.outputs.caption }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
