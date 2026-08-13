@@ -486,21 +486,6 @@ jobs:
 
 
       # ============================================================
-      # 5. UPLOAD PRODUCTION ARTIFACT
-      # ============================================================
-
-      - name: Upload production artifact
-        uses: actions/upload-artifact@v4
-
-        with:
-          name: quran-production-${{ steps.meta.outputs.tag_name }}
-
-          path: publish/
-
-          retention-days: 14
-
-
-      # ============================================================
       # 6. GITHUB RELEASE
       # ============================================================
 
