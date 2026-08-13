@@ -94,7 +94,10 @@
     "2:84",
     "2:85",
     "2:86",
-    "2:87"
+    "2:87",
+    "2:88",
+    "2:89",
+    "2:90"
   ],
   "published_sections": [
     {
@@ -262,17 +265,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:86",
-      "2:87"
+      "2:88",
+      "2:89",
+      "2:90"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 50.077,
-    "visual_id": 16582413,
-    "theme": "afterlife",
-    "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-86-to-87-Cycle-1.mp4",
-    "published_sha256": "cff2f7e4af2bf8707aad6f59fdf936c373743acf3963c22bc178b58425e373c7"
+    "duration_seconds": 75.05,
+    "visual_id": 35573787,
+    "theme": "warning",
+    "visual_query": "cracked dry earth beneath threatening clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-88-to-90-Cycle-1.mp4",
+    "published_sha256": "506c235e3fa1bb4385a3236a069d7bf8eb15a449d03975ca924bc14c043c516f"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -291,6 +295,7 @@
     34464344,
     34823867,
     35497914,
+    35573787,
     35633884,
     35666006,
     37127031,
@@ -314,7 +319,7 @@
     "knowledge": 2,
     "worship": 2,
     "patience": 1,
-    "warning": 1,
+    "warning": 2,
     "repentance": 1,
     "mercy": 2,
     "water": 2,
@@ -322,7 +327,7 @@
     "afterlife": 2
   },
   "completed_cycles": [],
-  "published_count": 28,
+  "published_count": 29,
   "history": [
     {
       "cycle": 1,
@@ -701,6 +706,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-86-to-87-Cycle-1.mp4",
       "published_sha256": "cff2f7e4af2bf8707aad6f59fdf936c373743acf3963c22bc178b58425e373c7",
       "created_at": "2026-08-13T09:21:43Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:88",
+        "2:89",
+        "2:90"
+      ],
+      "visual_id": 35573787,
+      "theme": "warning",
+      "visual_query": "cracked dry earth beneath threatening clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-88-to-90-Cycle-1.mp4",
+      "published_sha256": "506c235e3fa1bb4385a3236a069d7bf8eb15a449d03975ca924bc14c043c516f",
+      "created_at": "2026-08-13T10:24:55Z"
     }
   ],
   "visual_history": [
@@ -731,6 +750,7 @@
     35666006,
     38963559,
     34823867,
-    16582413
+    16582413,
+    35573787
   ]
 }
