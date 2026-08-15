@@ -504,5 +504,23 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-91-to-92-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-08-14T09:16:01Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-93-to-95-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-93-to-95-Cycle-1.json",
+    "published_sha256": "8aa9f251a3c7a6ac7f525e4171ac3ab9e5d1a77be7ed21c16e3765a3674c3295",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:93",
+      "2:94",
+      "2:95"
+    ],
+    "duration_seconds": 63.504,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-93-to-95-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-08-15T08:36:23Z"
   }
 ]
