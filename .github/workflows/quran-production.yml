@@ -97,7 +97,7 @@ jobs:
 
     environment: Quran API
 
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
 
