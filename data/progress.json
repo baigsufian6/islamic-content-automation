@@ -108,7 +108,8 @@
     "2:98",
     "2:99",
     "2:100",
-    "2:101"
+    "2:101",
+    "2:102"
   ],
   "published_sections": [
     {
@@ -276,22 +277,20 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:98",
-      "2:99",
-      "2:100",
-      "2:101"
+      "2:102"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 68.18,
-    "visual_id": 35574063,
-    "theme": "revelation",
-    "visual_query": "Arabic calligraphy on aged parchment, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-98-to-101-Cycle-1.mp4",
-    "published_sha256": "d0ced679db346fcb5b745051caade092a9645b50afe83792d0b41f49f7cc4a5e"
+    "duration_seconds": 78.132,
+    "visual_id": 5102665,
+    "theme": "afterlife",
+    "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-102-Cycle-1.mp4",
+    "published_sha256": "d70c022d6cbec305d34abe1e2af45ada0d26668f582e9a388ea0770d0afcf556"
   },
   "schema_version": 4,
   "used_pexels_ids": [
+    5102665,
     10297371,
     10681857,
     11318637,
@@ -340,11 +339,11 @@
     "mercy": 2,
     "water": 2,
     "hope": 1,
-    "afterlife": 3,
+    "afterlife": 4,
     "revelation": 1
   },
   "completed_cycles": [],
-  "published_count": 33,
+  "published_count": 34,
   "history": [
     {
       "cycle": 1,
@@ -792,6 +791,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-98-to-101-Cycle-1.mp4",
       "published_sha256": "d0ced679db346fcb5b745051caade092a9645b50afe83792d0b41f49f7cc4a5e",
       "created_at": "2026-08-17T19:29:40Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:102"
+      ],
+      "visual_id": 5102665,
+      "theme": "afterlife",
+      "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-102-Cycle-1.mp4",
+      "published_sha256": "d70c022d6cbec305d34abe1e2af45ada0d26668f582e9a388ea0770d0afcf556",
+      "created_at": "2026-08-18T08:33:48Z"
     }
   ],
   "visual_history": [
@@ -827,6 +838,7 @@
     28436001,
     36315916,
     30356315,
-    35574063
+    35574063,
+    5102665
   ]
 }
