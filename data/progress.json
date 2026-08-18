@@ -109,7 +109,10 @@
     "2:99",
     "2:100",
     "2:101",
-    "2:102"
+    "2:102",
+    "2:103",
+    "2:104",
+    "2:105"
   ],
   "published_sections": [
     {
@@ -277,16 +280,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:102"
+      "2:103",
+      "2:104",
+      "2:105"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 78.132,
-    "visual_id": 5102665,
-    "theme": "afterlife",
-    "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-102-Cycle-1.mp4",
-    "published_sha256": "d70c022d6cbec305d34abe1e2af45ada0d26668f582e9a388ea0770d0afcf556"
+    "duration_seconds": 53.002,
+    "visual_id": 38430619,
+    "theme": "mercy",
+    "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-103-to-105-Cycle-1.mp4",
+    "published_sha256": "2576daa8cc71d8f35224e1e39ca7c17cadb5256331fd2f6559ee4a1682139c0a"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -323,6 +328,7 @@
     38182932,
     38423457,
     38430067,
+    38430619,
     38963559
   ],
   "theme_usage": {
@@ -336,14 +342,14 @@
     "patience": 1,
     "warning": 2,
     "repentance": 1,
-    "mercy": 2,
+    "mercy": 3,
     "water": 2,
     "hope": 1,
     "afterlife": 4,
     "revelation": 1
   },
   "completed_cycles": [],
-  "published_count": 34,
+  "published_count": 35,
   "history": [
     {
       "cycle": 1,
@@ -803,6 +809,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-102-Cycle-1.mp4",
       "published_sha256": "d70c022d6cbec305d34abe1e2af45ada0d26668f582e9a388ea0770d0afcf556",
       "created_at": "2026-08-18T08:33:48Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:103",
+        "2:104",
+        "2:105"
+      ],
+      "visual_id": 38430619,
+      "theme": "mercy",
+      "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-103-to-105-Cycle-1.mp4",
+      "published_sha256": "2576daa8cc71d8f35224e1e39ca7c17cadb5256331fd2f6559ee4a1682139c0a",
+      "created_at": "2026-08-18T09:39:54Z"
     }
   ],
   "visual_history": [
@@ -839,6 +859,7 @@
     36315916,
     30356315,
     35574063,
-    5102665
+    5102665,
+    38430619
   ]
 }
