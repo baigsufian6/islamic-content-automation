@@ -184,6 +184,7 @@ jobs:
             boto3==1.35.36 \
             arabic-reshaper==3.0.0 \
             python-bidi==0.4.2
+            opencv-python-headless==4.10.0.84
 
 
       # ============================================================
