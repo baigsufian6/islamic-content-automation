@@ -111,6 +111,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+import cv2
 import requests
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops, features
 
@@ -330,6 +331,63 @@ def arabic_digits(value: int) -> str:
 def ensure_binary(name: str) -> None:
     if shutil.which(name) is None:
         raise RuntimeError(f"Required binary is not installed: {name}")
+
+
+_FACE_CASCADE = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
+
+
+def video_contains_face(path: Path, sample_frames: int = 6) -> bool:
+    """
+    Hard, pixel-level backstop for human imagery.
+
+    Pexels' search API has no true exclusion/negation syntax — appending
+    "no people, no faces" to a text query is only a soft hint and is
+    frequently ignored (or can even backfire) by their relevance ranking.
+    This samples several frames from the actual downloaded video and runs
+    frontal-face detection on each one, so a video is rejected based on
+    what it actually contains, not just what the search query asked for.
+    """
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(path),
+        ],
+        capture_output=True, text=True, check=True,
+    )
+    duration = float(probe.stdout.strip() or 0)
+    if duration <= 0:
+        return False
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        for i in range(sample_frames):
+            t = duration * (i + 1) / (sample_frames + 1)
+            frame_path = tmp_path / f"frame-{i:02d}.jpg"
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-ss", f"{t:.2f}",
+                    "-i", str(path),
+                    "-frames:v", "1", "-q:v", "3",
+                    str(frame_path),
+                ],
+                capture_output=True, check=False,
+            )
+            if not frame_path.exists():
+                continue
+            image = cv2.imread(str(frame_path))
+            if image is None:
+                continue
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            faces = _FACE_CASCADE.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
+            )
+            if len(faces) > 0:
+                return True
+    return False
 
 
 # ============================================================================
@@ -4046,6 +4104,13 @@ class QuranProduction:
             try:
                 source_video = section_dir / f"pexels-source-{attempt_index}.mp4"
                 self.visuals.download(candidate, source_video)
+
+                if video_contains_face(source_video):
+                    raise RuntimeError(
+                        f"Visual candidate {candidate.video_id} contains a "
+                        "detected human face on frame inspection; rejecting "
+                        "and trying the next candidate."
+                    )
 
                 background = section_dir / f"background-{attempt_index}.mp4"
                 camera_profile = self.renderer.prepare_background(
