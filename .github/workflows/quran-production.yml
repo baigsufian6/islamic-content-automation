@@ -11,7 +11,7 @@ name: Quran Production Pipeline
 #       ↓
 # Render + QA
 #       ↓
-# GitHub Release backup
+# GitHub Release backup (+ auto-cleanup of old releases)
 #       ↓
 # Cloudflare R2
 #       ↓
@@ -21,7 +21,10 @@ name: Quran Production Pipeline
 #       ↓
 # Instagram / Facebook / YouTube — AUTO-PUBLISHED
 # (queued via Buffer, published automatically at each channel's
-#  next scheduled slot; Facebook gets a retry on transient errors)
+#  next scheduled slot; Facebook AND YouTube each get skipped
+#  safely — not force-published — if the video is longer than
+#  that platform's short-form duration limit; Facebook also gets
+#  a retry on transient errors)
 #
 # Make.com is NOT used.
 #
@@ -67,6 +70,20 @@ name: Quran Production Pipeline
 #   5. Pip installs are now version-pinned so a breaking upstream
 #      release can't silently change behavior in daily production
 #      runs. Update these pins deliberately, on your own schedule.
+#   6. NEW: GitHub Releases are now auto-cleaned the same way R2 is.
+#      Previously every run created a brand-new, permanent Release
+#      with nothing ever deleting old ones — unbounded growth over
+#      time. Same retention-floor / per-run-delete-cap pattern as
+#      the existing R2 cleanup, so it can't mass-delete in one go.
+#   7. NEW: YouTube now gets the same safe-skip treatment Facebook
+#      already had. YouTube Shorts requires vertical video to be
+#      60 seconds or less to be treated/labeled as a Short — videos
+#      longer than that were previously still sent to YouTube and
+#      could get rejected/mislabeled. A full, complete ayah is never
+#      cut short to fit; instead, if the finished video exceeds the
+#      safety threshold, YouTube is skipped for that run (same as
+#      Facebook already does), and Instagram/GitHub Release/R2 are
+#      unaffected since those have no such limit.
 # ----------------------------------------------------------------
 # ================================================================
 
@@ -235,6 +252,12 @@ jobs:
 
       # ============================================================
       # 4. READ RUN RESULT
+      #
+      # Also computes youtube_compatible here now, using the same
+      # pattern as facebook_compatible: a safety threshold slightly
+      # under the platform's real hard limit, computed once from the
+      # actual rendered duration, then passed downstream as a normal
+      # step output so nothing later has to re-derive it.
       # ============================================================
 
       - name: Read run result
@@ -347,7 +370,16 @@ jobs:
                   f"ERROR: Invalid video duration: {duration_seconds}"
               )
 
+          # Facebook Reels hard limit is 90s; 88s is used as a safety
+          # margin so a video right on the edge never gets rejected.
           facebook_compatible = duration_seconds <= 88.0
+
+          # YouTube Shorts requires vertical video to be 60 seconds or
+          # less to be treated/labeled as a Short. 58s is used as a
+          # safety margin, mirroring the Facebook pattern above, so a
+          # video right on the edge (encoder rounding, etc.) never gets
+          # rejected or silently reclassified as a regular upload.
+          youtube_compatible = duration_seconds <= 58.0
 
           if not surah:
               match = re.search(
@@ -496,6 +528,10 @@ jobs:
               )
 
               fh.write(
+                  f"youtube_compatible={'true' if youtube_compatible else 'false'}\n"
+              )
+
+              fh.write(
                   "caption<<QURAN_CAPTION\n"
               )
 
@@ -513,6 +549,11 @@ jobs:
           print("SOCIAL CAPTION")
           print("========================================")
           print(caption)
+
+          print("")
+          print(f"Duration: {duration_seconds:.2f}s")
+          print(f"Facebook compatible (<=88s): {facebook_compatible}")
+          print(f"YouTube Shorts compatible (<=58s): {youtube_compatible}")
 
           PY
 
@@ -563,6 +604,129 @@ jobs:
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+      # ============================================================
+      # 6.5. CLEAN UP OLD GITHUB RELEASES
+      #
+      # Every run creates a brand-new GitHub Release (unique tag per
+      # run: "section-YYYYMMDD-HHMMSS"), and nothing was deleting old
+      # ones. Left alone, running daily, that's 365+ permanent
+      # releases a year with a full video attached to each — unbounded
+      # growth with no circuit breaker.
+      #
+      # This step prunes old releases the same way the R2 step (7,
+      # below) prunes old MP4s: oldest-first, with a retention floor
+      # and a per-run delete cap as circuit breakers, so a bug can't
+      # silently wipe out your whole release history in one run. The
+      # underlying git tag for each deleted release is removed too,
+      # so you don't end up with hundreds of orphaned tags.
+      #
+      # This intentionally runs AFTER the new release is created
+      # above, so the brand-new release is never at risk of being
+      # counted/deleted as "old" in the same run.
+      # ============================================================
+
+      - name: Clean up old GitHub Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+        run: |
+          python3 - <<'PY'
+          import os
+          import requests
+
+          TOKEN = os.environ["GITHUB_TOKEN"]
+          REPO = os.environ["GITHUB_REPOSITORY"]  # "owner/repo"
+
+          # Circuit breakers — same spirit as the R2 cleanup step below.
+          MIN_RETAINED_RELEASES = 30   # never go below this many releases
+          MAX_DELETES_PER_RUN = 10     # never delete more than this many in one run
+
+          API = f"https://api.github.com/repos/{REPO}"
+          headers = {
+              "Authorization": f"Bearer {TOKEN}",
+              "Accept": "application/vnd.github+json",
+          }
+
+          releases = []
+          page = 1
+          while True:
+              resp = requests.get(
+                  f"{API}/releases",
+                  headers=headers,
+                  params={"per_page": 100, "page": page},
+                  timeout=30,
+              )
+              resp.raise_for_status()
+              batch = resp.json()
+              if not batch:
+                  break
+              releases.extend(batch)
+              page += 1
+
+          # Oldest first.
+          releases.sort(key=lambda r: r["created_at"])
+
+          print("========================================")
+          print("GITHUB RELEASE CLEANUP")
+          print("========================================")
+          print(f"Total releases found: {len(releases)}")
+          print(f"Retention floor (MIN_RETAINED_RELEASES): {MIN_RETAINED_RELEASES}")
+          print(f"Per-run delete cap (MAX_DELETES_PER_RUN): {MAX_DELETES_PER_RUN}")
+
+          deleted = 0
+          for release in releases:
+              remaining = len(releases) - deleted
+              if remaining <= MIN_RETAINED_RELEASES:
+                  print(
+                      "STOPPING: retention floor "
+                      f"(MIN_RETAINED_RELEASES={MIN_RETAINED_RELEASES}) reached."
+                  )
+                  break
+              if deleted >= MAX_DELETES_PER_RUN:
+                  print(
+                      "STOPPING: reached MAX_DELETES_PER_RUN "
+                      f"({MAX_DELETES_PER_RUN}) for this run. Refusing to "
+                      "delete more in one go."
+                  )
+                  break
+
+              release_id = release["id"]
+              tag = release["tag_name"]
+
+              print(f"Deleting release: {tag} (created {release['created_at']})")
+
+              del_resp = requests.delete(
+                  f"{API}/releases/{release_id}",
+                  headers=headers,
+                  timeout=30,
+              )
+              if del_resp.status_code not in (204, 200):
+                  print(
+                      f"  WARNING: failed to delete release {tag}: "
+                      f"{del_resp.status_code} {del_resp.text}"
+                  )
+                  continue
+
+              # Also delete the underlying git tag, otherwise it lingers forever.
+              tag_resp = requests.delete(
+                  f"{API}/git/refs/tags/{tag}",
+                  headers=headers,
+                  timeout=30,
+              )
+              if tag_resp.status_code not in (204, 200, 422):
+                  print(
+                      f"  WARNING: failed to delete tag {tag}: "
+                      f"{tag_resp.status_code} {tag_resp.text}"
+                  )
+
+              deleted += 1
+
+          print("")
+          print(f"Deleted {deleted} old release(s) this run.")
+          PY
 
 
       # ============================================================
@@ -1122,6 +1286,15 @@ jobs:
       # transient CDN-propagation or Meta-side hiccup even when the
       # R2 accessibility test above passes cleanly.
       #
+      # YouTube: YouTube Shorts requires vertical video to be 60
+      # seconds or less. A video over that limit is NOT force-published
+      # (it would otherwise risk rejection or being silently reclassified
+      # as a regular, non-Short upload with very different distribution).
+      # Instead, exactly like Facebook, YouTube is safely SKIPPED for
+      # that run using the youtube_compatible flag computed in step 4 —
+      # the full, complete ayah is preserved and still goes out on
+      # Instagram (and on GitHub Release / R2 as backups) regardless.
+      #
       # SAFETY NOTE: organizationId is interpolated into the GraphQL
       # query below using json.dumps(), matching every other
       # interpolated value in this script (caption, video URL,
@@ -1147,6 +1320,7 @@ jobs:
           CAPTION: ${{ steps.meta.outputs.caption }}
           VIDEO_DURATION_SECONDS: ${{ steps.meta.outputs.duration_seconds }}
           FACEBOOK_COMPATIBLE: ${{ steps.meta.outputs.facebook_compatible }}
+          YOUTUBE_COMPATIBLE: ${{ steps.meta.outputs.youtube_compatible }}
 
         run: |
           python3 - <<'PY'
@@ -1194,8 +1368,20 @@ jobs:
           FACEBOOK_REELS_HARD_MAX_SECONDS = 90.0
           FACEBOOK_REELS_SAFE_MAX_SECONDS = 88.0
 
+          # YouTube Shorts hard limit is 60s; 58s is used as a safety
+          # margin, same pattern as Facebook above.
+          YOUTUBE_SHORTS_HARD_MAX_SECONDS = 60.0
+          YOUTUBE_SHORTS_SAFE_MAX_SECONDS = 58.0
+
           FACEBOOK_COMPATIBLE = (
               os.environ.get("FACEBOOK_COMPATIBLE", "false")
+              .strip()
+              .lower()
+              == "true"
+          )
+
+          YOUTUBE_COMPATIBLE = (
+              os.environ.get("YOUTUBE_COMPATIBLE", "false")
               .strip()
               .lower()
               == "true"
@@ -1205,10 +1391,18 @@ jobs:
           if VIDEO_DURATION_SECONDS > FACEBOOK_REELS_SAFE_MAX_SECONDS:
               FACEBOOK_COMPATIBLE = False
 
+          # Never send a borderline or over-limit video to YouTube Shorts.
+          if VIDEO_DURATION_SECONDS > YOUTUBE_SHORTS_SAFE_MAX_SECONDS:
+              YOUTUBE_COMPATIBLE = False
+
           print(f"Video duration: {VIDEO_DURATION_SECONDS:.2f}s")
           print(
               "Facebook compatible: "
               + ("YES" if FACEBOOK_COMPATIBLE else "NO")
+          )
+          print(
+              "YouTube Shorts compatible: "
+              + ("YES" if YOUTUBE_COMPATIBLE else "NO")
           )
 
           # Facebook-specific retry settings. "Video could not be
@@ -1962,12 +2156,33 @@ jobs:
 
           # ========================================================
           # YOUTUBE
+          #
+          # YouTube Shorts has a 60-second hard limit for vertical
+          # video to be treated/labeled as a Short. Use a 58-second
+          # safety threshold, mirroring the Facebook pattern exactly.
+          # A long complete Quran ayah is preserved and YouTube is
+          # skipped rather than cutting the ayah or risking the video
+          # being rejected / silently reclassified as a non-Short.
           # ========================================================
 
-          published["YouTube"] = create_draft(
-              youtube,
-              "YouTube",
-          )
+          if YOUTUBE_COMPATIBLE:
+              published["YouTube"] = create_draft(
+                  youtube,
+                  "YouTube",
+              )
+          else:
+              print("")
+              print("YouTube skipped safely.")
+              print(
+                  f"Video is {VIDEO_DURATION_SECONDS:.2f}s; "
+                  "YouTube Shorts safety limit is "
+                  f"{YOUTUBE_SHORTS_SAFE_MAX_SECONDS:.0f}s."
+              )
+              print(
+                  "The complete Quran video is preserved; "
+                  "it will not be cut just to fit YouTube Shorts."
+              )
+              published["YouTube"] = None
 
 
           # ========================================================
@@ -2038,7 +2253,8 @@ jobs:
             echo "| Ayah(s) | ${{ steps.meta.outputs.ayah_text }} |"
             echo "| Cycle | ${{ steps.meta.outputs.cycle }} |"
             echo "| Duration (s) | ${{ steps.meta.outputs.duration_seconds }} |"
-            echo "| Facebook-compatible | ${{ steps.meta.outputs.facebook_compatible }} |"
+            echo "| Facebook-compatible (<=88s) | ${{ steps.meta.outputs.facebook_compatible }} |"
+            echo "| YouTube Shorts-compatible (<=58s) | ${{ steps.meta.outputs.youtube_compatible }} |"
             echo "| R2 video URL | ${{ steps.r2.outputs.video_url }} |"
             echo "| R2 old MP4s deleted this run | ${{ steps.r2.outputs.r2_deleted_count }} |"
             echo ""
