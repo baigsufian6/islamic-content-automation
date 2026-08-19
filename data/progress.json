@@ -112,7 +112,10 @@
     "2:102",
     "2:103",
     "2:104",
-    "2:105"
+    "2:105",
+    "2:106",
+    "2:107",
+    "2:108"
   ],
   "published_sections": [
     {
@@ -280,18 +283,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:103",
-      "2:104",
-      "2:105"
+      "2:106",
+      "2:107",
+      "2:108"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 53.002,
-    "visual_id": 38430619,
-    "theme": "mercy",
-    "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-103-to-105-Cycle-1.mp4",
-    "published_sha256": "2576daa8cc71d8f35224e1e39ca7c17cadb5256331fd2f6559ee4a1682139c0a"
+    "duration_seconds": 53.473,
+    "visual_id": 38947096,
+    "theme": "creation",
+    "visual_query": "galaxy nebula deep space, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-106-to-108-Cycle-1.mp4",
+    "published_sha256": "f874a5dea3d93c76ba3ad71dcf459a3ba13f67a8b1cbdb6a7d7cd84dc5a9aa95"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -329,11 +332,12 @@
     38423457,
     38430067,
     38430619,
+    38947096,
     38963559
   ],
   "theme_usage": {
     "guidance": 6,
-    "creation": 4,
+    "creation": 5,
     "justice": 3,
     "paradise": 2,
     "earth": 1,
@@ -349,7 +353,7 @@
     "revelation": 1
   },
   "completed_cycles": [],
-  "published_count": 35,
+  "published_count": 36,
   "history": [
     {
       "cycle": 1,
@@ -823,6 +827,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-103-to-105-Cycle-1.mp4",
       "published_sha256": "2576daa8cc71d8f35224e1e39ca7c17cadb5256331fd2f6559ee4a1682139c0a",
       "created_at": "2026-08-18T09:39:54Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:106",
+        "2:107",
+        "2:108"
+      ],
+      "visual_id": 38947096,
+      "theme": "creation",
+      "visual_query": "galaxy nebula deep space, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-106-to-108-Cycle-1.mp4",
+      "published_sha256": "f874a5dea3d93c76ba3ad71dcf459a3ba13f67a8b1cbdb6a7d7cd84dc5a9aa95",
+      "created_at": "2026-08-19T12:16:46Z"
     }
   ],
   "visual_history": [
@@ -860,6 +878,7 @@
     30356315,
     35574063,
     5102665,
-    38430619
+    38430619,
+    38947096
   ]
 }
