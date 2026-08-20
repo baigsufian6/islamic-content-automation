@@ -129,6 +129,10 @@ LOCK = DATA / ".production.lock"
 PUBLISH = ROOT / "publish"
 BUILD = ROOT / "output" / "production"
 
+FACE_MODEL_PROTOTXT = ROOT / "production" / "models" / "deploy.prototxt"
+FACE_MODEL_WEIGHTS = ROOT / "production" / "models" / "res10_300x300_ssd_iter_140000.caffemodel"
+FACE_MODEL_CONFIDENCE = float(os.environ.get("QURAN_FACE_MODEL_CONFIDENCE", "0.55"))
+
 DATA.mkdir(parents=True, exist_ok=True)
 PUBLISH.mkdir(parents=True, exist_ok=True)
 BUILD.mkdir(parents=True, exist_ok=True)
@@ -333,9 +337,25 @@ def ensure_binary(name: str) -> None:
         raise RuntimeError(f"Required binary is not installed: {name}")
 
 
-_FACE_CASCADE = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
+def _load_face_net() -> "cv2.dnn_Net":
+    if not FACE_MODEL_PROTOTXT.exists() or not FACE_MODEL_WEIGHTS.exists():
+        raise RuntimeError(
+            "DNN face-detection model files are missing from the repo. "
+            "Expected:\n"
+            f"  {FACE_MODEL_PROTOTXT}\n"
+            f"  {FACE_MODEL_WEIGHTS}\n"
+            "These should be committed at production/models/. If they were "
+            "never added, download deploy.prototxt and "
+            "res10_300x300_ssd_iter_140000.caffemodel from the OpenCV repo "
+            "and commit them there."
+        )
+    return cv2.dnn.readNetFromCaffe(
+        str(FACE_MODEL_PROTOTXT),
+        str(FACE_MODEL_WEIGHTS),
+    )
+
+
+_FACE_NET = _load_face_net()
 
 
 def video_contains_face(path: Path, sample_frames: int = 6) -> bool:
@@ -346,8 +366,15 @@ def video_contains_face(path: Path, sample_frames: int = 6) -> bool:
     "no people, no faces" to a text query is only a soft hint and is
     frequently ignored (or can even backfire) by their relevance ranking.
     This samples several frames from the actual downloaded video and runs
-    frontal-face detection on each one, so a video is rejected based on
-    what it actually contains, not just what the search query asked for.
+    DNN-based face detection (SSD/ResNet10, Caffe) on each one, so a video
+    is rejected based on what it actually contains, not just what the
+    search query asked for.
+
+    A DNN detector is used instead of a Haar cascade because Haar cascades
+    routinely false-positive on rock textures, water reflections, and other
+    high-contrast natural patterns common in this pipeline's landscape
+    footage. Model files are committed in the repo (production/models/) so
+    the pipeline never depends on an external download at run time.
     """
     probe = subprocess.run(
         [
@@ -378,17 +405,29 @@ def video_contains_face(path: Path, sample_frames: int = 6) -> bool:
             )
             if not frame_path.exists():
                 continue
+
             image = cv2.imread(str(frame_path))
             if image is None:
                 continue
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            faces = _FACE_CASCADE.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
-            )
-            if len(faces) > 0:
-                return True
-    return False
 
+            h, w = image.shape[:2]
+            blob = cv2.dnn.blobFromImage(
+                cv2.resize(image, (300, 300)),
+                scalefactor=1.0,
+                size=(300, 300),
+                mean=(104.0, 177.0, 123.0),
+            )
+            _FACE_NET.setInput(blob)
+            detections = _FACE_NET.forward()
+
+            for detection_index in range(detections.shape[2]):
+                confidence = float(detections[0, 0, detection_index, 2])
+                if confidence >= FACE_MODEL_CONFIDENCE:
+                    box = detections[0, 0, detection_index, 3:7] * [w, h, w, h]
+                    x1, y1, x2, y2 = box.astype(int)
+                    if x2 > x1 and y2 > y1:
+                        return True
+    return False
 
 # ============================================================================
 # 2. Single-run lock
