@@ -664,5 +664,23 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-114-to-117-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-08-22T08:26:07Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.json",
+    "published_sha256": "62485f4533b0aad7fa5cda966e068af7447b37ca9e4427da238611767ca887dc",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:118",
+      "2:119",
+      "2:120"
+    ],
+    "duration_seconds": 72.699,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-08-23T08:27:15Z"
   }
 ]

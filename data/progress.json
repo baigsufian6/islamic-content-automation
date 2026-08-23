@@ -124,7 +124,10 @@
     "2:114",
     "2:115",
     "2:116",
-    "2:117"
+    "2:117",
+    "2:118",
+    "2:119",
+    "2:120"
   ],
   "published_sections": [
     {
@@ -292,19 +295,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:114",
-      "2:115",
-      "2:116",
-      "2:117"
+      "2:118",
+      "2:119",
+      "2:120"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 72.359,
-    "visual_id": 29042409,
-    "theme": "afterlife",
-    "visual_query": "vast dramatic horizon beneath powerful clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-114-to-117-Cycle-1.mp4",
-    "published_sha256": "bce990796134f7cc577c73802811052858b0907aaa903e9448d45ebc4ed2eba1"
+    "duration_seconds": 72.699,
+    "visual_id": 16582414,
+    "theme": "warning",
+    "visual_query": "dramatic dark sky over empty desert terrain, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.mp4",
+    "published_sha256": "62485f4533b0aad7fa5cda966e068af7447b37ca9e4427da238611767ca887dc"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -314,6 +316,7 @@
     11318637,
     13243682,
     16582413,
+    16582414,
     19948838,
     24818388,
     27604262,
@@ -357,7 +360,7 @@
     "knowledge": 2,
     "worship": 2,
     "patience": 1,
-    "warning": 2,
+    "warning": 3,
     "repentance": 1,
     "mercy": 3,
     "water": 2,
@@ -366,7 +369,7 @@
     "revelation": 1
   },
   "completed_cycles": [],
-  "published_count": 39,
+  "published_count": 40,
   "history": [
     {
       "cycle": 1,
@@ -896,6 +899,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-114-to-117-Cycle-1.mp4",
       "published_sha256": "bce990796134f7cc577c73802811052858b0907aaa903e9448d45ebc4ed2eba1",
       "created_at": "2026-08-22T08:26:07Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:118",
+        "2:119",
+        "2:120"
+      ],
+      "visual_id": 16582414,
+      "theme": "warning",
+      "visual_query": "dramatic dark sky over empty desert terrain, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.mp4",
+      "published_sha256": "62485f4533b0aad7fa5cda966e068af7447b37ca9e4427da238611767ca887dc",
+      "created_at": "2026-08-23T08:27:15Z"
     }
   ],
   "visual_history": [
@@ -937,6 +954,7 @@
     38947096,
     38861185,
     35723248,
-    29042409
+    29042409,
+    16582414
   ]
 }
