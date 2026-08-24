@@ -127,7 +127,10 @@
     "2:117",
     "2:118",
     "2:119",
-    "2:120"
+    "2:120",
+    "2:121",
+    "2:122",
+    "2:123"
   ],
   "published_sections": [
     {
@@ -295,18 +298,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:118",
-      "2:119",
-      "2:120"
+      "2:121",
+      "2:122",
+      "2:123"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 72.699,
-    "visual_id": 16582414,
-    "theme": "warning",
-    "visual_query": "dramatic dark sky over empty desert terrain, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.mp4",
-    "published_sha256": "62485f4533b0aad7fa5cda966e068af7447b37ca9e4427da238611767ca887dc"
+    "duration_seconds": 54.126,
+    "visual_id": 39139174,
+    "theme": "remembrance",
+    "visual_query": "Arabic calligraphy illuminated by soft golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-121-to-123-Cycle-1.mp4",
+    "published_sha256": "cc0ab1ece0706efe9d8dcb79455930ad04ccf5355f6f19f96a520a58dac53ff7"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -349,7 +352,8 @@
     38430619,
     38861185,
     38947096,
-    38963559
+    38963559,
+    39139174
   ],
   "theme_usage": {
     "guidance": 6,
@@ -366,10 +370,11 @@
     "water": 2,
     "hope": 1,
     "afterlife": 6,
-    "revelation": 1
+    "revelation": 1,
+    "remembrance": 1
   },
   "completed_cycles": [],
-  "published_count": 40,
+  "published_count": 41,
   "history": [
     {
       "cycle": 1,
@@ -913,6 +918,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-118-to-120-Cycle-1.mp4",
       "published_sha256": "62485f4533b0aad7fa5cda966e068af7447b37ca9e4427da238611767ca887dc",
       "created_at": "2026-08-23T08:27:15Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:121",
+        "2:122",
+        "2:123"
+      ],
+      "visual_id": 39139174,
+      "theme": "remembrance",
+      "visual_query": "Arabic calligraphy illuminated by soft golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-121-to-123-Cycle-1.mp4",
+      "published_sha256": "cc0ab1ece0706efe9d8dcb79455930ad04ccf5355f6f19f96a520a58dac53ff7",
+      "created_at": "2026-08-24T08:46:33Z"
     }
   ],
   "visual_history": [
@@ -955,6 +974,7 @@
     38861185,
     35723248,
     29042409,
-    16582414
+    16582414,
+    39139174
   ]
 }
