@@ -130,7 +130,9 @@
     "2:120",
     "2:121",
     "2:122",
-    "2:123"
+    "2:123",
+    "2:124",
+    "2:125"
   ],
   "published_sections": [
     {
@@ -298,18 +300,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:121",
-      "2:122",
-      "2:123"
+      "2:124",
+      "2:125"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 54.126,
-    "visual_id": 39139174,
-    "theme": "remembrance",
-    "visual_query": "Arabic calligraphy illuminated by soft golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-121-to-123-Cycle-1.mp4",
-    "published_sha256": "cc0ab1ece0706efe9d8dcb79455930ad04ccf5355f6f19f96a520a58dac53ff7"
+    "duration_seconds": 51.879,
+    "visual_id": 31363036,
+    "theme": "worship",
+    "visual_query": "peaceful Islamic courtyard at sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-124-to-125-Cycle-1.mp4",
+    "published_sha256": "0c7e190fb2396f4da1986a241053287f0220869d3e9acfb7604e3ca99ee93b59"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -329,6 +330,7 @@
     29042409,
     29898627,
     30356315,
+    31363036,
     33807471,
     34464344,
     34823867,
@@ -362,7 +364,7 @@
     "paradise": 2,
     "earth": 1,
     "knowledge": 2,
-    "worship": 2,
+    "worship": 3,
     "patience": 1,
     "warning": 3,
     "repentance": 1,
@@ -374,7 +376,7 @@
     "remembrance": 1
   },
   "completed_cycles": [],
-  "published_count": 41,
+  "published_count": 42,
   "history": [
     {
       "cycle": 1,
@@ -932,6 +934,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-121-to-123-Cycle-1.mp4",
       "published_sha256": "cc0ab1ece0706efe9d8dcb79455930ad04ccf5355f6f19f96a520a58dac53ff7",
       "created_at": "2026-08-24T08:46:33Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:124",
+        "2:125"
+      ],
+      "visual_id": 31363036,
+      "theme": "worship",
+      "visual_query": "peaceful Islamic courtyard at sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-124-to-125-Cycle-1.mp4",
+      "published_sha256": "0c7e190fb2396f4da1986a241053287f0220869d3e9acfb7604e3ca99ee93b59",
+      "created_at": "2026-08-25T08:37:59Z"
     }
   ],
   "visual_history": [
@@ -975,6 +990,7 @@
     35723248,
     29042409,
     16582414,
-    39139174
+    39139174,
+    31363036
   ]
 }
