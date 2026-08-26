@@ -132,7 +132,10 @@
     "2:122",
     "2:123",
     "2:124",
-    "2:125"
+    "2:125",
+    "2:126",
+    "2:127",
+    "2:128"
   ],
   "published_sections": [
     {
@@ -300,17 +303,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:124",
-      "2:125"
+      "2:126",
+      "2:127",
+      "2:128"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 51.879,
-    "visual_id": 31363036,
-    "theme": "worship",
-    "visual_query": "peaceful Islamic courtyard at sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-124-to-125-Cycle-1.mp4",
-    "published_sha256": "0c7e190fb2396f4da1986a241053287f0220869d3e9acfb7604e3ca99ee93b59"
+    "duration_seconds": 65.776,
+    "visual_id": 39192482,
+    "theme": "mercy",
+    "visual_query": "warm sunlight spreading across a quiet valley, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-126-to-128-Cycle-1.mp4",
+    "published_sha256": "35fb5da9b9ebad101d183839f76583c83ee43439d79b3638a86361c3faa43092"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -355,7 +359,8 @@
     38861185,
     38947096,
     38963559,
-    39139174
+    39139174,
+    39192482
   ],
   "theme_usage": {
     "guidance": 6,
@@ -368,7 +373,7 @@
     "patience": 1,
     "warning": 3,
     "repentance": 1,
-    "mercy": 3,
+    "mercy": 4,
     "water": 2,
     "hope": 1,
     "afterlife": 6,
@@ -376,7 +381,7 @@
     "remembrance": 1
   },
   "completed_cycles": [],
-  "published_count": 42,
+  "published_count": 43,
   "history": [
     {
       "cycle": 1,
@@ -947,6 +952,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-124-to-125-Cycle-1.mp4",
       "published_sha256": "0c7e190fb2396f4da1986a241053287f0220869d3e9acfb7604e3ca99ee93b59",
       "created_at": "2026-08-25T08:37:59Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:126",
+        "2:127",
+        "2:128"
+      ],
+      "visual_id": 39192482,
+      "theme": "mercy",
+      "visual_query": "warm sunlight spreading across a quiet valley, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-126-to-128-Cycle-1.mp4",
+      "published_sha256": "35fb5da9b9ebad101d183839f76583c83ee43439d79b3638a86361c3faa43092",
+      "created_at": "2026-08-26T08:41:20Z"
     }
   ],
   "visual_history": [
@@ -991,6 +1010,7 @@
     29042409,
     16582414,
     39139174,
-    31363036
+    31363036,
+    39192482
   ]
 }
