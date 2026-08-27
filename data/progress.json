@@ -138,7 +138,11 @@
     "2:128",
     "2:129",
     "2:130",
-    "2:131"
+    "2:131",
+    "2:132",
+    "2:133",
+    "2:134",
+    "2:135"
   ],
   "published_sections": [
     {
@@ -306,18 +310,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:129",
-      "2:130",
-      "2:131"
+      "2:132",
+      "2:133",
+      "2:134",
+      "2:135"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 42.344,
-    "visual_id": 37899472,
-    "theme": "afterlife",
-    "visual_query": "vast empty plain beneath a glowing horizon, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-129-to-131-Cycle-1.mp4",
-    "published_sha256": "1c495d68d4928cba392226dcacc8fd179c1956d6caf6525fe240eee10fdb5e9f"
+    "duration_seconds": 74.58,
+    "visual_id": 34625872,
+    "theme": "mortality",
+    "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-132-to-135-Cycle-1.mp4",
+    "published_sha256": "b65955ab4287416418b0b605c4d3e3f5f43b85bf2a682efd09c22833bde7dfee"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -340,6 +345,7 @@
     31363036,
     33807471,
     34464344,
+    34625872,
     34823867,
     35497914,
     35573787,
@@ -382,10 +388,11 @@
     "hope": 1,
     "afterlife": 7,
     "revelation": 1,
-    "remembrance": 1
+    "remembrance": 1,
+    "mortality": 1
   },
   "completed_cycles": [],
-  "published_count": 44,
+  "published_count": 45,
   "history": [
     {
       "cycle": 1,
@@ -984,6 +991,21 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-129-to-131-Cycle-1.mp4",
       "published_sha256": "1c495d68d4928cba392226dcacc8fd179c1956d6caf6525fe240eee10fdb5e9f",
       "created_at": "2026-08-27T15:00:06Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:132",
+        "2:133",
+        "2:134",
+        "2:135"
+      ],
+      "visual_id": 34625872,
+      "theme": "mortality",
+      "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-132-to-135-Cycle-1.mp4",
+      "published_sha256": "b65955ab4287416418b0b605c4d3e3f5f43b85bf2a682efd09c22833bde7dfee",
+      "created_at": "2026-08-27T18:52:43Z"
     }
   ],
   "visual_history": [
@@ -1030,6 +1052,7 @@
     39139174,
     31363036,
     39192482,
-    37899472
+    37899472,
+    34625872
   ]
 }
