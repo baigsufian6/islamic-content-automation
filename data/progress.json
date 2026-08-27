@@ -135,7 +135,10 @@
     "2:125",
     "2:126",
     "2:127",
-    "2:128"
+    "2:128",
+    "2:129",
+    "2:130",
+    "2:131"
   ],
   "published_sections": [
     {
@@ -303,18 +306,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:126",
-      "2:127",
-      "2:128"
+      "2:129",
+      "2:130",
+      "2:131"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 65.776,
-    "visual_id": 39192482,
-    "theme": "mercy",
-    "visual_query": "warm sunlight spreading across a quiet valley, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-126-to-128-Cycle-1.mp4",
-    "published_sha256": "35fb5da9b9ebad101d183839f76583c83ee43439d79b3638a86361c3faa43092"
+    "duration_seconds": 42.344,
+    "visual_id": 37899472,
+    "theme": "afterlife",
+    "visual_query": "vast empty plain beneath a glowing horizon, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-129-to-131-Cycle-1.mp4",
+    "published_sha256": "1c495d68d4928cba392226dcacc8fd179c1956d6caf6525fe240eee10fdb5e9f"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -350,6 +353,7 @@
     37694068,
     37694201,
     37894855,
+    37899472,
     37903577,
     37904635,
     38182932,
@@ -376,12 +380,12 @@
     "mercy": 4,
     "water": 2,
     "hope": 1,
-    "afterlife": 6,
+    "afterlife": 7,
     "revelation": 1,
     "remembrance": 1
   },
   "completed_cycles": [],
-  "published_count": 43,
+  "published_count": 44,
   "history": [
     {
       "cycle": 1,
@@ -966,6 +970,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-126-to-128-Cycle-1.mp4",
       "published_sha256": "35fb5da9b9ebad101d183839f76583c83ee43439d79b3638a86361c3faa43092",
       "created_at": "2026-08-26T08:41:20Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:129",
+        "2:130",
+        "2:131"
+      ],
+      "visual_id": 37899472,
+      "theme": "afterlife",
+      "visual_query": "vast empty plain beneath a glowing horizon, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-129-to-131-Cycle-1.mp4",
+      "published_sha256": "1c495d68d4928cba392226dcacc8fd179c1956d6caf6525fe240eee10fdb5e9f",
+      "created_at": "2026-08-27T15:00:06Z"
     }
   ],
   "visual_history": [
@@ -1011,6 +1029,7 @@
     16582414,
     39139174,
     31363036,
-    39192482
+    39192482,
+    37899472
   ]
 }
