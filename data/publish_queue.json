@@ -772,5 +772,23 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-132-to-135-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-08-27T18:52:43Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-136-to-138-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-136-to-138-Cycle-1.json",
+    "published_sha256": "361e8961e3a38fe90e3ac4ebd60cd3e373e74818a3940865f030896535f18da8",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:136",
+      "2:137",
+      "2:138"
+    ],
+    "duration_seconds": 69.956,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-136-to-138-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-08-28T19:54:47Z"
   }
 ]
