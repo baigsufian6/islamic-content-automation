@@ -145,7 +145,10 @@
     "2:135",
     "2:136",
     "2:137",
-    "2:138"
+    "2:138",
+    "2:139",
+    "2:140",
+    "2:141"
   ],
   "published_sections": [
     {
@@ -313,18 +316,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:136",
-      "2:137",
-      "2:138"
+      "2:139",
+      "2:140",
+      "2:141"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 69.956,
-    "visual_id": 32149301,
-    "theme": "guidance",
-    "visual_query": "winding desert path toward distant golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-136-to-138-Cycle-1.mp4",
-    "published_sha256": "361e8961e3a38fe90e3ac4ebd60cd3e373e74818a3940865f030896535f18da8"
+    "duration_seconds": 64.418,
+    "visual_id": 35584889,
+    "theme": "judgment",
+    "visual_query": "dramatic mountain silhouette beneath glowing sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-139-to-141-Cycle-1.mp4",
+    "published_sha256": "8b9ca1335ef0857a5b02a63d2460cd5f0406739f7751da60d0fd7ced646a4861"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -353,6 +356,7 @@
     35497914,
     35573787,
     35574063,
+    35584889,
     35633884,
     35666006,
     35723248,
@@ -392,10 +396,11 @@
     "afterlife": 7,
     "revelation": 1,
     "remembrance": 1,
-    "mortality": 1
+    "mortality": 1,
+    "judgment": 1
   },
   "completed_cycles": [],
-  "published_count": 46,
+  "published_count": 47,
   "history": [
     {
       "cycle": 1,
@@ -1023,6 +1028,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-136-to-138-Cycle-1.mp4",
       "published_sha256": "361e8961e3a38fe90e3ac4ebd60cd3e373e74818a3940865f030896535f18da8",
       "created_at": "2026-08-28T19:54:47Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:139",
+        "2:140",
+        "2:141"
+      ],
+      "visual_id": 35584889,
+      "theme": "judgment",
+      "visual_query": "dramatic mountain silhouette beneath glowing sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-139-to-141-Cycle-1.mp4",
+      "published_sha256": "8b9ca1335ef0857a5b02a63d2460cd5f0406739f7751da60d0fd7ced646a4861",
+      "created_at": "2026-08-29T13:38:10Z"
     }
   ],
   "visual_history": [
@@ -1071,6 +1090,7 @@
     39192482,
     37899472,
     34625872,
-    32149301
+    32149301,
+    35584889
   ]
 }
