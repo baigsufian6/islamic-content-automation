@@ -150,7 +150,9 @@
     "2:140",
     "2:141",
     "2:142",
-    "2:143"
+    "2:143",
+    "2:144",
+    "2:145"
   ],
   "published_sections": [
     {
@@ -318,17 +320,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:142",
-      "2:143"
+      "2:144",
+      "2:145"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 74.501,
-    "visual_id": 20063577,
-    "theme": "guidance",
-    "visual_query": "peaceful road through vast open landscape at sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-142-to-143-Cycle-1.mp4",
-    "published_sha256": "75802619f53a99b827940606bd6da94c7629699900ef8b5e0a0714f2f433dabc"
+    "duration_seconds": 69.904,
+    "visual_id": 18418472,
+    "theme": "knowledge",
+    "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-144-to-145-Cycle-1.mp4",
+    "published_sha256": "b5fa31aa6f784187842dbbe94763c98ae29b9a138ed9c06c9ed0aafe164c4e8c"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -339,6 +341,7 @@
     13243682,
     16582413,
     16582414,
+    18418472,
     19948838,
     20063577,
     24818388,
@@ -387,7 +390,7 @@
     "justice": 4,
     "paradise": 2,
     "earth": 1,
-    "knowledge": 2,
+    "knowledge": 3,
     "worship": 3,
     "patience": 1,
     "warning": 3,
@@ -402,7 +405,7 @@
     "judgment": 1
   },
   "completed_cycles": [],
-  "published_count": 48,
+  "published_count": 49,
   "history": [
     {
       "cycle": 1,
@@ -1057,6 +1060,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-142-to-143-Cycle-1.mp4",
       "published_sha256": "75802619f53a99b827940606bd6da94c7629699900ef8b5e0a0714f2f433dabc",
       "created_at": "2026-08-30T13:35:55Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:144",
+        "2:145"
+      ],
+      "visual_id": 18418472,
+      "theme": "knowledge",
+      "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-144-to-145-Cycle-1.mp4",
+      "published_sha256": "b5fa31aa6f784187842dbbe94763c98ae29b9a138ed9c06c9ed0aafe164c4e8c",
+      "created_at": "2026-08-31T15:50:33Z"
     }
   ],
   "visual_history": [
@@ -1107,6 +1123,7 @@
     34625872,
     32149301,
     35584889,
-    20063577
+    20063577,
+    18418472
   ]
 }
