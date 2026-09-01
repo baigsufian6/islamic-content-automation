@@ -152,7 +152,10 @@
     "2:142",
     "2:143",
     "2:144",
-    "2:145"
+    "2:145",
+    "2:146",
+    "2:147",
+    "2:148"
   ],
   "published_sections": [
     {
@@ -320,17 +323,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:144",
-      "2:145"
+      "2:146",
+      "2:147",
+      "2:148"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 69.904,
-    "visual_id": 18418472,
-    "theme": "knowledge",
-    "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-144-to-145-Cycle-1.mp4",
-    "published_sha256": "b5fa31aa6f784187842dbbe94763c98ae29b9a138ed9c06c9ed0aafe164c4e8c"
+    "duration_seconds": 45.688,
+    "visual_id": 28616455,
+    "theme": "judgment",
+    "visual_query": "vast desert horizon beneath dark clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-146-to-148-Cycle-1.mp4",
+    "published_sha256": "9aa5ea0be220db478b75eb16527e6e6076c5c21f7d8dc8ba79298bdfa70eb55a"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -349,6 +353,7 @@
     27863479,
     28436001,
     28615722,
+    28616455,
     29042409,
     29898627,
     30356315,
@@ -402,10 +407,10 @@
     "revelation": 1,
     "remembrance": 1,
     "mortality": 1,
-    "judgment": 1
+    "judgment": 2
   },
   "completed_cycles": [],
-  "published_count": 49,
+  "published_count": 50,
   "history": [
     {
       "cycle": 1,
@@ -1073,6 +1078,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-144-to-145-Cycle-1.mp4",
       "published_sha256": "b5fa31aa6f784187842dbbe94763c98ae29b9a138ed9c06c9ed0aafe164c4e8c",
       "created_at": "2026-08-31T15:50:33Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:146",
+        "2:147",
+        "2:148"
+      ],
+      "visual_id": 28616455,
+      "theme": "judgment",
+      "visual_query": "vast desert horizon beneath dark clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-146-to-148-Cycle-1.mp4",
+      "published_sha256": "9aa5ea0be220db478b75eb16527e6e6076c5c21f7d8dc8ba79298bdfa70eb55a",
+      "created_at": "2026-09-01T13:02:58Z"
     }
   ],
   "visual_history": [
@@ -1124,6 +1143,7 @@
     32149301,
     35584889,
     20063577,
-    18418472
+    18418472,
+    28616455
   ]
 }
