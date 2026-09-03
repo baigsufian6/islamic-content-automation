@@ -159,7 +159,12 @@
     "2:149",
     "2:150",
     "2:151",
-    "2:152"
+    "2:152",
+    "2:153",
+    "2:154",
+    "2:155",
+    "2:156",
+    "2:157"
   ],
   "published_sections": [
     {
@@ -327,19 +332,20 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:149",
-      "2:150",
-      "2:151",
-      "2:152"
+      "2:153",
+      "2:154",
+      "2:155",
+      "2:156",
+      "2:157"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 81.006,
-    "visual_id": 36048487,
-    "theme": "gratitude",
-    "visual_query": "date palm oasis glowing in golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-149-to-152-Cycle-1.mp4",
-    "published_sha256": "ff38986297e6a48049374f337a7900eedd99464c6ce62a97693c35e5595e116c"
+    "duration_seconds": 73.195,
+    "visual_id": 34836239,
+    "theme": "patience",
+    "visual_query": "quiet desert dunes under soft evening light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-153-to-157-Cycle-1.mp4",
+    "published_sha256": "7dfeae6d129a94917e3d8e7e80c6d13fb627b4fa521c77b1ab37eaedb11f238a"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -368,6 +374,7 @@
     34464344,
     34625872,
     34823867,
+    34836239,
     35497914,
     35573787,
     35574063,
@@ -403,7 +410,7 @@
     "earth": 1,
     "knowledge": 3,
     "worship": 3,
-    "patience": 1,
+    "patience": 2,
     "warning": 3,
     "repentance": 1,
     "mercy": 4,
@@ -417,7 +424,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 51,
+  "published_count": 52,
   "history": [
     {
       "cycle": 1,
@@ -1114,6 +1121,22 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-149-to-152-Cycle-1.mp4",
       "published_sha256": "ff38986297e6a48049374f337a7900eedd99464c6ce62a97693c35e5595e116c",
       "created_at": "2026-09-02T12:34:05Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:153",
+        "2:154",
+        "2:155",
+        "2:156",
+        "2:157"
+      ],
+      "visual_id": 34836239,
+      "theme": "patience",
+      "visual_query": "quiet desert dunes under soft evening light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-153-to-157-Cycle-1.mp4",
+      "published_sha256": "7dfeae6d129a94917e3d8e7e80c6d13fb627b4fa521c77b1ab37eaedb11f238a",
+      "created_at": "2026-09-03T12:37:54Z"
     }
   ],
   "visual_history": [
@@ -1167,6 +1190,7 @@
     20063577,
     18418472,
     28616455,
-    36048487
+    36048487,
+    34836239
   ]
 }
