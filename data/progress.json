@@ -164,7 +164,11 @@
     "2:154",
     "2:155",
     "2:156",
-    "2:157"
+    "2:157",
+    "2:158",
+    "2:159",
+    "2:160",
+    "2:161"
   ],
   "published_sections": [
     {
@@ -332,20 +336,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:153",
-      "2:154",
-      "2:155",
-      "2:156",
-      "2:157"
+      "2:158",
+      "2:159",
+      "2:160",
+      "2:161"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 73.195,
-    "visual_id": 34836239,
-    "theme": "patience",
-    "visual_query": "quiet desert dunes under soft evening light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-153-to-157-Cycle-1.mp4",
-    "published_sha256": "7dfeae6d129a94917e3d8e7e80c6d13fb627b4fa521c77b1ab37eaedb11f238a"
+    "duration_seconds": 77.61,
+    "visual_id": 33744507,
+    "theme": "repentance",
+    "visual_query": "quiet mountain valley at first light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-158-to-161-Cycle-1.mp4",
+    "published_sha256": "f27fc3af4b81dab8f41dfe6121cca5e9af1a409fcb640c86f0a92725d48ab189"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -370,6 +373,7 @@
     30356315,
     31363036,
     32149301,
+    33744507,
     33807471,
     34464344,
     34625872,
@@ -412,7 +416,7 @@
     "worship": 3,
     "patience": 2,
     "warning": 3,
-    "repentance": 1,
+    "repentance": 2,
     "mercy": 4,
     "water": 2,
     "hope": 1,
@@ -424,7 +428,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 52,
+  "published_count": 53,
   "history": [
     {
       "cycle": 1,
@@ -1137,6 +1141,21 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-153-to-157-Cycle-1.mp4",
       "published_sha256": "7dfeae6d129a94917e3d8e7e80c6d13fb627b4fa521c77b1ab37eaedb11f238a",
       "created_at": "2026-09-03T12:37:54Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:158",
+        "2:159",
+        "2:160",
+        "2:161"
+      ],
+      "visual_id": 33744507,
+      "theme": "repentance",
+      "visual_query": "quiet mountain valley at first light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-158-to-161-Cycle-1.mp4",
+      "published_sha256": "f27fc3af4b81dab8f41dfe6121cca5e9af1a409fcb640c86f0a92725d48ab189",
+      "created_at": "2026-09-04T12:34:03Z"
     }
   ],
   "visual_history": [
@@ -1191,6 +1210,7 @@
     18418472,
     28616455,
     36048487,
-    34836239
+    34836239,
+    33744507
   ]
 }
