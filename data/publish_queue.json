@@ -918,5 +918,23 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-158-to-161-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-09-04T12:34:03Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-162-to-164-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-162-to-164-Cycle-1.json",
+    "published_sha256": "f00b8108470d2e036d02e61d132dfc2dff0e580ecc1c2e69a687e37de3a7bb23",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:162",
+      "2:163",
+      "2:164"
+    ],
+    "duration_seconds": 75.546,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-162-to-164-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-09-05T11:37:22Z"
   }
 ]
