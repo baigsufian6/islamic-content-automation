@@ -171,7 +171,10 @@
     "2:161",
     "2:162",
     "2:163",
-    "2:164"
+    "2:164",
+    "2:165",
+    "2:166",
+    "2:167"
   ],
   "published_sections": [
     {
@@ -339,18 +342,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:162",
-      "2:163",
-      "2:164"
+      "2:165",
+      "2:166",
+      "2:167"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 75.546,
-    "visual_id": 28315077,
-    "theme": "creation",
-    "visual_query": "vast star-filled sky over dramatic mountains, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-162-to-164-Cycle-1.mp4",
-    "published_sha256": "f00b8108470d2e036d02e61d132dfc2dff0e580ecc1c2e69a687e37de3a7bb23"
+    "duration_seconds": 63.713,
+    "visual_id": 28556415,
+    "theme": "judgment",
+    "visual_query": "storm clouds opening over distant golden horizon, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-165-to-167-Cycle-1.mp4",
+    "published_sha256": "ee6f6bf2dc3c29ced57793c157c1f704a03a59f0119fcc14cbb8e82904e9dada"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -369,6 +372,7 @@
     27863479,
     28315077,
     28436001,
+    28556415,
     28615722,
     28616455,
     29042409,
@@ -427,11 +431,11 @@
     "revelation": 1,
     "remembrance": 1,
     "mortality": 1,
-    "judgment": 2,
+    "judgment": 3,
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 54,
+  "published_count": 55,
   "history": [
     {
       "cycle": 1,
@@ -1173,6 +1177,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-162-to-164-Cycle-1.mp4",
       "published_sha256": "f00b8108470d2e036d02e61d132dfc2dff0e580ecc1c2e69a687e37de3a7bb23",
       "created_at": "2026-09-05T11:37:22Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:165",
+        "2:166",
+        "2:167"
+      ],
+      "visual_id": 28556415,
+      "theme": "judgment",
+      "visual_query": "storm clouds opening over distant golden horizon, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-165-to-167-Cycle-1.mp4",
+      "published_sha256": "ee6f6bf2dc3c29ced57793c157c1f704a03a59f0119fcc14cbb8e82904e9dada",
+      "created_at": "2026-09-06T11:58:55Z"
     }
   ],
   "visual_history": [
@@ -1229,6 +1247,7 @@
     36048487,
     34836239,
     33744507,
-    28315077
+    28315077,
+    28556415
   ]
 }
