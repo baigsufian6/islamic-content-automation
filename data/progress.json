@@ -174,7 +174,10 @@
     "2:164",
     "2:165",
     "2:166",
-    "2:167"
+    "2:167",
+    "2:168",
+    "2:169",
+    "2:170"
   ],
   "published_sections": [
     {
@@ -342,18 +345,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:165",
-      "2:166",
-      "2:167"
+      "2:168",
+      "2:169",
+      "2:170"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 63.713,
-    "visual_id": 28556415,
-    "theme": "judgment",
-    "visual_query": "storm clouds opening over distant golden horizon, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-165-to-167-Cycle-1.mp4",
-    "published_sha256": "ee6f6bf2dc3c29ced57793c157c1f704a03a59f0119fcc14cbb8e82904e9dada"
+    "duration_seconds": 62.772,
+    "visual_id": 39156893,
+    "theme": "guidance",
+    "visual_query": "single path through quiet hills under morning sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-168-to-170-Cycle-1.mp4",
+    "published_sha256": "a0598ee60385cfa5807283712a0bd1b21752014ef04932889d9e41190d2afacf"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -411,10 +414,11 @@
     38947096,
     38963559,
     39139174,
+    39156893,
     39192482
   ],
   "theme_usage": {
-    "guidance": 8,
+    "guidance": 9,
     "creation": 6,
     "justice": 4,
     "paradise": 2,
@@ -435,7 +439,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 55,
+  "published_count": 56,
   "history": [
     {
       "cycle": 1,
@@ -1191,6 +1195,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-165-to-167-Cycle-1.mp4",
       "published_sha256": "ee6f6bf2dc3c29ced57793c157c1f704a03a59f0119fcc14cbb8e82904e9dada",
       "created_at": "2026-09-06T11:58:55Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:168",
+        "2:169",
+        "2:170"
+      ],
+      "visual_id": 39156893,
+      "theme": "guidance",
+      "visual_query": "single path through quiet hills under morning sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-168-to-170-Cycle-1.mp4",
+      "published_sha256": "a0598ee60385cfa5807283712a0bd1b21752014ef04932889d9e41190d2afacf",
+      "created_at": "2026-09-07T14:00:12Z"
     }
   ],
   "visual_history": [
@@ -1248,6 +1266,7 @@
     34836239,
     33744507,
     28315077,
-    28556415
+    28556415,
+    39156893
   ]
 }
