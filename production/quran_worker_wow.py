@@ -306,6 +306,8 @@ def sha256_file(path: Path) -> str:
 
 
 def run_cmd(command: list[str], *, capture: bool = False) -> subprocess.CompletedProcess:
+    if command and command[0] == "ffmpeg" and "-hide_banner" not in command:
+        command = [command[0], "-hide_banner", "-loglevel", "info", "-nostats"] + command[1:]
     log("RUN " + " ".join(command), "DEBUG")
     return subprocess.run(
         command,
