@@ -177,7 +177,10 @@
     "2:167",
     "2:168",
     "2:169",
-    "2:170"
+    "2:170",
+    "2:171",
+    "2:172",
+    "2:173"
   ],
   "published_sections": [
     {
@@ -345,18 +348,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:168",
-      "2:169",
-      "2:170"
+      "2:171",
+      "2:172",
+      "2:173"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 62.772,
-    "visual_id": 39156893,
-    "theme": "guidance",
-    "visual_query": "single path through quiet hills under morning sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-168-to-170-Cycle-1.mp4",
-    "published_sha256": "a0598ee60385cfa5807283712a0bd1b21752014ef04932889d9e41190d2afacf"
+    "duration_seconds": 67.109,
+    "visual_id": 28436005,
+    "theme": "mercy",
+    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-171-to-173-Cycle-1.mp4",
+    "published_sha256": "b3a369d5ea9ab68b1dd631ef7116315f8d782f7143ff5e3b035f35b03b6b746f"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -375,6 +378,7 @@
     27863479,
     28315077,
     28436001,
+    28436005,
     28556415,
     28615722,
     28616455,
@@ -428,7 +432,7 @@
     "patience": 2,
     "warning": 3,
     "repentance": 2,
-    "mercy": 4,
+    "mercy": 5,
     "water": 2,
     "hope": 1,
     "afterlife": 7,
@@ -439,7 +443,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 56,
+  "published_count": 57,
   "history": [
     {
       "cycle": 1,
@@ -1209,6 +1213,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-168-to-170-Cycle-1.mp4",
       "published_sha256": "a0598ee60385cfa5807283712a0bd1b21752014ef04932889d9e41190d2afacf",
       "created_at": "2026-09-07T14:00:12Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:171",
+        "2:172",
+        "2:173"
+      ],
+      "visual_id": 28436005,
+      "theme": "mercy",
+      "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-171-to-173-Cycle-1.mp4",
+      "published_sha256": "b3a369d5ea9ab68b1dd631ef7116315f8d782f7143ff5e3b035f35b03b6b746f",
+      "created_at": "2026-09-08T12:34:39Z"
     }
   ],
   "visual_history": [
@@ -1267,6 +1285,7 @@
     33744507,
     28315077,
     28556415,
-    39156893
+    39156893,
+    28436005
   ]
 }
