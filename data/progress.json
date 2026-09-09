@@ -180,7 +180,10 @@
     "2:170",
     "2:171",
     "2:172",
-    "2:173"
+    "2:173",
+    "2:174",
+    "2:175",
+    "2:176"
   ],
   "published_sections": [
     {
@@ -348,18 +351,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:171",
-      "2:172",
-      "2:173"
+      "2:174",
+      "2:175",
+      "2:176"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 67.109,
-    "visual_id": 28436005,
-    "theme": "mercy",
-    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-171-to-173-Cycle-1.mp4",
-    "published_sha256": "b3a369d5ea9ab68b1dd631ef7116315f8d782f7143ff5e3b035f35b03b6b746f"
+    "duration_seconds": 65.933,
+    "visual_id": 39432862,
+    "theme": "afterlife",
+    "visual_query": "endless horizon disappearing into golden mist, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-174-to-176-Cycle-1.mp4",
+    "published_sha256": "764f0405a0e5f080f7da8796c4c8d03fa5837b0a0805c25d665f1743d5f74312"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -419,7 +422,8 @@
     38963559,
     39139174,
     39156893,
-    39192482
+    39192482,
+    39432862
   ],
   "theme_usage": {
     "guidance": 9,
@@ -435,7 +439,7 @@
     "mercy": 5,
     "water": 2,
     "hope": 1,
-    "afterlife": 7,
+    "afterlife": 8,
     "revelation": 1,
     "remembrance": 1,
     "mortality": 1,
@@ -443,7 +447,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 57,
+  "published_count": 58,
   "history": [
     {
       "cycle": 1,
@@ -1227,6 +1231,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-171-to-173-Cycle-1.mp4",
       "published_sha256": "b3a369d5ea9ab68b1dd631ef7116315f8d782f7143ff5e3b035f35b03b6b746f",
       "created_at": "2026-09-08T12:34:39Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:174",
+        "2:175",
+        "2:176"
+      ],
+      "visual_id": 39432862,
+      "theme": "afterlife",
+      "visual_query": "endless horizon disappearing into golden mist, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-174-to-176-Cycle-1.mp4",
+      "published_sha256": "764f0405a0e5f080f7da8796c4c8d03fa5837b0a0805c25d665f1743d5f74312",
+      "created_at": "2026-09-09T12:41:51Z"
     }
   ],
   "visual_history": [
@@ -1286,6 +1304,7 @@
     28315077,
     28556415,
     39156893,
-    28436005
+    28436005,
+    39432862
   ]
 }
