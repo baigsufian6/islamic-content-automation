@@ -1008,5 +1008,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-174-to-176-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-09-09T12:41:51Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-177-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-177-Cycle-1.json",
+    "published_sha256": "92c7a63d5e3c8304d2dbdb784af02d991eb4673c34614f80006f8a383bf21fe5",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:177"
+    ],
+    "duration_seconds": 67.265,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-177-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-09-10T12:41:39Z"
   }
 ]

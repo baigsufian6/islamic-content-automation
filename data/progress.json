@@ -183,7 +183,8 @@
     "2:173",
     "2:174",
     "2:175",
-    "2:176"
+    "2:176",
+    "2:177"
   ],
   "published_sections": [
     {
@@ -351,18 +352,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:174",
-      "2:175",
-      "2:176"
+      "2:177"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 65.933,
-    "visual_id": 39432862,
-    "theme": "afterlife",
-    "visual_query": "endless horizon disappearing into golden mist, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-174-to-176-Cycle-1.mp4",
-    "published_sha256": "764f0405a0e5f080f7da8796c4c8d03fa5837b0a0805c25d665f1743d5f74312"
+    "duration_seconds": 67.265,
+    "visual_id": 30198965,
+    "theme": "patience",
+    "visual_query": "still mountain lake reflecting peaceful sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-177-Cycle-1.mp4",
+    "published_sha256": "92c7a63d5e3c8304d2dbdb784af02d991eb4673c34614f80006f8a383bf21fe5"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -387,6 +386,7 @@
     28616455,
     29042409,
     29898627,
+    30198965,
     30356315,
     31363036,
     32149301,
@@ -433,7 +433,7 @@
     "earth": 1,
     "knowledge": 3,
     "worship": 3,
-    "patience": 2,
+    "patience": 3,
     "warning": 3,
     "repentance": 2,
     "mercy": 5,
@@ -447,7 +447,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 58,
+  "published_count": 59,
   "history": [
     {
       "cycle": 1,
@@ -1245,6 +1245,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-174-to-176-Cycle-1.mp4",
       "published_sha256": "764f0405a0e5f080f7da8796c4c8d03fa5837b0a0805c25d665f1743d5f74312",
       "created_at": "2026-09-09T12:41:51Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:177"
+      ],
+      "visual_id": 30198965,
+      "theme": "patience",
+      "visual_query": "still mountain lake reflecting peaceful sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-177-Cycle-1.mp4",
+      "published_sha256": "92c7a63d5e3c8304d2dbdb784af02d991eb4673c34614f80006f8a383bf21fe5",
+      "created_at": "2026-09-10T12:41:39Z"
     }
   ],
   "visual_history": [
@@ -1305,6 +1317,7 @@
     28556415,
     39156893,
     28436005,
-    39432862
+    39432862,
+    30198965
   ]
 }
