@@ -187,7 +187,10 @@
     "2:177",
     "2:178",
     "2:179",
-    "2:180"
+    "2:180",
+    "2:181",
+    "2:182",
+    "2:183"
   ],
   "published_sections": [
     {
@@ -355,18 +358,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:178",
-      "2:179",
-      "2:180"
+      "2:181",
+      "2:182",
+      "2:183"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 72.046,
-    "visual_id": 39320537,
+    "duration_seconds": 44.539,
+    "visual_id": 28965624,
     "theme": "mercy",
-    "visual_query": "calm landscape glowing with soft golden morning light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-178-to-180-Cycle-1.mp4",
-    "published_sha256": "208a4bf48a3d00c1ee1b440681f889028588826db15559088ad9a6fae6dea77e"
+    "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-181-to-183-Cycle-1.mp4",
+    "published_sha256": "e077027ff62a57720aeeac41315b81fdcba75d7bc29e07a4809b4c24d0b333dc"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -389,6 +392,7 @@
     28556415,
     28615722,
     28616455,
+    28965624,
     29042409,
     29898627,
     30198965,
@@ -442,7 +446,7 @@
     "patience": 3,
     "warning": 3,
     "repentance": 2,
-    "mercy": 6,
+    "mercy": 7,
     "water": 2,
     "hope": 1,
     "afterlife": 8,
@@ -453,7 +457,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 60,
+  "published_count": 61,
   "history": [
     {
       "cycle": 1,
@@ -1277,6 +1281,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-178-to-180-Cycle-1.mp4",
       "published_sha256": "208a4bf48a3d00c1ee1b440681f889028588826db15559088ad9a6fae6dea77e",
       "created_at": "2026-09-11T12:41:38Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:181",
+        "2:182",
+        "2:183"
+      ],
+      "visual_id": 28965624,
+      "theme": "mercy",
+      "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-181-to-183-Cycle-1.mp4",
+      "published_sha256": "e077027ff62a57720aeeac41315b81fdcba75d7bc29e07a4809b4c24d0b333dc",
+      "created_at": "2026-09-12T11:56:19Z"
     }
   ],
   "visual_history": [
@@ -1339,6 +1357,7 @@
     28436005,
     39432862,
     30198965,
-    39320537
+    39320537,
+    28965624
   ]
 }
