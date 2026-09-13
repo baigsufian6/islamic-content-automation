@@ -190,7 +190,9 @@
     "2:180",
     "2:181",
     "2:182",
-    "2:183"
+    "2:183",
+    "2:184",
+    "2:185"
   ],
   "published_sections": [
     {
@@ -358,18 +360,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:181",
-      "2:182",
-      "2:183"
+      "2:184",
+      "2:185"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 44.539,
-    "visual_id": 28965624,
-    "theme": "mercy",
-    "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-181-to-183-Cycle-1.mp4",
-    "published_sha256": "e077027ff62a57720aeeac41315b81fdcba75d7bc29e07a4809b4c24d0b333dc"
+    "duration_seconds": 81.319,
+    "visual_id": 37904637,
+    "theme": "guidance",
+    "visual_query": "winding desert path toward distant golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-184-to-185-Cycle-1.mp4",
+    "published_sha256": "dddafc9a888a1c51f6dd9b2b30d7894f16247a7e0bff7b260fff1370df0641c2"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -422,6 +423,7 @@
     37899472,
     37903577,
     37904635,
+    37904637,
     38182932,
     38423457,
     38430067,
@@ -436,7 +438,7 @@
     39432862
   ],
   "theme_usage": {
-    "guidance": 9,
+    "guidance": 10,
     "creation": 6,
     "justice": 4,
     "paradise": 2,
@@ -457,7 +459,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 61,
+  "published_count": 62,
   "history": [
     {
       "cycle": 1,
@@ -1295,6 +1297,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-181-to-183-Cycle-1.mp4",
       "published_sha256": "e077027ff62a57720aeeac41315b81fdcba75d7bc29e07a4809b4c24d0b333dc",
       "created_at": "2026-09-12T11:56:19Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:184",
+        "2:185"
+      ],
+      "visual_id": 37904637,
+      "theme": "guidance",
+      "visual_query": "winding desert path toward distant golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-184-to-185-Cycle-1.mp4",
+      "published_sha256": "dddafc9a888a1c51f6dd9b2b30d7894f16247a7e0bff7b260fff1370df0641c2",
+      "created_at": "2026-09-13T13:13:43Z"
     }
   ],
   "visual_history": [
@@ -1358,6 +1373,7 @@
     39432862,
     30198965,
     39320537,
-    28965624
+    28965624,
+    37904637
   ]
 }
