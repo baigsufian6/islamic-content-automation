@@ -1093,5 +1093,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-186-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-09-13T14:59:00Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-187-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-187-Cycle-1.json",
+    "published_sha256": "9c9cc62cf20a85f2c5b9aa80f4580e3532c2d5328700c7b4a4243738a318e466",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:187"
+    ],
+    "duration_seconds": 66.795,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-187-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-09-14T14:44:37Z"
   }
 ]
