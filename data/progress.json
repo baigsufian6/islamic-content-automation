@@ -194,7 +194,9 @@
     "2:184",
     "2:185",
     "2:186",
-    "2:187"
+    "2:187",
+    "2:188",
+    "2:189"
   ],
   "published_sections": [
     {
@@ -362,16 +364,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:187"
+      "2:188",
+      "2:189"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 66.795,
-    "visual_id": 14281701,
-    "theme": "repentance",
-    "visual_query": "lantern illuminating a path through darkness, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-187-Cycle-1.mp4",
-    "published_sha256": "9c9cc62cf20a85f2c5b9aa80f4580e3532c2d5328700c7b4a4243738a318e466"
+    "duration_seconds": 49.92,
+    "visual_id": 25682066,
+    "theme": "knowledge",
+    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.mp4",
+    "published_sha256": "f322cc258cc6184db5d8946f5c3b2016832c55e0be245a8548b4270745d4621d"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -387,6 +390,7 @@
     19948838,
     20063577,
     24818388,
+    25682066,
     27604262,
     27863479,
     28315077,
@@ -446,7 +450,7 @@
     "justice": 4,
     "paradise": 2,
     "earth": 1,
-    "knowledge": 3,
+    "knowledge": 4,
     "worship": 3,
     "patience": 3,
     "warning": 3,
@@ -462,7 +466,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 64,
+  "published_count": 65,
   "history": [
     {
       "cycle": 1,
@@ -1337,6 +1341,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-187-Cycle-1.mp4",
       "published_sha256": "9c9cc62cf20a85f2c5b9aa80f4580e3532c2d5328700c7b4a4243738a318e466",
       "created_at": "2026-09-14T14:44:37Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:188",
+        "2:189"
+      ],
+      "visual_id": 25682066,
+      "theme": "knowledge",
+      "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.mp4",
+      "published_sha256": "f322cc258cc6184db5d8946f5c3b2016832c55e0be245a8548b4270745d4621d",
+      "created_at": "2026-09-15T13:10:44Z"
     }
   ],
   "visual_history": [
@@ -1403,6 +1420,7 @@
     28965624,
     37904637,
     34913017,
-    14281701
+    14281701,
+    25682066
   ]
 }

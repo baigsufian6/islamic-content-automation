@@ -1109,5 +1109,22 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-187-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-09-14T14:44:37Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.json",
+    "published_sha256": "f322cc258cc6184db5d8946f5c3b2016832c55e0be245a8548b4270745d4621d",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:188",
+      "2:189"
+    ],
+    "duration_seconds": 49.92,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-09-15T13:10:44Z"
   }
 ]
