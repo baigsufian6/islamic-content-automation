@@ -196,7 +196,11 @@
     "2:186",
     "2:187",
     "2:188",
-    "2:189"
+    "2:189",
+    "2:190",
+    "2:191",
+    "2:192",
+    "2:193"
   ],
   "published_sections": [
     {
@@ -364,17 +368,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:188",
-      "2:189"
+      "2:190",
+      "2:191",
+      "2:192",
+      "2:193"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 49.92,
-    "visual_id": 25682066,
-    "theme": "knowledge",
-    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.mp4",
-    "published_sha256": "f322cc258cc6184db5d8946f5c3b2016832c55e0be245a8548b4270745d4621d"
+    "duration_seconds": 65.384,
+    "visual_id": 39149890,
+    "theme": "mercy",
+    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-190-to-193-Cycle-1.mp4",
+    "published_sha256": "c7f73845f40395756a36bfbe1fd3407aed2adc0c30c3f738dea85300d0ae1a32"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -439,6 +445,7 @@
     38947096,
     38963559,
     39139174,
+    39149890,
     39156893,
     39192482,
     39320537,
@@ -455,7 +462,7 @@
     "patience": 3,
     "warning": 3,
     "repentance": 3,
-    "mercy": 7,
+    "mercy": 8,
     "water": 2,
     "hope": 1,
     "afterlife": 8,
@@ -466,7 +473,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 65,
+  "published_count": 66,
   "history": [
     {
       "cycle": 1,
@@ -1354,6 +1361,21 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-188-to-189-Cycle-1.mp4",
       "published_sha256": "f322cc258cc6184db5d8946f5c3b2016832c55e0be245a8548b4270745d4621d",
       "created_at": "2026-09-15T13:10:44Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:190",
+        "2:191",
+        "2:192",
+        "2:193"
+      ],
+      "visual_id": 39149890,
+      "theme": "mercy",
+      "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-190-to-193-Cycle-1.mp4",
+      "published_sha256": "c7f73845f40395756a36bfbe1fd3407aed2adc0c30c3f738dea85300d0ae1a32",
+      "created_at": "2026-09-16T13:03:43Z"
     }
   ],
   "visual_history": [
@@ -1421,6 +1443,7 @@
     37904637,
     34913017,
     14281701,
-    25682066
+    25682066,
+    39149890
   ]
 }
