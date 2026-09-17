@@ -200,7 +200,9 @@
     "2:190",
     "2:191",
     "2:192",
-    "2:193"
+    "2:193",
+    "2:194",
+    "2:195"
   ],
   "published_sections": [
     {
@@ -368,19 +370,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:190",
-      "2:191",
-      "2:192",
-      "2:193"
+      "2:194",
+      "2:195"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 65.384,
-    "visual_id": 39149890,
-    "theme": "mercy",
-    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-190-to-193-Cycle-1.mp4",
-    "published_sha256": "c7f73845f40395756a36bfbe1fd3407aed2adc0c30c3f738dea85300d0ae1a32"
+    "duration_seconds": 37.12,
+    "visual_id": 39183413,
+    "theme": "guidance",
+    "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.mp4",
+    "published_sha256": "b127fc943b502af5b82a9d7fb6950ba9258da754324a581be01af23e4292012c"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -447,12 +447,13 @@
     39139174,
     39149890,
     39156893,
+    39183413,
     39192482,
     39320537,
     39432862
   ],
   "theme_usage": {
-    "guidance": 11,
+    "guidance": 12,
     "creation": 6,
     "justice": 4,
     "paradise": 2,
@@ -473,7 +474,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 66,
+  "published_count": 67,
   "history": [
     {
       "cycle": 1,
@@ -1376,6 +1377,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-190-to-193-Cycle-1.mp4",
       "published_sha256": "c7f73845f40395756a36bfbe1fd3407aed2adc0c30c3f738dea85300d0ae1a32",
       "created_at": "2026-09-16T13:03:43Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:194",
+        "2:195"
+      ],
+      "visual_id": 39183413,
+      "theme": "guidance",
+      "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.mp4",
+      "published_sha256": "b127fc943b502af5b82a9d7fb6950ba9258da754324a581be01af23e4292012c",
+      "created_at": "2026-09-17T13:00:35Z"
     }
   ],
   "visual_history": [
@@ -1444,6 +1458,7 @@
     34913017,
     14281701,
     25682066,
-    39149890
+    39149890,
+    39183413
   ]
 }

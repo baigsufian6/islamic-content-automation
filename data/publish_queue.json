@@ -1145,5 +1145,22 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-190-to-193-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-09-16T13:03:43Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.json",
+    "published_sha256": "b127fc943b502af5b82a9d7fb6950ba9258da754324a581be01af23e4292012c",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:194",
+      "2:195"
+    ],
+    "duration_seconds": 37.12,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-09-17T13:00:35Z"
   }
 ]
