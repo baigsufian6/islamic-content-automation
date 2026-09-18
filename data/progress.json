@@ -202,7 +202,8 @@
     "2:192",
     "2:193",
     "2:194",
-    "2:195"
+    "2:195",
+    "2:196"
   ],
   "published_sections": [
     {
@@ -370,21 +371,21 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:194",
-      "2:195"
+      "2:196"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 37.12,
-    "visual_id": 39183413,
-    "theme": "guidance",
-    "visual_query": "lantern illuminating a quiet stone passage, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.mp4",
-    "published_sha256": "b127fc943b502af5b82a9d7fb6950ba9258da754324a581be01af23e4292012c"
+    "duration_seconds": 66.717,
+    "visual_id": 8321899,
+    "theme": "knowledge",
+    "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-196-Cycle-1.mp4",
+    "published_sha256": "8c9ffcc95251b0f13e0b17e43cd15ec09a4ba9ddc77fc365938d6cd880cc7484"
   },
   "schema_version": 4,
   "used_pexels_ids": [
     5102665,
+    8321899,
     10297371,
     10681857,
     11318637,
@@ -458,7 +459,7 @@
     "justice": 4,
     "paradise": 2,
     "earth": 1,
-    "knowledge": 4,
+    "knowledge": 5,
     "worship": 3,
     "patience": 3,
     "warning": 3,
@@ -474,7 +475,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 67,
+  "published_count": 68,
   "history": [
     {
       "cycle": 1,
@@ -1390,6 +1391,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-194-to-195-Cycle-1.mp4",
       "published_sha256": "b127fc943b502af5b82a9d7fb6950ba9258da754324a581be01af23e4292012c",
       "created_at": "2026-09-17T13:00:35Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:196"
+      ],
+      "visual_id": 8321899,
+      "theme": "knowledge",
+      "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-196-Cycle-1.mp4",
+      "published_sha256": "8c9ffcc95251b0f13e0b17e43cd15ec09a4ba9ddc77fc365938d6cd880cc7484",
+      "created_at": "2026-09-18T12:39:12Z"
     }
   ],
   "visual_history": [
@@ -1459,6 +1472,7 @@
     14281701,
     25682066,
     39149890,
-    39183413
+    39183413,
+    8321899
   ]
 }
