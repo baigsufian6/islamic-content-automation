@@ -217,7 +217,9 @@
     "2:207",
     "2:208",
     "2:209",
-    "2:210"
+    "2:210",
+    "2:211",
+    "2:212"
   ],
   "published_sections": [
     {
@@ -385,18 +387,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:208",
-      "2:209",
-      "2:210"
+      "2:211",
+      "2:212"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 52.454,
-    "visual_id": 31118005,
-    "theme": "knowledge",
-    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-208-to-210-Cycle-1.mp4",
-    "published_sha256": "cfb77407b7d0dbca359591237a8a2febe87df1c0002e8cae73d6dbb61e8380c6"
+    "duration_seconds": 41.9,
+    "visual_id": 34576011,
+    "theme": "afterlife",
+    "visual_query": "powerful clouds opening above distant mountains, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-211-to-212-Cycle-1.mp4",
+    "published_sha256": "7b1f5d7eae76af17264858c19e85b30583c921b3247ffae18231d5280b6d5058"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -434,6 +435,7 @@
     33807471,
     34464344,
     34464347,
+    34576011,
     34625872,
     34823867,
     34836239,
@@ -487,7 +489,7 @@
     "mercy": 9,
     "water": 2,
     "hope": 1,
-    "afterlife": 8,
+    "afterlife": 9,
     "revelation": 1,
     "remembrance": 2,
     "mortality": 1,
@@ -495,7 +497,7 @@
     "gratitude": 1
   },
   "completed_cycles": [],
-  "published_count": 72,
+  "published_count": 73,
   "history": [
     {
       "cycle": 1,
@@ -1481,6 +1483,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-208-to-210-Cycle-1.mp4",
       "published_sha256": "cfb77407b7d0dbca359591237a8a2febe87df1c0002e8cae73d6dbb61e8380c6",
       "created_at": "2026-09-22T13:05:24Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:211",
+        "2:212"
+      ],
+      "visual_id": 34576011,
+      "theme": "afterlife",
+      "visual_query": "powerful clouds opening above distant mountains, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-211-to-212-Cycle-1.mp4",
+      "published_sha256": "7b1f5d7eae76af17264858c19e85b30583c921b3247ffae18231d5280b6d5058",
+      "created_at": "2026-09-23T13:18:18Z"
     }
   ],
   "visual_history": [
@@ -1555,6 +1570,7 @@
     35909724,
     34464347,
     38707148,
-    31118005
+    31118005,
+    34576011
   ]
 }
