@@ -220,7 +220,9 @@
     "2:210",
     "2:211",
     "2:212",
-    "2:213"
+    "2:213",
+    "2:214",
+    "2:215"
   ],
   "published_sections": [
     {
@@ -388,16 +390,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:213"
+      "2:214",
+      "2:215"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 52.584,
-    "visual_id": 30485949,
-    "theme": "guidance",
-    "visual_query": "winding desert path toward distant golden light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-213-Cycle-1.mp4",
-    "published_sha256": "e91c377352188519da3519c36fcdcdb0fd3c3e55d3432f587605f38566a8c17c"
+    "duration_seconds": 59.507,
+    "visual_id": 28615724,
+    "theme": "trials",
+    "visual_query": "strong waves against a rugged coastline, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-214-to-215-Cycle-1.mp4",
+    "published_sha256": "2f653bce3a84bddf38686b599684d91b71edfabd989234dbbb24fd2481e21d99"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -422,6 +425,7 @@
     28436005,
     28556415,
     28615722,
+    28615724,
     28616455,
     28965624,
     29042409,
@@ -495,10 +499,11 @@
     "remembrance": 2,
     "mortality": 1,
     "judgment": 3,
-    "gratitude": 1
+    "gratitude": 1,
+    "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 74,
+  "published_count": 75,
   "history": [
     {
       "cycle": 1,
@@ -1509,6 +1514,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-213-Cycle-1.mp4",
       "published_sha256": "e91c377352188519da3519c36fcdcdb0fd3c3e55d3432f587605f38566a8c17c",
       "created_at": "2026-09-24T13:10:43Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:214",
+        "2:215"
+      ],
+      "visual_id": 28615724,
+      "theme": "trials",
+      "visual_query": "strong waves against a rugged coastline, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-214-to-215-Cycle-1.mp4",
+      "published_sha256": "2f653bce3a84bddf38686b599684d91b71edfabd989234dbbb24fd2481e21d99",
+      "created_at": "2026-09-25T13:14:18Z"
     }
   ],
   "visual_history": [
@@ -1585,6 +1603,7 @@
     38707148,
     31118005,
     34576011,
-    30485949
+    30485949,
+    28615724
   ]
 }
