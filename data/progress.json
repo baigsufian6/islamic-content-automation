@@ -222,7 +222,8 @@
     "2:212",
     "2:213",
     "2:214",
-    "2:215"
+    "2:215",
+    "2:216"
   ],
   "published_sections": [
     {
@@ -390,17 +391,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:214",
-      "2:215"
+      "2:216"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 59.507,
-    "visual_id": 28615724,
-    "theme": "trials",
-    "visual_query": "strong waves against a rugged coastline, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-214-to-215-Cycle-1.mp4",
-    "published_sha256": "2f653bce3a84bddf38686b599684d91b71edfabd989234dbbb24fd2481e21d99"
+    "duration_seconds": 24.973,
+    "visual_id": 36594001,
+    "theme": "knowledge",
+    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-216-Cycle-1.mp4",
+    "published_sha256": "ff94bfc134c8657abaff15aeec8c269ec917eb8528bf7cf6480065eca133a2ab"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -455,6 +455,7 @@
     35909724,
     36048487,
     36315916,
+    36594001,
     37127031,
     37542312,
     37694068,
@@ -486,7 +487,7 @@
     "justice": 4,
     "paradise": 2,
     "earth": 1,
-    "knowledge": 6,
+    "knowledge": 7,
     "worship": 3,
     "patience": 3,
     "warning": 4,
@@ -503,7 +504,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 75,
+  "published_count": 76,
   "history": [
     {
       "cycle": 1,
@@ -1527,6 +1528,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-214-to-215-Cycle-1.mp4",
       "published_sha256": "2f653bce3a84bddf38686b599684d91b71edfabd989234dbbb24fd2481e21d99",
       "created_at": "2026-09-25T13:14:18Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:216"
+      ],
+      "visual_id": 36594001,
+      "theme": "knowledge",
+      "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-216-Cycle-1.mp4",
+      "published_sha256": "ff94bfc134c8657abaff15aeec8c269ec917eb8528bf7cf6480065eca133a2ab",
+      "created_at": "2026-09-26T12:41:15Z"
     }
   ],
   "visual_history": [
@@ -1604,6 +1617,7 @@
     31118005,
     34576011,
     30485949,
-    28615724
+    28615724,
+    36594001
   ]
 }
