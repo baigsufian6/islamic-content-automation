@@ -225,7 +225,9 @@
     "2:215",
     "2:216",
     "2:217",
-    "2:218"
+    "2:218",
+    "2:219",
+    "2:220"
   ],
   "published_sections": [
     {
@@ -393,17 +395,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:217",
-      "2:218"
+      "2:219",
+      "2:220"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 81.058,
-    "visual_id": 38053794,
-    "theme": "mercy",
-    "visual_query": "open Quran manuscript illuminated by warm candlelight, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-217-to-218-Cycle-1.mp4",
-    "published_sha256": "3d4d48f1f43e134c227d436bee58d43324bf6597dcc26214838dbdbfa2c8ccb3"
+    "duration_seconds": 58.697,
+    "visual_id": 39265695,
+    "theme": "revelation",
+    "visual_query": "Arabic calligraphy on aged parchment, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-219-to-220-Cycle-1.mp4",
+    "published_sha256": "36387e5aa14ad63270d08769c25d4fea1a018a354ee01e67998e6145241bf405"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -482,6 +484,7 @@
     39156893,
     39183413,
     39192482,
+    39265695,
     39320537,
     39432862
   ],
@@ -500,7 +503,7 @@
     "water": 2,
     "hope": 1,
     "afterlife": 9,
-    "revelation": 1,
+    "revelation": 2,
     "remembrance": 2,
     "mortality": 1,
     "judgment": 3,
@@ -508,7 +511,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 77,
+  "published_count": 78,
   "history": [
     {
       "cycle": 1,
@@ -1557,6 +1560,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-217-to-218-Cycle-1.mp4",
       "published_sha256": "3d4d48f1f43e134c227d436bee58d43324bf6597dcc26214838dbdbfa2c8ccb3",
       "created_at": "2026-09-27T13:33:05Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:219",
+        "2:220"
+      ],
+      "visual_id": 39265695,
+      "theme": "revelation",
+      "visual_query": "Arabic calligraphy on aged parchment, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-219-to-220-Cycle-1.mp4",
+      "published_sha256": "36387e5aa14ad63270d08769c25d4fea1a018a354ee01e67998e6145241bf405",
+      "created_at": "2026-09-28T16:29:05Z"
     }
   ],
   "visual_history": [
@@ -1636,6 +1652,7 @@
     30485949,
     28615724,
     36594001,
-    38053794
+    38053794,
+    39265695
   ]
 }
