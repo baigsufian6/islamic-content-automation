@@ -227,7 +227,8 @@
     "2:217",
     "2:218",
     "2:219",
-    "2:220"
+    "2:220",
+    "2:221"
   ],
   "published_sections": [
     {
@@ -395,17 +396,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:219",
-      "2:220"
+      "2:221"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 58.697,
-    "visual_id": 39265695,
-    "theme": "revelation",
-    "visual_query": "Arabic calligraphy on aged parchment, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-219-to-220-Cycle-1.mp4",
-    "published_sha256": "36387e5aa14ad63270d08769c25d4fea1a018a354ee01e67998e6145241bf405"
+    "duration_seconds": 46.968,
+    "visual_id": 39139173,
+    "theme": "paradise",
+    "visual_query": "serene garden surrounded by flowing water, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-221-Cycle-1.mp4",
+    "published_sha256": "8c801fe2f6c5ba5f7dcaeb634a48cd3604a1f729df37971a4a0930090db83d0f"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -479,6 +479,7 @@
     38861185,
     38947096,
     38963559,
+    39139173,
     39139174,
     39149890,
     39156893,
@@ -492,7 +493,7 @@
     "guidance": 13,
     "creation": 6,
     "justice": 4,
-    "paradise": 2,
+    "paradise": 3,
     "earth": 1,
     "knowledge": 7,
     "worship": 3,
@@ -511,7 +512,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 78,
+  "published_count": 79,
   "history": [
     {
       "cycle": 1,
@@ -1573,6 +1574,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-219-to-220-Cycle-1.mp4",
       "published_sha256": "36387e5aa14ad63270d08769c25d4fea1a018a354ee01e67998e6145241bf405",
       "created_at": "2026-09-28T16:29:05Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:221"
+      ],
+      "visual_id": 39139173,
+      "theme": "paradise",
+      "visual_query": "serene garden surrounded by flowing water, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-221-Cycle-1.mp4",
+      "published_sha256": "8c801fe2f6c5ba5f7dcaeb634a48cd3604a1f729df37971a4a0930090db83d0f",
+      "created_at": "2026-09-29T14:39:07Z"
     }
   ],
   "visual_history": [
@@ -1653,6 +1666,7 @@
     28615724,
     36594001,
     38053794,
-    39265695
+    39265695,
+    39139173
   ]
 }
