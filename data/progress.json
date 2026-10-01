@@ -232,7 +232,10 @@
     "2:222",
     "2:223",
     "2:224",
-    "2:225"
+    "2:225",
+    "2:226",
+    "2:227",
+    "2:228"
   ],
   "published_sections": [
     {
@@ -400,19 +403,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:222",
-      "2:223",
-      "2:224",
-      "2:225"
+      "2:226",
+      "2:227",
+      "2:228"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 79.673,
-    "visual_id": 37568663,
-    "theme": "knowledge",
-    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-222-to-225-Cycle-1.mp4",
-    "published_sha256": "f55ac54680d1ae4c6e9d37c827023c6c20874610e7dba32f265160dbd584f14a"
+    "duration_seconds": 78.759,
+    "visual_id": 38866441,
+    "theme": "mercy",
+    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-226-to-228-Cycle-1.mp4",
+    "published_sha256": "018938b058ea472a5c2b5c1c65658c1ee8ad8b49d405ebc5c9243173cdc63e97"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -485,6 +487,7 @@
     38430619,
     38707148,
     38861185,
+    38866441,
     38947096,
     38963559,
     39139173,
@@ -508,7 +511,7 @@
     "patience": 3,
     "warning": 4,
     "repentance": 3,
-    "mercy": 10,
+    "mercy": 11,
     "water": 2,
     "hope": 1,
     "afterlife": 9,
@@ -520,7 +523,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 80,
+  "published_count": 81,
   "history": [
     {
       "cycle": 1,
@@ -1609,6 +1612,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-222-to-225-Cycle-1.mp4",
       "published_sha256": "f55ac54680d1ae4c6e9d37c827023c6c20874610e7dba32f265160dbd584f14a",
       "created_at": "2026-09-30T14:39:03Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:226",
+        "2:227",
+        "2:228"
+      ],
+      "visual_id": 38866441,
+      "theme": "mercy",
+      "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-226-to-228-Cycle-1.mp4",
+      "published_sha256": "018938b058ea472a5c2b5c1c65658c1ee8ad8b49d405ebc5c9243173cdc63e97",
+      "created_at": "2026-10-01T15:27:13Z"
     }
   ],
   "visual_history": [
@@ -1691,6 +1708,7 @@
     38053794,
     39265695,
     39139173,
-    37568663
+    37568663,
+    38866441
   ]
 }
