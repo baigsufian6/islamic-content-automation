@@ -235,7 +235,8 @@
     "2:225",
     "2:226",
     "2:227",
-    "2:228"
+    "2:228",
+    "2:229"
   ],
   "published_sections": [
     {
@@ -403,18 +404,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:226",
-      "2:227",
-      "2:228"
+      "2:229"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 78.759,
-    "visual_id": 38866441,
-    "theme": "mercy",
-    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-226-to-228-Cycle-1.mp4",
-    "published_sha256": "018938b058ea472a5c2b5c1c65658c1ee8ad8b49d405ebc5c9243173cdc63e97"
+    "duration_seconds": 50.103,
+    "visual_id": 37899440,
+    "theme": "warning",
+    "visual_query": "cracked dry earth beneath threatening clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.mp4",
+    "published_sha256": "e7fd1373305eb0d353263eed5d2e47ec770d666a69aad425f2f420a3bca8fdba"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -476,6 +475,7 @@
     37694068,
     37694201,
     37894855,
+    37899440,
     37899472,
     37903577,
     37904635,
@@ -509,7 +509,7 @@
     "knowledge": 8,
     "worship": 3,
     "patience": 3,
-    "warning": 4,
+    "warning": 5,
     "repentance": 3,
     "mercy": 11,
     "water": 2,
@@ -523,7 +523,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 81,
+  "published_count": 82,
   "history": [
     {
       "cycle": 1,
@@ -1626,6 +1626,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-226-to-228-Cycle-1.mp4",
       "published_sha256": "018938b058ea472a5c2b5c1c65658c1ee8ad8b49d405ebc5c9243173cdc63e97",
       "created_at": "2026-10-01T15:27:13Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:229"
+      ],
+      "visual_id": 37899440,
+      "theme": "warning",
+      "visual_query": "cracked dry earth beneath threatening clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.mp4",
+      "published_sha256": "e7fd1373305eb0d353263eed5d2e47ec770d666a69aad425f2f420a3bca8fdba",
+      "created_at": "2026-10-02T14:30:12Z"
     }
   ],
   "visual_history": [
@@ -1709,6 +1721,7 @@
     39265695,
     39139173,
     37568663,
-    38866441
+    38866441,
+    37899440
   ]
 }

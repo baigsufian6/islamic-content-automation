@@ -1405,5 +1405,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-226-to-228-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-01T15:27:13Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.json",
+    "published_sha256": "e7fd1373305eb0d353263eed5d2e47ec770d666a69aad425f2f420a3bca8fdba",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:229"
+    ],
+    "duration_seconds": 50.103,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-02T14:30:12Z"
   }
 ]
