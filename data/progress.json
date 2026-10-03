@@ -236,7 +236,8 @@
     "2:226",
     "2:227",
     "2:228",
-    "2:229"
+    "2:229",
+    "2:230"
   ],
   "published_sections": [
     {
@@ -404,16 +405,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:229"
+      "2:230"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 50.103,
-    "visual_id": 37899440,
-    "theme": "warning",
-    "visual_query": "cracked dry earth beneath threatening clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.mp4",
-    "published_sha256": "e7fd1373305eb0d353263eed5d2e47ec770d666a69aad425f2f420a3bca8fdba"
+    "duration_seconds": 34.325,
+    "visual_id": 35844676,
+    "theme": "knowledge",
+    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-230-Cycle-1.mp4",
+    "published_sha256": "8ac145de6d700ade45fe4e08d5cb61ed3300398b56982f941e883db56052e6ba"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -465,6 +466,7 @@
     35633884,
     35666006,
     35723248,
+    35844676,
     35909724,
     36048487,
     36315916,
@@ -506,7 +508,7 @@
     "justice": 4,
     "paradise": 3,
     "earth": 1,
-    "knowledge": 8,
+    "knowledge": 9,
     "worship": 3,
     "patience": 3,
     "warning": 5,
@@ -523,7 +525,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 82,
+  "published_count": 83,
   "history": [
     {
       "cycle": 1,
@@ -1638,6 +1640,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-229-Cycle-1.mp4",
       "published_sha256": "e7fd1373305eb0d353263eed5d2e47ec770d666a69aad425f2f420a3bca8fdba",
       "created_at": "2026-10-02T14:30:12Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:230"
+      ],
+      "visual_id": 35844676,
+      "theme": "knowledge",
+      "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-230-Cycle-1.mp4",
+      "published_sha256": "8ac145de6d700ade45fe4e08d5cb61ed3300398b56982f941e883db56052e6ba",
+      "created_at": "2026-10-03T12:58:40Z"
     }
   ],
   "visual_history": [
@@ -1722,6 +1736,7 @@
     39139173,
     37568663,
     38866441,
-    37899440
+    37899440,
+    35844676
   ]
 }
