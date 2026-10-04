@@ -237,7 +237,8 @@
     "2:227",
     "2:228",
     "2:229",
-    "2:230"
+    "2:230",
+    "2:231"
   ],
   "published_sections": [
     {
@@ -405,16 +406,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:230"
+      "2:231"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 34.325,
-    "visual_id": 35844676,
+    "duration_seconds": 49.816,
+    "visual_id": 20347202,
     "theme": "knowledge",
-    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-230-Cycle-1.mp4",
-    "published_sha256": "8ac145de6d700ade45fe4e08d5cb61ed3300398b56982f941e883db56052e6ba"
+    "visual_query": "open Quran manuscript pages in warm natural light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-231-Cycle-1.mp4",
+    "published_sha256": "b96f7d6aac7606566748987d89477d7bdeada5ace888ff62fafba501b640cec5"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -430,6 +431,7 @@
     18418472,
     19948838,
     20063577,
+    20347202,
     24818388,
     25682066,
     27604262,
@@ -508,7 +510,7 @@
     "justice": 4,
     "paradise": 3,
     "earth": 1,
-    "knowledge": 9,
+    "knowledge": 10,
     "worship": 3,
     "patience": 3,
     "warning": 5,
@@ -525,7 +527,7 @@
     "trials": 1
   },
   "completed_cycles": [],
-  "published_count": 83,
+  "published_count": 84,
   "history": [
     {
       "cycle": 1,
@@ -1652,6 +1654,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-230-Cycle-1.mp4",
       "published_sha256": "8ac145de6d700ade45fe4e08d5cb61ed3300398b56982f941e883db56052e6ba",
       "created_at": "2026-10-03T12:58:40Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:231"
+      ],
+      "visual_id": 20347202,
+      "theme": "knowledge",
+      "visual_query": "open Quran manuscript pages in warm natural light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-231-Cycle-1.mp4",
+      "published_sha256": "b96f7d6aac7606566748987d89477d7bdeada5ace888ff62fafba501b640cec5",
+      "created_at": "2026-10-04T13:39:28Z"
     }
   ],
   "visual_history": [
@@ -1737,6 +1751,7 @@
     37568663,
     38866441,
     37899440,
-    35844676
+    35844676,
+    20347202
   ]
 }
