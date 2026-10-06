@@ -239,7 +239,8 @@
     "2:229",
     "2:230",
     "2:231",
-    "2:232"
+    "2:232",
+    "2:233"
   ],
   "published_sections": [
     {
@@ -407,16 +408,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:232"
+      "2:233"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 41.038,
-    "visual_id": 20347206,
-    "theme": "knowledge",
-    "visual_query": "open Quran manuscript pages in warm natural light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-232-Cycle-1.mp4",
-    "published_sha256": "81d60438ef7be3f98fba00b291ecaacfe7e848723ec4a6519c10e4ef62f39611"
+    "duration_seconds": 71.811,
+    "visual_id": 36287980,
+    "theme": "provision",
+    "visual_query": "lush agricultural valley under morning light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-233-Cycle-1.mp4",
+    "published_sha256": "d5a536c4d8bf43497439d1e2ac536b227256f9bd053dce17959d6ca715646dd0"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -473,6 +474,7 @@
     35844676,
     35909724,
     36048487,
+    36287980,
     36315916,
     36594001,
     37127031,
@@ -526,10 +528,11 @@
     "mortality": 1,
     "judgment": 3,
     "gratitude": 1,
-    "trials": 1
+    "trials": 1,
+    "provision": 1
   },
   "completed_cycles": [],
-  "published_count": 85,
+  "published_count": 86,
   "history": [
     {
       "cycle": 1,
@@ -1680,6 +1683,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-232-Cycle-1.mp4",
       "published_sha256": "81d60438ef7be3f98fba00b291ecaacfe7e848723ec4a6519c10e4ef62f39611",
       "created_at": "2026-10-05T16:44:10Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:233"
+      ],
+      "visual_id": 36287980,
+      "theme": "provision",
+      "visual_query": "lush agricultural valley under morning light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-233-Cycle-1.mp4",
+      "published_sha256": "d5a536c4d8bf43497439d1e2ac536b227256f9bd053dce17959d6ca715646dd0",
+      "created_at": "2026-10-06T14:47:32Z"
     }
   ],
   "visual_history": [
@@ -1767,6 +1782,7 @@
     37899440,
     35844676,
     20347202,
-    20347206
+    20347206,
+    36287980
   ]
 }
