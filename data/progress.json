@@ -240,7 +240,8 @@
     "2:230",
     "2:231",
     "2:232",
-    "2:233"
+    "2:233",
+    "2:234"
   ],
   "published_sections": [
     {
@@ -408,16 +409,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:233"
+      "2:234"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 71.811,
-    "visual_id": 36287980,
-    "theme": "provision",
-    "visual_query": "lush agricultural valley under morning light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-233-Cycle-1.mp4",
-    "published_sha256": "d5a536c4d8bf43497439d1e2ac536b227256f9bd053dce17959d6ca715646dd0"
+    "duration_seconds": 30.668,
+    "visual_id": 34625979,
+    "theme": "mortality",
+    "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-234-Cycle-1.mp4",
+    "published_sha256": "9206f39f66d2eb0e14e31457b0e2bf8200bc3af060e00e745fa49f22769bbc42"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -461,6 +462,7 @@
     34464347,
     34576011,
     34625872,
+    34625979,
     34823867,
     34836239,
     34913017,
@@ -525,14 +527,14 @@
     "afterlife": 9,
     "revelation": 2,
     "remembrance": 2,
-    "mortality": 1,
+    "mortality": 2,
     "judgment": 3,
     "gratitude": 1,
     "trials": 1,
     "provision": 1
   },
   "completed_cycles": [],
-  "published_count": 86,
+  "published_count": 87,
   "history": [
     {
       "cycle": 1,
@@ -1695,6 +1697,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-233-Cycle-1.mp4",
       "published_sha256": "d5a536c4d8bf43497439d1e2ac536b227256f9bd053dce17959d6ca715646dd0",
       "created_at": "2026-10-06T14:47:32Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:234"
+      ],
+      "visual_id": 34625979,
+      "theme": "mortality",
+      "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-234-Cycle-1.mp4",
+      "published_sha256": "9206f39f66d2eb0e14e31457b0e2bf8200bc3af060e00e745fa49f22769bbc42",
+      "created_at": "2026-10-07T15:03:56Z"
     }
   ],
   "visual_history": [
@@ -1783,6 +1797,7 @@
     35844676,
     20347202,
     20347206,
-    36287980
+    36287980,
+    34625979
   ]
 }
