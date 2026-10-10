@@ -245,7 +245,11 @@
     "2:235",
     "2:236",
     "2:237",
-    "2:238"
+    "2:238",
+    "2:239",
+    "2:240",
+    "2:241",
+    "2:242"
   ],
   "published_sections": [
     {
@@ -413,18 +417,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:236",
-      "2:237",
-      "2:238"
+      "2:239",
+      "2:240",
+      "2:241",
+      "2:242"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 76.251,
-    "visual_id": 32583800,
+    "duration_seconds": 61.048,
+    "visual_id": 36759808,
     "theme": "worship",
-    "visual_query": "geometric mosque architecture in golden hour, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-236-to-238-Cycle-1.mp4",
-    "published_sha256": "8452f1e934ac75b7597543905343b51e087a9dbc03251cdc659f77212771690e"
+    "visual_query": "quiet mosque interior with geometric architecture, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.mp4",
+    "published_sha256": "452d5d04f7dab0efc8d6a38dca2946609dcaa875ec6757184a25cc08dd8a84e1"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -486,6 +491,7 @@
     36287980,
     36315916,
     36594001,
+    36759808,
     37127031,
     37542312,
     37568663,
@@ -525,7 +531,7 @@
     "paradise": 3,
     "earth": 1,
     "knowledge": 11,
-    "worship": 4,
+    "worship": 5,
     "patience": 3,
     "warning": 5,
     "repentance": 3,
@@ -542,7 +548,7 @@
     "provision": 1
   },
   "completed_cycles": [],
-  "published_count": 89,
+  "published_count": 90,
   "history": [
     {
       "cycle": 1,
@@ -1743,6 +1749,21 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-236-to-238-Cycle-1.mp4",
       "published_sha256": "8452f1e934ac75b7597543905343b51e087a9dbc03251cdc659f77212771690e",
       "created_at": "2026-10-09T14:59:53Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:239",
+        "2:240",
+        "2:241",
+        "2:242"
+      ],
+      "visual_id": 36759808,
+      "theme": "worship",
+      "visual_query": "quiet mosque interior with geometric architecture, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.mp4",
+      "published_sha256": "452d5d04f7dab0efc8d6a38dca2946609dcaa875ec6757184a25cc08dd8a84e1",
+      "created_at": "2026-10-10T14:13:34Z"
     }
   ],
   "visual_history": [
@@ -1834,6 +1855,7 @@
     36287980,
     34625979,
     39968033,
-    32583800
+    32583800,
+    36759808
   ]
 }

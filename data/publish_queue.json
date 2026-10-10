@@ -1535,5 +1535,24 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-236-to-238-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-09T14:59:53Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.json",
+    "published_sha256": "452d5d04f7dab0efc8d6a38dca2946609dcaa875ec6757184a25cc08dd8a84e1",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:239",
+      "2:240",
+      "2:241",
+      "2:242"
+    ],
+    "duration_seconds": 61.048,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-10T14:13:34Z"
   }
 ]
