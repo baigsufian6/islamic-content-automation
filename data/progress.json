@@ -249,7 +249,10 @@
     "2:239",
     "2:240",
     "2:241",
-    "2:242"
+    "2:242",
+    "2:243",
+    "2:244",
+    "2:245"
   ],
   "published_sections": [
     {
@@ -417,19 +420,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:239",
-      "2:240",
-      "2:241",
-      "2:242"
+      "2:243",
+      "2:244",
+      "2:245"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 61.048,
-    "visual_id": 36759808,
-    "theme": "worship",
-    "visual_query": "quiet mosque interior with geometric architecture, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.mp4",
-    "published_sha256": "452d5d04f7dab0efc8d6a38dca2946609dcaa875ec6757184a25cc08dd8a84e1"
+    "duration_seconds": 54.909,
+    "visual_id": 34464345,
+    "theme": "mortality",
+    "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-243-to-245-Cycle-1.mp4",
+    "published_sha256": "fd188e3f6f9fbf85b75252bd2151e948b97536af0313b70f8d0d541294d59579"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -471,6 +473,7 @@
     33744507,
     33807471,
     34464344,
+    34464345,
     34464347,
     34576011,
     34625872,
@@ -541,14 +544,14 @@
     "afterlife": 9,
     "revelation": 2,
     "remembrance": 2,
-    "mortality": 2,
+    "mortality": 3,
     "judgment": 3,
     "gratitude": 1,
     "trials": 1,
     "provision": 1
   },
   "completed_cycles": [],
-  "published_count": 90,
+  "published_count": 91,
   "history": [
     {
       "cycle": 1,
@@ -1764,6 +1767,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-239-to-242-Cycle-1.mp4",
       "published_sha256": "452d5d04f7dab0efc8d6a38dca2946609dcaa875ec6757184a25cc08dd8a84e1",
       "created_at": "2026-10-10T14:13:34Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:243",
+        "2:244",
+        "2:245"
+      ],
+      "visual_id": 34464345,
+      "theme": "mortality",
+      "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-243-to-245-Cycle-1.mp4",
+      "published_sha256": "fd188e3f6f9fbf85b75252bd2151e948b97536af0313b70f8d0d541294d59579",
+      "created_at": "2026-10-11T14:38:08Z"
     }
   ],
   "visual_history": [
@@ -1856,6 +1873,7 @@
     34625979,
     39968033,
     32583800,
-    36759808
+    36759808,
+    34464345
   ]
 }
