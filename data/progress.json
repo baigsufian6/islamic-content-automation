@@ -252,7 +252,8 @@
     "2:242",
     "2:243",
     "2:244",
-    "2:245"
+    "2:245",
+    "2:246"
   ],
   "published_sections": [
     {
@@ -420,18 +421,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:243",
-      "2:244",
-      "2:245"
+      "2:246"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 54.909,
-    "visual_id": 34464345,
-    "theme": "mortality",
-    "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-243-to-245-Cycle-1.mp4",
-    "published_sha256": "fd188e3f6f9fbf85b75252bd2151e948b97536af0313b70f8d0d541294d59579"
+    "duration_seconds": 56.607,
+    "visual_id": 39897021,
+    "theme": "guidance",
+    "visual_query": "peaceful road through vast open landscape at sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-246-Cycle-1.mp4",
+    "published_sha256": "d6b94d01c4ee53cb6d26a8cb69b5e29c028a33b9e53469935d28143542162d06"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -525,10 +524,11 @@
     39265695,
     39320537,
     39432862,
+    39897021,
     39968033
   ],
   "theme_usage": {
-    "guidance": 13,
+    "guidance": 14,
     "creation": 6,
     "justice": 4,
     "paradise": 3,
@@ -551,7 +551,7 @@
     "provision": 1
   },
   "completed_cycles": [],
-  "published_count": 91,
+  "published_count": 92,
   "history": [
     {
       "cycle": 1,
@@ -1781,6 +1781,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-243-to-245-Cycle-1.mp4",
       "published_sha256": "fd188e3f6f9fbf85b75252bd2151e948b97536af0313b70f8d0d541294d59579",
       "created_at": "2026-10-11T14:38:08Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:246"
+      ],
+      "visual_id": 39897021,
+      "theme": "guidance",
+      "visual_query": "peaceful road through vast open landscape at sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-246-Cycle-1.mp4",
+      "published_sha256": "d6b94d01c4ee53cb6d26a8cb69b5e29c028a33b9e53469935d28143542162d06",
+      "created_at": "2026-10-12T17:21:04Z"
     }
   ],
   "visual_history": [
@@ -1874,6 +1886,7 @@
     39968033,
     32583800,
     36759808,
-    34464345
+    34464345,
+    39897021
   ]
 }
