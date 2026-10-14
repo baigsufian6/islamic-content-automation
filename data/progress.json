@@ -254,7 +254,8 @@
     "2:244",
     "2:245",
     "2:246",
-    "2:247"
+    "2:247",
+    "2:248"
   ],
   "published_sections": [
     {
@@ -422,16 +423,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:247"
+      "2:248"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 41.953,
-    "visual_id": 30324465,
-    "theme": "knowledge",
-    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-247-Cycle-1.mp4",
-    "published_sha256": "1aeebd6b4c53a2ce355e09f114e92e429a029f659032f34ea6bda34f89df1354"
+    "duration_seconds": 42.397,
+    "visual_id": 40114862,
+    "theme": "reflection",
+    "visual_query": "peaceful cinematic nature landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.mp4",
+    "published_sha256": "5b920179940e8f3379487418e06e10770860ba709fa08e66548d0b80eb03c2b0"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -527,7 +528,8 @@
     39320537,
     39432862,
     39897021,
-    39968033
+    39968033,
+    40114862
   ],
   "theme_usage": {
     "guidance": 14,
@@ -550,10 +552,11 @@
     "judgment": 3,
     "gratitude": 1,
     "trials": 1,
-    "provision": 1
+    "provision": 1,
+    "reflection": 1
   },
   "completed_cycles": [],
-  "published_count": 93,
+  "published_count": 94,
   "history": [
     {
       "cycle": 1,
@@ -1807,6 +1810,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-247-Cycle-1.mp4",
       "published_sha256": "1aeebd6b4c53a2ce355e09f114e92e429a029f659032f34ea6bda34f89df1354",
       "created_at": "2026-10-13T15:33:09Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:248"
+      ],
+      "visual_id": 40114862,
+      "theme": "reflection",
+      "visual_query": "peaceful cinematic nature landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.mp4",
+      "published_sha256": "5b920179940e8f3379487418e06e10770860ba709fa08e66548d0b80eb03c2b0",
+      "created_at": "2026-10-14T13:19:56Z"
     }
   ],
   "visual_history": [
@@ -1902,6 +1917,7 @@
     36759808,
     34464345,
     39897021,
-    30324465
+    30324465,
+    40114862
   ]
 }

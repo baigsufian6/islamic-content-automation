@@ -1604,5 +1604,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-247-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-13T15:33:09Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.json",
+    "published_sha256": "5b920179940e8f3379487418e06e10770860ba709fa08e66548d0b80eb03c2b0",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:248"
+    ],
+    "duration_seconds": 42.397,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-14T13:19:56Z"
   }
 ]
