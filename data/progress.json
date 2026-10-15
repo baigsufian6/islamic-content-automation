@@ -255,7 +255,8 @@
     "2:245",
     "2:246",
     "2:247",
-    "2:248"
+    "2:248",
+    "2:249"
   ],
   "published_sections": [
     {
@@ -423,16 +424,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:248"
+      "2:249"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 42.397,
-    "visual_id": 40114862,
-    "theme": "reflection",
-    "visual_query": "peaceful cinematic nature landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.mp4",
-    "published_sha256": "5b920179940e8f3379487418e06e10770860ba709fa08e66548d0b80eb03c2b0"
+    "duration_seconds": 68.989,
+    "visual_id": 40190551,
+    "theme": "patience",
+    "visual_query": "still mountain lake reflecting peaceful sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-249-Cycle-1.mp4",
+    "published_sha256": "ae9e68fe211aaea4bdddcfe6ae267411edbc7cd45886b6e4c8e8fb5796212065"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -529,7 +530,8 @@
     39432862,
     39897021,
     39968033,
-    40114862
+    40114862,
+    40190551
   ],
   "theme_usage": {
     "guidance": 14,
@@ -539,7 +541,7 @@
     "earth": 1,
     "knowledge": 12,
     "worship": 5,
-    "patience": 3,
+    "patience": 4,
     "warning": 5,
     "repentance": 3,
     "mercy": 12,
@@ -556,7 +558,7 @@
     "reflection": 1
   },
   "completed_cycles": [],
-  "published_count": 94,
+  "published_count": 95,
   "history": [
     {
       "cycle": 1,
@@ -1822,6 +1824,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-248-Cycle-1.mp4",
       "published_sha256": "5b920179940e8f3379487418e06e10770860ba709fa08e66548d0b80eb03c2b0",
       "created_at": "2026-10-14T13:19:56Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:249"
+      ],
+      "visual_id": 40190551,
+      "theme": "patience",
+      "visual_query": "still mountain lake reflecting peaceful sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-249-Cycle-1.mp4",
+      "published_sha256": "ae9e68fe211aaea4bdddcfe6ae267411edbc7cd45886b6e4c8e8fb5796212065",
+      "created_at": "2026-10-15T13:11:48Z"
     }
   ],
   "visual_history": [
@@ -1918,6 +1932,7 @@
     34464345,
     39897021,
     30324465,
-    40114862
+    40114862,
+    40190551
   ]
 }
