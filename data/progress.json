@@ -256,7 +256,10 @@
     "2:246",
     "2:247",
     "2:248",
-    "2:249"
+    "2:249",
+    "2:250",
+    "2:251",
+    "2:252"
   ],
   "published_sections": [
     {
@@ -424,16 +427,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:249"
+      "2:250",
+      "2:251",
+      "2:252"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 68.989,
-    "visual_id": 40190551,
+    "duration_seconds": 66.116,
+    "visual_id": 34307917,
     "theme": "patience",
-    "visual_query": "still mountain lake reflecting peaceful sky, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-249-Cycle-1.mp4",
-    "published_sha256": "ae9e68fe211aaea4bdddcfe6ae267411edbc7cd45886b6e4c8e8fb5796212065"
+    "visual_query": "quiet desert dunes under soft evening light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-250-to-252-Cycle-1.mp4",
+    "published_sha256": "190d126cbbb3383357cd7157dbc2f5e2e04d122fd781baaea8350805134eca42"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -475,6 +480,7 @@
     32583800,
     33744507,
     33807471,
+    34307917,
     34464344,
     34464345,
     34464347,
@@ -541,7 +547,7 @@
     "earth": 1,
     "knowledge": 12,
     "worship": 5,
-    "patience": 4,
+    "patience": 5,
     "warning": 5,
     "repentance": 3,
     "mercy": 12,
@@ -558,7 +564,7 @@
     "reflection": 1
   },
   "completed_cycles": [],
-  "published_count": 95,
+  "published_count": 96,
   "history": [
     {
       "cycle": 1,
@@ -1836,6 +1842,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-249-Cycle-1.mp4",
       "published_sha256": "ae9e68fe211aaea4bdddcfe6ae267411edbc7cd45886b6e4c8e8fb5796212065",
       "created_at": "2026-10-15T13:11:48Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:250",
+        "2:251",
+        "2:252"
+      ],
+      "visual_id": 34307917,
+      "theme": "patience",
+      "visual_query": "quiet desert dunes under soft evening light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-250-to-252-Cycle-1.mp4",
+      "published_sha256": "190d126cbbb3383357cd7157dbc2f5e2e04d122fd781baaea8350805134eca42",
+      "created_at": "2026-10-16T13:02:36Z"
     }
   ],
   "visual_history": [
@@ -1933,6 +1953,7 @@
     39897021,
     30324465,
     40114862,
-    40190551
+    40190551,
+    34307917
   ]
 }
