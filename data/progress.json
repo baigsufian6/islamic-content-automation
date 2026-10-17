@@ -259,7 +259,8 @@
     "2:249",
     "2:250",
     "2:251",
-    "2:252"
+    "2:252",
+    "2:253"
   ],
   "published_sections": [
     {
@@ -427,18 +428,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:250",
-      "2:251",
-      "2:252"
+      "2:253"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 66.116,
-    "visual_id": 34307917,
-    "theme": "patience",
-    "visual_query": "quiet desert dunes under soft evening light, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-250-to-252-Cycle-1.mp4",
-    "published_sha256": "190d126cbbb3383357cd7157dbc2f5e2e04d122fd781baaea8350805134eca42"
+    "duration_seconds": 50.887,
+    "visual_id": 26653871,
+    "theme": "reflection",
+    "visual_query": "peaceful cinematic nature landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-253-Cycle-1.mp4",
+    "published_sha256": "382f4f060e7b5c6e118f60a9bb5be886c903f6af34c419e3b77654b67a75042a"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -458,6 +457,7 @@
     20347206,
     24818388,
     25682066,
+    26653871,
     27604262,
     27863479,
     28315077,
@@ -561,10 +561,10 @@
     "gratitude": 1,
     "trials": 1,
     "provision": 1,
-    "reflection": 1
+    "reflection": 2
   },
   "completed_cycles": [],
-  "published_count": 96,
+  "published_count": 97,
   "history": [
     {
       "cycle": 1,
@@ -1856,6 +1856,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-250-to-252-Cycle-1.mp4",
       "published_sha256": "190d126cbbb3383357cd7157dbc2f5e2e04d122fd781baaea8350805134eca42",
       "created_at": "2026-10-16T13:02:36Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:253"
+      ],
+      "visual_id": 26653871,
+      "theme": "reflection",
+      "visual_query": "peaceful cinematic nature landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-253-Cycle-1.mp4",
+      "published_sha256": "382f4f060e7b5c6e118f60a9bb5be886c903f6af34c419e3b77654b67a75042a",
+      "created_at": "2026-10-17T12:00:06Z"
     }
   ],
   "visual_history": [
@@ -1954,6 +1966,7 @@
     30324465,
     40114862,
     40190551,
-    34307917
+    34307917,
+    26653871
   ]
 }

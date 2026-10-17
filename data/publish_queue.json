@@ -1654,5 +1654,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-250-to-252-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-16T13:02:36Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-253-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-253-Cycle-1.json",
+    "published_sha256": "382f4f060e7b5c6e118f60a9bb5be886c903f6af34c419e3b77654b67a75042a",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:253"
+    ],
+    "duration_seconds": 50.887,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-253-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-17T12:00:06Z"
   }
 ]
