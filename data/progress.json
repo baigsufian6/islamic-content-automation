@@ -262,7 +262,9 @@
     "2:252",
     "2:253",
     "2:254",
-    "2:255"
+    "2:255",
+    "2:256",
+    "2:257"
   ],
   "published_sections": [
     {
@@ -430,17 +432,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:254",
-      "2:255"
+      "2:256",
+      "2:257"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 80.536,
-    "visual_id": 40281172,
-    "theme": "knowledge",
-    "visual_query": "ink pen beside an open manuscript, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-254-to-255-Cycle-1.mp4",
-    "published_sha256": "aaa938fab0c8f57e8e7010f002fdbcd960aa2da395bf1144b1d11bda3c468c39"
+    "duration_seconds": 58.227,
+    "visual_id": 11631252,
+    "theme": "light",
+    "visual_query": "powerful sun rays breaking through dark clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-256-to-257-Cycle-1.mp4",
+    "published_sha256": "ed01ac698b9a88a1111188b38068f3d446738ab545c31d5806c04fe5693b9f9b"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -449,6 +451,7 @@
     10297371,
     10681857,
     11318637,
+    11631252,
     13243682,
     14281701,
     16582413,
@@ -565,10 +568,11 @@
     "gratitude": 1,
     "trials": 1,
     "provision": 1,
-    "reflection": 2
+    "reflection": 2,
+    "light": 1
   },
   "completed_cycles": [],
-  "published_count": 98,
+  "published_count": 99,
   "history": [
     {
       "cycle": 1,
@@ -1885,6 +1889,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-254-to-255-Cycle-1.mp4",
       "published_sha256": "aaa938fab0c8f57e8e7010f002fdbcd960aa2da395bf1144b1d11bda3c468c39",
       "created_at": "2026-10-18T12:27:29Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:256",
+        "2:257"
+      ],
+      "visual_id": 11631252,
+      "theme": "light",
+      "visual_query": "powerful sun rays breaking through dark clouds, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-256-to-257-Cycle-1.mp4",
+      "published_sha256": "ed01ac698b9a88a1111188b38068f3d446738ab545c31d5806c04fe5693b9f9b",
+      "created_at": "2026-10-19T15:15:35Z"
     }
   ],
   "visual_history": [
@@ -1985,6 +2002,7 @@
     40190551,
     34307917,
     26653871,
-    40281172
+    40281172,
+    11631252
   ]
 }
