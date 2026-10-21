@@ -1720,5 +1720,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-258-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-20T13:18:37Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-259-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-259-Cycle-1.json",
+    "published_sha256": "ea471e265adb6734536f3d272decdc9ad69a9e6aed0b489383bc649fe352d3bf",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:259"
+    ],
+    "duration_seconds": 62.041,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-259-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-21T13:29:25Z"
   }
 ]

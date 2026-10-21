@@ -265,7 +265,8 @@
     "2:255",
     "2:256",
     "2:257",
-    "2:258"
+    "2:258",
+    "2:259"
   ],
   "published_sections": [
     {
@@ -433,16 +434,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:258"
+      "2:259"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 41.143,
-    "visual_id": 34551297,
+    "duration_seconds": 62.041,
+    "visual_id": 40411853,
     "theme": "mortality",
     "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-258-Cycle-1.mp4",
-    "published_sha256": "5f69282f57da1bab02d5ec96fca23d9e50df4006b1a02c060e7f87494dcd968b"
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-259-Cycle-1.mp4",
+    "published_sha256": "ea471e265adb6734536f3d272decdc9ad69a9e6aed0b489383bc649fe352d3bf"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -545,7 +546,8 @@
     39968033,
     40114862,
     40190551,
-    40281172
+    40281172,
+    40411853
   ],
   "theme_usage": {
     "guidance": 14,
@@ -564,7 +566,7 @@
     "afterlife": 9,
     "revelation": 2,
     "remembrance": 2,
-    "mortality": 4,
+    "mortality": 5,
     "judgment": 3,
     "gratitude": 1,
     "trials": 1,
@@ -573,7 +575,7 @@
     "light": 1
   },
   "completed_cycles": [],
-  "published_count": 100,
+  "published_count": 101,
   "history": [
     {
       "cycle": 1,
@@ -1915,6 +1917,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-258-Cycle-1.mp4",
       "published_sha256": "5f69282f57da1bab02d5ec96fca23d9e50df4006b1a02c060e7f87494dcd968b",
       "created_at": "2026-10-20T13:18:37Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:259"
+      ],
+      "visual_id": 40411853,
+      "theme": "mortality",
+      "visual_query": "fallen leaves on a quiet natural landscape, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-259-Cycle-1.mp4",
+      "published_sha256": "ea471e265adb6734536f3d272decdc9ad69a9e6aed0b489383bc649fe352d3bf",
+      "created_at": "2026-10-21T13:29:25Z"
     }
   ],
   "visual_history": [
@@ -2017,6 +2031,7 @@
     26653871,
     40281172,
     11631252,
-    34551297
+    34551297,
+    40411853
   ]
 }
