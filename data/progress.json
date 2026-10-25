@@ -271,7 +271,8 @@
     "2:261",
     "2:262",
     "2:263",
-    "2:264"
+    "2:264",
+    "2:265"
   ],
   "published_sections": [
     {
@@ -439,16 +440,16 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:264"
+      "2:265"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 47.569,
-    "visual_id": 40364503,
-    "theme": "guidance",
-    "visual_query": "peaceful mountain path leading toward sunrise, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-264-Cycle-1.mp4",
-    "published_sha256": "f94be58f618b1e273edc3ae9b0d0b2669aee9efc8785066e95164c9a0ad3d493"
+    "duration_seconds": 40.542,
+    "visual_id": 39335862,
+    "theme": "garden",
+    "visual_query": "vines growing across ancient stone walls, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-265-Cycle-1.mp4",
+    "published_sha256": "9cb7863c303c3da5a958e8a17654ef1571ff80172e9b644d1bf5cc5b6deb71ae"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -547,6 +548,7 @@
     39192482,
     39265695,
     39320537,
+    39335862,
     39432862,
     39897021,
     39968033,
@@ -580,10 +582,11 @@
     "trials": 1,
     "provision": 1,
     "reflection": 2,
-    "light": 1
+    "light": 1,
+    "garden": 1
   },
   "completed_cycles": [],
-  "published_count": 104,
+  "published_count": 105,
   "history": [
     {
       "cycle": 1,
@@ -1975,6 +1978,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-264-Cycle-1.mp4",
       "published_sha256": "f94be58f618b1e273edc3ae9b0d0b2669aee9efc8785066e95164c9a0ad3d493",
       "created_at": "2026-10-24T12:28:42Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:265"
+      ],
+      "visual_id": 39335862,
+      "theme": "garden",
+      "visual_query": "vines growing across ancient stone walls, cinematic natural landscape, subtle movement, realistic, no people, no person, no faces, no human, no man, no woman, no religious figures, no crowd, no crowds, no animals, no birds, no wildlife, no text, no logos, no readable signs, empty landscape only",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-265-Cycle-1.mp4",
+      "published_sha256": "9cb7863c303c3da5a958e8a17654ef1571ff80172e9b644d1bf5cc5b6deb71ae",
+      "created_at": "2026-10-25T12:57:23Z"
     }
   ],
   "visual_history": [
@@ -2081,6 +2096,7 @@
     40411853,
     17637768,
     40414994,
-    40364503
+    40364503,
+    39335862
   ]
 }
