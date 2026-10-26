@@ -273,7 +273,10 @@
     "2:263",
     "2:264",
     "2:265",
-    "2:266"
+    "2:266",
+    "2:267",
+    "2:268",
+    "2:269"
   ],
   "published_sections": [
     {
@@ -441,17 +444,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:266"
+      "2:267",
+      "2:268",
+      "2:269"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 53.029,
-    "visual_id": 34625916,
-    "visual_fingerprint": "823171dbd0f4d133",
-    "theme": "garden",
-    "visual_query": "peaceful orchard trees glowing in morning sunlight, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-266-Cycle-1.mp4",
-    "published_sha256": "33c082be1bd98ea071b6f1af607e4526fda3f1caa458176e2ed85afb4c8b1683"
+    "duration_seconds": 77.819,
+    "visual_id": 31086181,
+    "visual_fingerprint": "4e4d4d3b70aa8e0e",
+    "theme": "knowledge",
+    "visual_query": "ornate Arabic calligraphy on historic architecture, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-267-to-269-Cycle-1.mp4",
+    "published_sha256": "5299356c31f22ae8971dfb42a7bf042f154bf43975b7fb5b9468ac7e993f8b6c"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -560,7 +565,8 @@
     40414994,
     40364503,
     39335862,
-    34625916
+    34625916,
+    31086181
   ],
   "theme_usage": {
     "guidance": 15,
@@ -568,7 +574,7 @@
     "justice": 4,
     "paradise": 3,
     "earth": 1,
-    "knowledge": 14,
+    "knowledge": 15,
     "worship": 5,
     "patience": 5,
     "warning": 5,
@@ -589,7 +595,7 @@
     "garden": 2
   },
   "completed_cycles": [],
-  "published_count": 106,
+  "published_count": 107,
   "history": [
     {
       "cycle": 1,
@@ -2005,6 +2011,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-266-Cycle-1.mp4",
       "published_sha256": "33c082be1bd98ea071b6f1af607e4526fda3f1caa458176e2ed85afb4c8b1683",
       "created_at": "2026-10-26T05:20:26Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:267",
+        "2:268",
+        "2:269"
+      ],
+      "visual_id": 31086181,
+      "theme": "knowledge",
+      "visual_query": "ornate Arabic calligraphy on historic architecture, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-267-to-269-Cycle-1.mp4",
+      "published_sha256": "5299356c31f22ae8971dfb42a7bf042f154bf43975b7fb5b9468ac7e993f8b6c",
+      "created_at": "2026-10-26T14:48:36Z"
     }
   ],
   "visual_history": [
@@ -2113,9 +2133,11 @@
     40414994,
     40364503,
     39335862,
-    34625916
+    34625916,
+    31086181
   ],
   "visual_hashes": [
-    "823171dbd0f4d133"
+    "823171dbd0f4d133",
+    "4e4d4d3b70aa8e0e"
   ]
 }
