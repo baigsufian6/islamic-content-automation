@@ -1802,5 +1802,21 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-265-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-25T12:57:23Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayah-266-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayah-266-Cycle-1.json",
+    "published_sha256": "33c082be1bd98ea071b6f1af607e4526fda3f1caa458176e2ed85afb4c8b1683",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:266"
+    ],
+    "duration_seconds": 53.029,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-266-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-26T05:20:26Z"
   }
 ]
