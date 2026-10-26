@@ -431,6 +431,109 @@ def video_contains_face(path: Path, sample_frames: int = 6) -> bool:
                         return True
     return False
 
+
+BLOCKED_WORDS = {
+    "person","people","man","men","woman","women","girl","girls","boy","boys",
+    "child","children","kid","kids","baby","couple","family","friends","crowd",
+    "tourist","tourists","model","fashion","dance","dancing","dancer","party",
+    "bikini","swimsuit","swimming","beach","pool","mall","shopping","store",
+    "shop","escalator","restaurant","cafe","bar","club","nightclub","street",
+    "city","urban","traffic","walking","running","jogging","yoga","gym",
+    "fitness","workout","wedding","concert","festival","hand","hands","finger",
+    "face","portrait","selfie","statue","church","cross","temple","buddha",
+    "idol","alcohol","wine","beer","cocktail","casino","pig","dog","cat",
+    "bird","birds","duck","horse","cow","animal","wildlife","fish","insect",
+}
+
+
+def slug_is_safe(video: dict) -> bool:
+    url = str(video.get("url") or "").rstrip("/")
+    slug = url.split("/")[-1].lower()
+    tokens = set(re.split(r"[^a-z]+", slug))
+    return not (tokens & BLOCKED_WORDS)
+
+
+def video_contains_people(path: Path, sample_frames: int = 12) -> bool:
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    duration = float(probe.stdout.strip() or 0)
+    if duration <= 0:
+        return True
+
+    hog = cv2.HOGDescriptor()
+    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+    body_hits = 0
+
+    with tempfile.TemporaryDirectory() as tmp:
+        for i in range(sample_frames):
+            t = duration * (i + 0.5) / sample_frames
+            fp = Path(tmp) / f"f{i:02d}.jpg"
+            subprocess.run(
+                ["ffmpeg", "-y", "-ss", f"{t:.2f}", "-i", str(path),
+                 "-frames:v", "1", "-q:v", "3", str(fp)],
+                capture_output=True, check=False,
+            )
+            image = cv2.imread(str(fp)) if fp.exists() else None
+            if image is None:
+                continue
+            h, w = image.shape[:2]
+
+            blob = cv2.dnn.blobFromImage(
+                cv2.resize(image, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+            _FACE_NET.setInput(blob)
+            det = _FACE_NET.forward()
+            for k in range(det.shape[2]):
+                if float(det[0, 0, k, 2]) >= 0.45:
+                    return True
+
+            scale = 640.0 / w
+            small = cv2.resize(image, (640, int(h * scale)))
+            _rects, weights = hog.detectMultiScale(
+                small, winStride=(8, 8), padding=(8, 8), scale=1.05)
+            if any(float(x) >= 0.7 for x in weights):
+                body_hits += 1
+                if body_hits >= 2:
+                    return True
+    return False
+
+
+def frame_fingerprint(path: Path) -> str:
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    t = float(probe.stdout.strip() or 2) * 0.4
+    with tempfile.TemporaryDirectory() as tmp:
+        fp = Path(tmp) / "fp.jpg"
+        subprocess.run(
+            ["ffmpeg", "-y", "-ss", f"{t:.2f}", "-i", str(path),
+             "-frames:v", "1", str(fp)],
+            capture_output=True, check=False,
+        )
+        img = cv2.imread(str(fp), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return ""
+        small = cv2.resize(img, (9, 8), interpolation=cv2.INTER_AREA)
+        bits = (small[:, 1:] > small[:, :-1]).flatten()
+        return f"{int(''.join('1' if b else '0' for b in bits), 2):016x}"
+
+
+def is_duplicate_footage(fp: str, known: list) -> bool:
+    if not fp:
+        return False
+    a = int(fp, 16)
+    for other in known:
+        try:
+            if bin(a ^ int(other, 16)).count("1") <= 6:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
 # ============================================================================
 # 2. Single-run lock
 # ============================================================================
@@ -796,6 +899,10 @@ class QuranRepository:
 
 class ProgressStore:
     SCHEMA = 4
+    MAX_VISUAL_MEMORY = 2000
+    MAX_HISTORY = 500
+    MAX_COMPLETED_CYCLES = 100
+    MAX_HASHES = 2000
 
     def __init__(self, verses: list[Verse]):
         self.verses = verses
@@ -804,197 +911,104 @@ class ProgressStore:
 
         self.state = load_json(PROGRESS, {})
         if not isinstance(self.state, dict):
-            log(
-                "progress.json was not a JSON object; "
-                "starting from a safe empty state.",
-                "WARN",
-            )
+            log("progress.json was not a JSON object; starting from a safe empty state.", "WARN")
             self.state = {}
 
-        # ------------------------------------------------------------------
-        # State schema
-        # ------------------------------------------------------------------
-        self.state.setdefault("schema_version", self.SCHEMA)
-        self.state.setdefault("cycle", 1)
-        self.state.setdefault("used_verses", [])
-        self.state.setdefault("used_pexels_ids", [])
-        self.state.setdefault("visual_history", [])
-        self.state.setdefault("theme_usage", {})
-        self.state.setdefault("completed_cycles", [])
-        self.state.setdefault("published_count", 0)
-        self.state.setdefault("last_section", None)
-        self.state.setdefault("history", [])
+        for key, default in (
+            ("schema_version", self.SCHEMA),
+            ("cycle", 1),
+            ("used_verses", []),
+            ("used_pexels_ids", []),
+            ("visual_history", []),
+            ("visual_hashes", []),
+            ("theme_usage", {}),
+            ("completed_cycles", []),
+            ("published_count", 0),
+            ("last_section", None),
+            ("history", []),
+        ):
+            self.state.setdefault(key, default)
 
-        # ------------------------------------------------------------------
-        # Quran progress
-        # ------------------------------------------------------------------
+        # ---- Quran progress ----
         raw_used = self.state.get("used_verses", [])
-
         if not isinstance(raw_used, list):
-            log(
-                "Invalid used_verses state detected; rebuilding it safely.",
-                "WARN",
-            )
+            log("Invalid used_verses state detected; rebuilding it safely.", "WARN")
             raw_used = []
+        self.used = {str(k) for k in raw_used if str(k) in self.valid_keys}
 
-        self.used = {
-            str(key)
-            for key in raw_used
-            if str(key) in self.valid_keys
-        }
+        # ---- Visual memory (LRU order, newest last) ----
+        ordered: list[int] = []
 
-        # ------------------------------------------------------------------
-        # Pexels visual memory
-        #
-        # Keep a large rolling memory instead of allowing progress.json
-        # to grow forever.
-        #
-        # 2000 IDs is intentionally generous. It means the pipeline will
-        # normally avoid repeating a background for a very long time.
-        # ------------------------------------------------------------------
-        MAX_VISUAL_MEMORY = 2000
-
-        raw_visuals = self.state.get("used_pexels_ids", [])
-
-        if not isinstance(raw_visuals, list):
-            log(
-                "Invalid used_pexels_ids state detected; "
-                "rebuilding safely.",
-                "WARN",
-            )
-            raw_visuals = []
-
-        cleaned_visuals: list[int] = []
-
-        for value in raw_visuals:
+        def add_id(value: Any) -> None:
             try:
-                visual_id = int(value)
+                vid = int(value)
+            except (TypeError, ValueError):
+                return
+            if vid <= 0:
+                return
+            if vid in ordered:
+                ordered.remove(vid)
+            ordered.append(vid)
+
+        # Legacy IDs first (older/unknown recency), then the true LRU history.
+        legacy = self.state.get("used_pexels_ids", [])
+        history_ids = self.state.get("visual_history", [])
+        for value in legacy if isinstance(legacy, list) else []:
+            if str(value).lstrip("-").isdigit() and int(value) not in ordered:
+                add_id(value)
+        for value in history_ids if isinstance(history_ids, list) else []:
+            add_id(value)
+
+        ordered = ordered[-self.MAX_VISUAL_MEMORY:]
+        self.used_visuals = set(ordered)
+        self.state["visual_history"] = ordered
+        self.state["used_pexels_ids"] = ordered.copy()
+
+        # ---- Footage fingerprints ----
+        hashes = self.state.get("visual_hashes", [])
+        if not isinstance(hashes, list):
+            hashes = []
+        self.state["visual_hashes"] = [h for h in hashes if isinstance(h, str)][-self.MAX_HASHES:]
+
+        # ---- Theme usage (never reset between cycles) ----
+        raw_theme = self.state.get("theme_usage", {})
+        if not isinstance(raw_theme, dict):
+            raw_theme = {}
+        self.theme_usage = {}
+        for theme, count in raw_theme.items():
+            try:
+                self.theme_usage[str(theme)] = max(0, int(count))
             except (TypeError, ValueError):
                 continue
 
-            if visual_id > 0 and visual_id not in cleaned_visuals:
-                cleaned_visuals.append(visual_id)
-
-        # Keep most recent IDs.
-        cleaned_visuals = cleaned_visuals[-MAX_VISUAL_MEMORY:]
-
-        self.used_visuals = set(cleaned_visuals)
-
-        self.state["used_pexels_ids"] = cleaned_visuals
-
-        # ------------------------------------------------------------------
-        # Visual usage order
-        #
-        # This is separate from used_pexels_ids because it tells us which
-        # visual was used most recently. That makes reuse genuinely
-        # least-recently-used instead of guessing from the numeric Pexels ID.
-        # ------------------------------------------------------------------
-        raw_visual_history = self.state.get("visual_history", [])
-
-        if not isinstance(raw_visual_history, list):
-            raw_visual_history = []
-
-        cleaned_visual_history: list[int] = []
-
-        for value in raw_visual_history:
-            try:
-                visual_id = int(value)
-            except (TypeError, ValueError):
-                continue
-
-            if visual_id > 0:
-                # Remove previous occurrence so newest use is at the end.
-                if visual_id in cleaned_visual_history:
-                    cleaned_visual_history.remove(visual_id)
-
-                cleaned_visual_history.append(visual_id)
-
-        # Preserve IDs from used_pexels_ids that are not in visual_history.
-        # Their exact recency is unknown, so they are treated as older.
-        for visual_id in cleaned_visuals:
-            if visual_id not in cleaned_visual_history:
-                cleaned_visual_history.append(visual_id)
-
-        cleaned_visual_history = cleaned_visual_history[-MAX_VISUAL_MEMORY:]
-
-        self.state["visual_history"] = cleaned_visual_history
-
-        # Keep visual memory synchronized and bounded.
-        self.used_visuals = set(cleaned_visual_history)
-        self.state["used_pexels_ids"] = cleaned_visual_history.copy()
-
-        # ------------------------------------------------------------------
-        # Theme intelligence
-        #
-        # IMPORTANT:
-        # Do NOT reset this between Quran cycles.
-        # It is deliberately persistent so Cycle 2, 3, 4... learn which
-        # visual variants have already been used.
-        # ------------------------------------------------------------------
-        raw_theme_usage = self.state.get("theme_usage", {})
-
-        if not isinstance(raw_theme_usage, dict):
-            raw_theme_usage = {}
-
-        self.theme_usage = {
-            str(theme): max(0, int(count))
-            for theme, count in raw_theme_usage.items()
-            if isinstance(count, (int, float, str))
-            and str(count).lstrip("-").isdigit()
-        }
-
-        # ------------------------------------------------------------------
-        # Cycle information
-        # ------------------------------------------------------------------
+        # ---- Cycle ----
         try:
             self.cycle = max(1, int(self.state.get("cycle", 1)))
         except (TypeError, ValueError):
             self.cycle = 1
 
-        # ------------------------------------------------------------------
-        # Bound historical records.
-        # ------------------------------------------------------------------
-        MAX_HISTORY = 500
-        MAX_COMPLETED_CYCLES = 100
-
+        # ---- Bounded records ----
         history = self.state.get("history", [])
         if not isinstance(history, list):
             history = []
+        self.state["history"] = history[-self.MAX_HISTORY:]
 
-        self.state["history"] = history[-MAX_HISTORY:]
+        completed = self.state.get("completed_cycles", [])
+        if not isinstance(completed, list):
+            completed = []
+        self.state["completed_cycles"] = completed[-self.MAX_COMPLETED_CYCLES:]
 
-        completed_cycles = self.state.get("completed_cycles", [])
-        if not isinstance(completed_cycles, list):
-            completed_cycles = []
-
-        self.state["completed_cycles"] = completed_cycles[-MAX_COMPLETED_CYCLES:]
-
-        # ------------------------------------------------------------------
-        # Published count
-        # ------------------------------------------------------------------
         try:
-            self.state["published_count"] = max(
-                0,
-                int(self.state.get("published_count", 0)),
-            )
+            self.state["published_count"] = max(0, int(self.state.get("published_count", 0)))
         except (TypeError, ValueError):
             self.state["published_count"] = 0
 
         self.audit()
 
     def audit(self) -> None:
-        """Hard integrity check on the Quran completeness invariant.
-
-        This is the single most important check in the whole pipeline: it is
-        what guarantees "no ayah is ever skipped, and the whole Qur'an is
-        completed before anything repeats." It runs on every load, before any
-        planning happens, and it STOPS the run rather than silently
-        continuing if the state file is ever inconsistent (rule #16 of the
-        rulebook: uncertain about Qur'an integrity -> STOP).
-        """
+        """Hard integrity check: no ayah skipped, none double-counted."""
         raw_used = self.state.get("used_verses", [])
 
-        # 1) Every recorded "used" key must be a real, current verse_key.
         unknown = [k for k in raw_used if k not in self.valid_keys]
         if unknown:
             raise RuntimeError(
@@ -1003,11 +1017,8 @@ class ProgressStore:
                 "than risk skipping or double-counting ayahs."
             )
 
-        # 2) No duplicates recorded as used.
         if len(raw_used) != len(set(raw_used)):
-            raise RuntimeError(
-                "progress.json contains duplicate entries in used_verses. STOPPING."
-            )
+            raise RuntimeError("progress.json contains duplicate entries in used_verses. STOPPING.")
 
         remaining = len(self.verses) - len(self.used)
         log(
@@ -1016,16 +1027,10 @@ class ProgressStore:
             "INFO",
         )
 
-        # 3) If every verse is marked used, the NEXT run must roll into a new
-        #    cycle rather than silently having nothing left to plan. This is
-        #    enforced again in begin_cycle_if_needed(), this is just an early,
-        #    loud signal so a stuck state is visible in logs immediately.
         if remaining == 0 and len(self.verses) > 0:
             log(
-                f"Cycle {self.cycle} is fully complete "
-                f"({len(self.verses)}/{len(self.verses)} ayahs). "
-                "Next run will start Cycle "
-                f"{self.cycle + 1} from Al-Fatihah 1:1.",
+                f"Cycle {self.cycle} is fully complete. "
+                f"Next run will start Cycle {self.cycle + 1} from Al-Fatihah 1:1.",
                 "INFO",
             )
 
@@ -1033,49 +1038,28 @@ class ProgressStore:
         if len(self.used) < len(self.verses):
             return
 
-        MAX_COMPLETED_CYCLES = 100
+        completed = self.state.get("completed_cycles", [])
+        if not isinstance(completed, list):
+            completed = []
 
-        completed_cycles = self.state.get("completed_cycles", [])
-        if not isinstance(completed_cycles, list):
-            completed_cycles = []
-
-        completed_cycles.append({
+        completed.append({
             "cycle": self.cycle,
             "verses": len(self.verses),
             "completed_at": utc_now(),
-            "published_count": int(
-                self.state.get("published_count", 0)
-            ),
+            "published_count": int(self.state.get("published_count", 0)),
         })
-
-        # Safety: don't let completed cycle history grow forever.
-        completed_cycles = completed_cycles[-MAX_COMPLETED_CYCLES:]
+        completed = completed[-self.MAX_COMPLETED_CYCLES:]
 
         self.cycle += 1
-
-        # --------------------------------------------------------------
-        # Quran selection resets.
-        # --------------------------------------------------------------
         self.used = set()
         self.state["cycle"] = self.cycle
         self.state["used_verses"] = []
-
-        # --------------------------------------------------------------
-        # IMPORTANT:
-        #
-        # DO NOT reset theme_usage.
-        #
-        # Theme usage is our long-term visual intelligence.
-        # Cycle 2 should know what Cycle 1 already used.
-        # Cycle 3 should know what Cycles 1 + 2 used.
-        # --------------------------------------------------------------
-        self.state["theme_usage"] = self.theme_usage
-        self.state["completed_cycles"] = completed_cycles
+        self.state["theme_usage"] = self.theme_usage  # deliberately preserved
+        self.state["completed_cycles"] = completed
 
         log(
-            f"QURAN CYCLE {self.cycle} STARTING — "
-            f"every ayah of the previous cycle was covered. "
-            f"Visual/theme intelligence is being preserved across cycles."
+            f"QURAN CYCLE {self.cycle} STARTING — previous cycle fully covered. "
+            "Visual/theme intelligence preserved."
         )
         atomic_write_json(PROGRESS, self.state)
 
@@ -1087,308 +1071,103 @@ class ProgressStore:
         theme: str,
         metadata: dict[str, Any],
     ) -> None:
-        """
-        Atomically commit one successfully published Quran section.
+        """Atomically commit one successfully published section."""
 
-        Safety guarantees:
-          - validates verse keys before changing state
-          - validates Pexels visual ID
-          - preserves Quran cycle integrity
-          - keeps theme intelligence across cycles
-          - keeps Pexels visual memory bounded
-          - keeps visual LRU history bounded
-          - keeps production history bounded
-          - keeps completed-cycle history bounded
-          - writes progress atomically
-        """
-
-        # ==============================================================
-        # 1. Validate Quran verse keys BEFORE modifying anything.
-        # ==============================================================
-
+        # 1. Validate verse keys before touching anything.
         if not keys:
-            raise RuntimeError(
-                "Progress commit refused: no Quran verse keys supplied."
-            )
-
-        invalid_keys = [
-            key
-            for key in keys
-            if key not in self.valid_keys
-        ]
-
-        if invalid_keys:
-            raise RuntimeError(
-                "Progress commit refused: invalid Quran verse key(s): "
-                f"{invalid_keys[:5]}"
-            )
-
-        # Prevent accidental duplicate keys inside one production.
+            raise RuntimeError("Progress commit refused: no Quran verse keys supplied.")
+        invalid = [k for k in keys if k not in self.valid_keys]
+        if invalid:
+            raise RuntimeError(f"Progress commit refused: invalid verse key(s): {invalid[:5]}")
         if len(keys) != len(set(keys)):
-            raise RuntimeError(
-                "Progress commit refused: duplicate Quran verse keys "
-                "were supplied."
-            )
+            raise RuntimeError("Progress commit refused: duplicate verse keys supplied.")
 
-        # ==============================================================
-        # 2. Validate Pexels visual ID.
-        # ==============================================================
-
+        # 2. Validate visual id.
         try:
             visual_id = int(visual_id)
         except (TypeError, ValueError) as exc:
-            raise RuntimeError(
-                f"Progress commit refused: invalid Pexels visual ID "
-                f"{visual_id!r}."
-            ) from exc
-
+            raise RuntimeError(f"Progress commit refused: invalid Pexels ID {visual_id!r}.") from exc
         if visual_id <= 0:
-            raise RuntimeError(
-                f"Progress commit refused: invalid Pexels visual ID "
-                f"{visual_id}."
-            )
+            raise RuntimeError(f"Progress commit refused: invalid Pexels ID {visual_id}.")
 
-        # ==============================================================
-        # 3. Normalize theme.
-        # ==============================================================
+        # 3. Theme.
+        theme = str(theme or "reflection").strip() or "reflection"
 
-        theme = str(theme or "reflection").strip()
-
-        if not theme:
-            theme = "reflection"
-
-        # ==============================================================
-        # 4. Update Quran usage.
-        # ==============================================================
-
+        # 4. Quran usage.
         self.used.update(keys)
 
-        # ==============================================================
-        # 5. Persistent theme intelligence.
-        #
-        # IMPORTANT:
-        # This is intentionally NOT reset when a new Quran cycle starts.
-        # Cycle 2 learns from Cycle 1, Cycle 3 learns from 1 + 2, etc.
-        # ==============================================================
+        # 5. Persistent theme usage.
+        self.theme_usage[theme] = max(0, int(self.theme_usage.get(theme, 0))) + 1
 
-        current_theme_count = self.theme_usage.get(theme, 0)
-
-        try:
-            current_theme_count = int(current_theme_count)
-        except (TypeError, ValueError):
-            current_theme_count = 0
-
-        self.theme_usage[theme] = max(
-            0,
-            current_theme_count,
-        ) + 1
-
-        # ==============================================================
-        # 6. BOUNDED PEXELS VISUAL MEMORY.
-        #
-        # Never allow this set to grow forever during a long-running
-        # process.
-        # ==============================================================
-
-        MAX_VISUAL_MEMORY = 2000
-
-        visual_history = self.state.get(
-            "visual_history",
-            [],
-        )
-
+        # 6. Visual LRU history (newest last, bounded).
+        visual_history = self.state.get("visual_history", [])
         if not isinstance(visual_history, list):
             visual_history = []
-
-            # Merge explicit LRU history with used-ID memory so an upgrade/restart
-        # cannot accidentally forget previously-used visuals.
-        legacy_visuals = self.state.get("used_pexels_ids", [])
-        if not isinstance(legacy_visuals, list):
-            legacy_visuals = []
-
-        cleaned_visual_history: list[int] = []
-
-        def append_visual_id(value: Any) -> None:
-            try:
-                existing_id = int(value)
-            except (TypeError, ValueError):
-                return
-            if existing_id <= 0:
-                return
-            if existing_id in cleaned_visual_history:
-                cleaned_visual_history.remove(existing_id)
-            cleaned_visual_history.append(existing_id)
-
+        cleaned: list[int] = []
         for value in visual_history:
-            append_visual_id(value)
-
-        # Legacy IDs have less precise ordering; preserve only missing IDs.
-        for value in legacy_visuals:
             try:
-                existing_id = int(value)
+                vid = int(value)
             except (TypeError, ValueError):
                 continue
-            if existing_id > 0 and existing_id not in cleaned_visual_history:
-                cleaned_visual_history.insert(0, existing_id)
+            if vid > 0 and vid != visual_id and vid not in cleaned:
+                cleaned.append(vid)
+        cleaned.append(visual_id)
+        cleaned = cleaned[-self.MAX_VISUAL_MEMORY:]
+        self.used_visuals = set(cleaned)
 
-        # Current visual becomes the newest-used visual.
-        if visual_id in cleaned_visual_history:
-            cleaned_visual_history.remove(visual_id)
-        cleaned_visual_history.append(visual_id)
+        # 7. Footage fingerprint (catches re-uploads under new IDs).
+        hashes = [h for h in self.state.get("visual_hashes", []) if isinstance(h, str)]
+        fingerprint = metadata.get("visual_fingerprint")
+        if fingerprint and fingerprint not in hashes:
+            hashes.append(fingerprint)
+        hashes = hashes[-self.MAX_HASHES:]
 
-        cleaned_visual_history = cleaned_visual_history[-MAX_VISUAL_MEMORY:]
-        self.state["visual_history"] = cleaned_visual_history
-        self.used_visuals = set(cleaned_visual_history)
+        # 8. Ordered verses.
+        ordered_used = sorted(self.used, key=lambda k: self.id_by_key[k])
 
-    # ==============================================================
-    # 7. Keep Quran verse usage clean and deterministic.
-    # ==============================================================
-
-        ordered_used_verses = sorted(
-            self.used,
-            key=lambda key: self.id_by_key[key],
-        )
-
-        # ==============================================================
-        # 8. Production history.
-        # ==============================================================
-
-        history = self.state.get(
-            "history",
-            [],
-        )
-
+        # 9. History.
+        history = self.state.get("history", [])
         if not isinstance(history, list):
             history = []
-
-        history_item = {
+        history.append({
             "cycle": self.cycle,
             "verse_keys": list(keys),
             "visual_id": visual_id,
             "theme": theme,
-            "visual_query": metadata.get(
-                "visual_query"
-            ),
-            "published_file": metadata.get(
-                "published_file"
-            ),
-            "published_sha256": metadata.get(
-                "published_sha256"
-            ),
+            "visual_query": metadata.get("visual_query"),
+            "published_file": metadata.get("published_file"),
+            "published_sha256": metadata.get("published_sha256"),
             "created_at": utc_now(),
-        }
+        })
+        history = history[-self.MAX_HISTORY:]
 
-        history.append(history_item)
-
-        # Long-term safety limit.
-        MAX_HISTORY = 500
-
-        history = history[-MAX_HISTORY:]
-
-        # ==============================================================
-        # 9. Completed cycle history.
-        # ==============================================================
-
-        completed_cycles = self.state.get(
-            "completed_cycles",
-            [],
-        )
-
-        if not isinstance(completed_cycles, list):
-            completed_cycles = []
-
-        MAX_COMPLETED_CYCLES = 100
-
-        completed_cycles = (
-            completed_cycles[-MAX_COMPLETED_CYCLES:]
-        )
-
-        # ==============================================================
-        # 10. Published count.
-        # ==============================================================
-
+        # 10. Counters.
         try:
-            published_count = int(
-                self.state.get(
-                    "published_count",
-                    0,
-                )
-            )
+            published_count = max(0, int(self.state.get("published_count", 0))) + 1
         except (TypeError, ValueError):
-            published_count = 0
+            published_count = 1
 
-        published_count = max(
-            0,
-            published_count,
-        ) + 1
+        completed = self.state.get("completed_cycles", [])
+        if not isinstance(completed, list):
+            completed = []
+        completed = completed[-self.MAX_COMPLETED_CYCLES:]
 
-        # ==============================================================
-        # 11. Store the complete bounded state.
-        # ==============================================================
-
+        # 11. Store + persist atomically.
         self.state.update({
             "schema_version": self.SCHEMA,
             "cycle": self.cycle,
-
-            # Quran progress
-            "used_verses": ordered_used_verses,
-
-            # Bounded visual memory
-            "used_pexels_ids": sorted(
-                self.used_visuals
-            ),
-            "visual_history": cleaned_visual_history,
-
-            # Persistent intelligence
+            "used_verses": ordered_used,
+            "used_pexels_ids": cleaned.copy(),
+            "visual_history": cleaned,
+            "visual_hashes": hashes,
             "theme_usage": self.theme_usage,
-
-            # Bounded historical records
             "history": history,
-            "completed_cycles": completed_cycles,
-
-            # Counters / metadata
+            "completed_cycles": completed,
             "published_count": published_count,
             "last_section": metadata,
         })
 
-        # ==============================================================
-        # 12. Final sanity checks BEFORE writing.
-        # ==============================================================
-
-        if len(self.state["used_pexels_ids"]) > MAX_VISUAL_MEMORY:
-            raise RuntimeError(
-                "Internal safety check failed: "
-                "used_pexels_ids exceeded the configured limit."
-            )
-
-        if len(self.state["visual_history"]) > MAX_VISUAL_MEMORY:
-            raise RuntimeError(
-                "Internal safety check failed: "
-                "visual_history exceeded the configured limit."
-            )
-
-        if len(self.state["history"]) > MAX_HISTORY:
-            raise RuntimeError(
-                "Internal safety check failed: "
-                "history exceeded the configured limit."
-            )
-
-        if len(self.state["completed_cycles"]) > MAX_COMPLETED_CYCLES:
-            raise RuntimeError(
-                "Internal safety check failed: "
-                "completed_cycles exceeded the configured limit."
-            )
-
-        # ==============================================================
-        # 13. Atomic persistence.
-        #
-        # Never directly overwrite progress.json.
-        # ==============================================================
-    
-        atomic_write_json(
-            PROGRESS,
-            self.state,
-        )
+        atomic_write_json(PROGRESS, self.state)
 
 
 # ============================================================================
@@ -1918,123 +1697,65 @@ class MeaningEngine:
         verses: list[Verse],
         cycle: int,
     ) -> tuple[str, list[str], list[str]]:
-        text = " ".join(
-            v.translation
-            for v in verses
-        )
+        text = " ".join(v.translation for v in verses)
         theme, theme_score = self.score_text(text)
 
         variants = next(
-            (
-                variants
-                for name, _words, variants in THEMES
-                if name == theme
-            ),
+            (variants for name, _words, variants in THEMES if name == theme),
             ["peaceful cinematic nature landscape"],
         )
         if not variants:
-            variants = [
-                "peaceful cinematic nature landscape"
-            ]
+            variants = ["peaceful cinematic nature landscape"]
 
-        # ==============================================================
-        # LONG-TERM THEME INTELLIGENCE
-        #
-        # This count survives Quran cycles.
-        # ==============================================================
-        total_theme_usage = int(
-            self.progress.theme_usage.get(theme, 0)
-        )
-
-        # Start with the least-used variant.
-        #
-        # We deliberately rotate based on persistent theme usage rather
-        # than resetting every Quran cycle.
+        total_theme_usage = int(self.progress.theme_usage.get(theme, 0))
         variant_index = total_theme_usage % len(variants)
         chosen = variants[variant_index]
 
-        # ==============================================================
-        # Cycle style evolves over time too.
-        # ==============================================================
         cycle_styles = [
-            "cinematic natural landscape, subtle movement, realistic",
-            "cinematic nature close-up, soft depth of field, realistic",
-            "wide atmospheric landscape, realistic documentary style",
-            "water and sky nature footage, elegant slow motion, realistic",
-            "cinematic dawn or twilight nature, restrained movement, realistic",
-            "cinematic aerial landscape, slow graceful movement, realistic",
-            "cinematic environmental detail, shallow depth of field, realistic",
-            "wide peaceful landscape, natural motion, realistic documentary footage",
+            "cinematic natural landscape, subtle movement",
+            "cinematic nature, soft depth of field",
+            "wide atmospheric landscape, documentary style",
+            "water and sky nature footage, slow motion",
+            "cinematic dawn or twilight nature",
+            "cinematic aerial landscape, slow movement",
+            "cinematic environmental detail",
+            "wide peaceful landscape, natural motion",
         ]
-        style = cycle_styles[
-            (max(cycle, 1) - 1) % len(cycle_styles)
-        ]
+        style = cycle_styles[(max(cycle, 1) - 1) % len(cycle_styles)]
 
-        # ==============================================================
-        # Put the currently preferred variant first.
-        #
-        # Keep ALL other variants afterward so Pexels has a large search
-        # pool instead of relying on one phrase.
-        # ==============================================================
         ordered_variants = [
             chosen,
-            *[
-                variant
-                for index, variant in enumerate(variants)
-                if index != variant_index
-            ],
+            *[v for i, v in enumerate(variants) if i != variant_index],
         ]
 
-        queries = [
-            f"{variant}, {style}"
-            for variant in ordered_variants
-        ]
+        # Pexels has no negation, so queries stay purely descriptive.
+        # People/animals are removed by slug_is_safe() + video_contains_people().
+        queries = [f"{variant}, {style}" for variant in ordered_variants]
 
-        # ==============================================================
-        # Neutral fallbacks.
-        # These are intentionally conservative.
-        # ==============================================================
         fallback = [
-            "peaceful cinematic nature landscape, realistic",
-            "calm natural scenery soft light, realistic",
-            "quiet countryside morning atmosphere, realistic",
-            "wide peaceful landscape natural movement, realistic",
-            "cinematic mountains and sky natural footage, realistic",
-            "calm water landscape soft natural light, realistic",
-        ]
-
-        # ==============================================================
-        # Keep searches clean and avoid unwanted visual material.
-        #
-        # "no animals, no birds, no wildlife" was added after a run
-        # returned a duck floating on a pond for a verse with no water/
-        # animal theme match — the query had fallen through to the
-        # generic "reflection" fallback, which was not excluding
-        # wildlife, and Pexels' "peaceful nature" results skew toward
-        # animal footage more than plain landscape footage.
-        # ==============================================================
-        avoid = (
-            "no people, no person, no faces, no human, no man, no woman, "
-            "no religious figures, no crowd, no crowds, "
-            "no animals, no birds, no wildlife, "
-            "no text, no logos, no readable signs, empty landscape only"
-        )
-        queries = [
-            f"{query}, {avoid}"
-            for query in queries
-        ]
-        fallback = [
-            f"{query}, {avoid}"
-            for query in fallback
+            "peaceful cinematic nature landscape",
+            "calm natural scenery soft light",
+            "wide peaceful landscape natural movement",
+            "cinematic mountains and sky",
+            "calm water landscape soft light",
+            "misty mountains slow motion",
+            "ocean waves aerial",
+            "starry night sky timelapse",
+            "clouds timelapse blue sky",
+            "waterfall forest",
+            "desert dunes aerial",
+            "sunrise over hills",
+            "snow mountains drone",
+            "calm lake reflection",
+            "green forest sunlight",
+            "northern lights",
+            "sunset over sea",
         ]
 
         log(
-            f"Meaning theme={theme} "
-            f"score={theme_score:.1f} "
-            f"historical_theme_usage={total_theme_usage} "
-            f"preferred_variant={variant_index + 1}/{len(variants)} "
-            f"queries={len(queries)} "
-            f"cycle={cycle}",
+            f"Meaning theme={theme} score={theme_score:.1f} "
+            f"theme_usage={total_theme_usage} "
+            f"variant={variant_index + 1}/{len(variants)} cycle={cycle}",
             "DEBUG",
         )
         return theme, queries, fallback
@@ -2271,8 +1992,7 @@ class VisualEngine:
             if ratio < 1.40:
                 continue
 
-            # QUALITY GATE: reject anything below Full-HD-portrait equivalent.
-            # This is the single biggest lever for "looks premium" vs "looks stocky".
+            # Quality gate: reject anything below Full-HD portrait.
             if height < 1920:
                 continue
 
@@ -2305,6 +2025,10 @@ class VisualEngine:
         query: str,
         audio_duration: float,
     ) -> Optional[VisualCandidate]:
+        # Reject by Pexels title/slug before anything is downloaded.
+        if not slug_is_safe(video):
+            return None
+
         chosen = self.best_file(video)
         if not chosen:
             return None
@@ -2348,85 +2072,34 @@ class VisualEngine:
         audio_duration: float,
         limit: int = 8,
     ) -> list[VisualCandidate]:
-        """Search Pexels and return a RANKED LIST of viable candidates.
-
-        This is the retry-safe counterpart to choose(): instead of handing
-        back a single video, it hands back an ordered shortlist so the
-        caller (QuranProduction.run) can fall through to the next candidate
-        if the first one fails to download or fails to render (corrupt
-        file, transient network error, codec issue, etc.). A single bad
-        Pexels asset should never be able to kill a production run.
-
-        Ordering rules (unchanged from the original single-pick logic):
-          1. NEW (never-used) visuals matching the meaning-aware queries,
-             best score first.
-          2. NEW visuals matching the neutral fallback queries, if the
-             meaning-aware search produced nothing fresh.
-          3. Previously-used visuals, ordered LEAST-recently-used first
-             (using visual_history), only if nothing fresh was found at
-             all. Reuse is a deliberate, permanent safety net — the build
-             must never fail just because every matching visual has been
-             seen before.
-        """
-
+        """Ranked shortlist: fresh videos first, then least-recently-used
+        reused videos as a safety net. Searches deeply before reusing."""
         fresh: list[VisualCandidate] = []
         reused: list[VisualCandidate] = []
-
-        # Same Pexels video can appear in several searches.
-        # Never evaluate the same video more than once.
         seen_ids: set[int] = set()
 
-        def scan(
-            query_list: list[str],
-            *,
-            max_pages: int = 6,
-        ) -> None:
-
+        def scan(query_list: list[str], max_pages: int) -> None:
             for query in query_list:
-
                 query = str(query).strip()
-
                 if not query:
                     continue
-
                 for page in range(1, max_pages + 1):
-
                     try:
-                        payload = self.client.search(
-                            query,
-                            page,
-                        )
+                        payload = self.client.search(query, page)
                     except Exception as exc:
-                        log(
-                            f"Pexels search failed: "
-                            f"{query} page={page}: {exc}",
-                            "WARN",
-                        )
+                        log(f"Pexels search failed: {query} page={page}: {exc}", "WARN")
                         continue
 
                     videos = payload.get("videos", [])
-
                     if not videos:
                         break
 
                     for raw in videos:
-
-                        candidate = self.candidate_from_video(
-                            raw,
-                            query,
-                            audio_duration,
-                        )
-
-                        if candidate is None:
+                        candidate = self.candidate_from_video(raw, query, audio_duration)
+                        if candidate is None or candidate.video_id <= 0:
                             continue
-
-                        if candidate.video_id <= 0:
-                            continue
-
-                        # Deduplicate across queries/pages.
                         if candidate.video_id in seen_ids:
                             continue
-
                         seen_ids.add(candidate.video_id)
 
                         if candidate.video_id in self.progress.used_visuals:
@@ -2434,132 +2107,44 @@ class VisualEngine:
                         else:
                             fresh.append(candidate)
 
-        # ==============================================================
-        # 1. SEARCH ALL MEANING-AWARE QUERIES
-        # ==============================================================
+        scan(queries, 6)
 
-        log(
-            f"Searching {len(queries)} meaning-aware Pexels queries "
-            f"for fresh backgrounds.",
-            "DEBUG",
+        if len(fresh) < 3:
+            log("Fresh pool thin; searching deeper.", "WARN")
+            scan(fallback_queries, 10)
+
+        fresh.sort(
+            key=lambda c: (c.score, c.duration, c.height, -c.video_id),
+            reverse=True,
         )
 
-        scan(
-            queries,
-            max_pages=6,
+        history = self.progress.state.get("visual_history", [])
+        if not isinstance(history, list):
+            history = []
+        last_used: dict[int, int] = {}
+        for index, value in enumerate(history):
+            try:
+                vid = int(value)
+            except (TypeError, ValueError):
+                continue
+            if vid > 0:
+                last_used[vid] = index
+
+        reused.sort(
+            key=lambda c: (last_used.get(c.video_id, -1), c.score, c.duration, c.height)
         )
-
-        # ==============================================================
-        # 2. NO FRESH THEME RESULT -> try neutral fallbacks too, so the
-        #    shortlist has more than one usable option whenever possible.
-        # ==============================================================
-
-        if not fresh:
-            log(
-                "No fresh meaning-matched visual found; "
-                "trying fallback searches.",
-                "WARN",
-            )
-            scan(
-                fallback_queries,
-                max_pages=6,
-            )
 
         if fresh:
-            fresh.sort(
-                key=lambda c: (
-                    c.score,
-                    c.duration,
-                    c.height,
-                    -c.video_id,
-                ),
-                reverse=True,
-            )
-
-            top = fresh[0]
             log(
-                f"Top fresh Pexels candidate: {top.video_id} "
-                f"score={top.score:.1f} query={top.query!r} "
-                f"({len(fresh)} fresh candidate(s) available).",
+                f"Top fresh Pexels candidate: {fresh[0].video_id} "
+                f"score={fresh[0].score:.1f} ({len(fresh)} fresh available).",
                 "INFO",
             )
+        elif reused:
+            log(f"No fresh visual available; reusing oldest: {reused[0].video_id}.", "WARN")
 
-            return fresh[:limit]
-
-        # ==============================================================
-        # 3. NO FRESH VIDEO ANYWHERE
-        #
-        # NEVER CANCEL THE QURAN VIDEO JUST BECAUSE A PEXELS VIDEO
-        # WAS USED BEFORE. Reuse is a required, permanent safety net —
-        # not gated by ALLOW_VISUAL_REUSE. Order by staleness so the
-        # least-recently-used background comes first.
-        # ==============================================================
-
-        if reused:
-
-            visual_history = self.progress.state.get(
-                "visual_history",
-                [],
-            )
-
-            if not isinstance(visual_history, list):
-                visual_history = []
-
-            last_used_index: dict[int, int] = {}
-
-            for index, value in enumerate(visual_history):
-
-                try:
-                    visual_id = int(value)
-                except (TypeError, ValueError):
-                    continue
-
-                if visual_id > 0:
-                    last_used_index[visual_id] = index
-
-            def staleness(
-                candidate: VisualCandidate,
-            ) -> int:
-                """
-                Smaller = older usage = better candidate to reuse.
-
-                If a visual is not in the retained history, it is treated
-                as extremely old rather than recently used.
-                """
-                return last_used_index.get(
-                    candidate.video_id,
-                    -1,
-                )
-
-            reused.sort(
-                key=lambda candidate: (
-                    staleness(candidate),
-                    candidate.score,
-                    candidate.duration,
-                    candidate.height,
-                )
-            )
-
-            top = reused[0]
-            log(
-                f"No fresh Pexels visual available. "
-                f"Will REUSE oldest suitable visual(s), starting with "
-                f"{top.video_id} (query={top.query!r}). "
-                f"Production continues.",
-                "WARN",
-            )
-
-            return reused[:limit]
-
-        # ==============================================================
-        # 4. ABSOLUTE LAST RESORT
-        #
-        # This means Pexels returned no usable video at all — not even a
-        # previously-used one. It is NOT a 'video was already used'
-        # failure; the caller must treat an empty list as a hard stop.
-        # ==============================================================
-
-        return []
+        # Fresh first, reused only as backup behind them.
+        return (fresh + reused)[:limit]
 
     def choose(
         self,
@@ -2567,19 +2152,9 @@ class VisualEngine:
         fallback_queries: list[str],
         audio_duration: float,
     ) -> VisualCandidate:
-        """Backward-compatible single-pick wrapper around find_candidates().
-
-        Prefer find_candidates() directly when the caller can retry against
-        several candidates (e.g. the main render loop) — this method exists
-        for any code path that only ever wants one best answer.
-        """
         candidates = self.find_candidates(queries, fallback_queries, audio_duration)
         if not candidates:
-            raise RuntimeError(
-                "No suitable Pexels video was found at all "
-                "(fresh or reusable) across every meaning-aware "
-                "and fallback query."
-            )
+            raise RuntimeError("No suitable Pexels video was found at all.")
         return candidates[0]
 
     def download(self, candidate: VisualCandidate, destination: Path) -> None:
