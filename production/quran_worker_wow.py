@@ -438,7 +438,11 @@ BLOCKED_WORDS = {
     "tourist","tourists","model","fashion","dance","dancing","dancer","party",
     "bikini","swimsuit","swimming","beach","pool","mall","shopping","store",
     "shop","escalator","restaurant","cafe","bar","club","nightclub","street",
-    "city","urban","traffic","walking","running","jogging","yoga","gym",
+    "human","humans","lady","ladies","female","male","guy","bride","silhouette",
+    "hiker","traveler","traveller","swimmer","surfer","skier","climber","shopper",
+    "sunbathing","bodybuilder","athlete","legs","feet","dress","shorts","lingerie",
+    "bar","pub","nightlife","disco","tattoo","cigarette","smoking","vape","vaping",
+    "city","urban","traffic","walking","jogging","yoga","gym",
     "fitness","workout","wedding","concert","festival","hand","hands","finger",
     "face","portrait","selfie","statue","church","cross","temple","buddha",
     "idol","alcohol","wine","beer","cocktail","casino","pig","dog","cat",
@@ -525,7 +529,16 @@ def frame_fingerprint(path: Path) -> str:
 def is_duplicate_footage(fp: str, known: list) -> bool:
     if not fp:
         return False
-    a = int(fp, 16)
+    try:
+        a = int(fp, 16)
+    except ValueError:
+        return False
+
+    # Flat / low-detail frames (fog, smooth sky) give unreliable hashes.
+    ones = bin(a).count("1")
+    if ones < 12 or ones > 52:
+        return False
+
     for other in known:
         try:
             if bin(a ^ int(other, 16)).count("1") <= 6:
@@ -533,7 +546,6 @@ def is_duplicate_footage(fp: str, known: list) -> bool:
         except (TypeError, ValueError):
             continue
     return False
-
 # ============================================================================
 # 2. Single-run lock
 # ============================================================================
@@ -2073,13 +2085,16 @@ class VisualEngine:
         limit: int = 8,
     ) -> list[VisualCandidate]:
         """Ranked shortlist: fresh videos first, then least-recently-used
-        reused videos as a safety net. Searches deeply before reusing."""
+        reused videos as a safety net. Stops searching once enough fresh
+        candidates exist, to stay under Pexels' hourly request limit."""
         fresh: list[VisualCandidate] = []
         reused: list[VisualCandidate] = []
         seen_ids: set[int] = set()
 
-        def scan(query_list: list[str], max_pages: int) -> None:
+        def scan(query_list: list[str], max_pages: int, enough: int) -> None:
             for query in query_list:
+                if len(fresh) >= enough:
+                    return
                 query = str(query).strip()
                 if not query:
                     continue
@@ -2088,7 +2103,7 @@ class VisualEngine:
                         payload = self.client.search(query, page)
                     except Exception as exc:
                         log(f"Pexels search failed: {query} page={page}: {exc}", "WARN")
-                        continue
+                        break
 
                     videos = payload.get("videos", [])
                     if not videos:
@@ -2107,11 +2122,11 @@ class VisualEngine:
                         else:
                             fresh.append(candidate)
 
-        scan(queries, 6)
+        scan(queries, max_pages=4, enough=25)
 
-        if len(fresh) < 3:
-            log("Fresh pool thin; searching deeper.", "WARN")
-            scan(fallback_queries, 10)
+        if len(fresh) < 5:
+            log("Fresh pool thin; searching fallback queries.", "WARN")
+            scan(fallback_queries, max_pages=3, enough=15)
 
         fresh.sort(
             key=lambda c: (c.score, c.duration, c.height, -c.video_id),
@@ -3584,10 +3599,10 @@ class QuranProduction:
 
         log(
             f"Planning next section: cycle={cycle} "
-            f"start={start_verse.verse_key} "
-            f"surah={start_verse.chapter_name}"
+            f"start={start_verse.verse_key} surah={start_verse.chapter_name}"
         )
 
+        # ---------------- Plan the passage ----------------
         duration_map: dict[str, float] = {}
         i = start_index
         while i < len(self.verses):
@@ -3635,13 +3650,10 @@ class QuranProduction:
         planned_duration = sum(duration_map[v.verse_key] for v in selected)
         if planned_duration < TARGET_MIN:
             log(
-                f"Selected passage is {planned_duration:.2f}s, below target because "
-                "the next semantic boundary would be crossed. Keeping coherence.",
+                f"Selected passage is {planned_duration:.2f}s, below target "
+                "because the next boundary would be crossed.",
                 "WARN",
             )
-        # TARGET_MAX is a bundling ceiling, not a ban on naturally long single ayahs.
-        # A single ayah must remain complete even when its own recitation exceeds
-        # TARGET_MAX; only multi-ayah bundles are rejected above the ceiling.
         if len(selected) > 1 and planned_duration > TARGET_MAX + 0.05:
             raise RuntimeError(
                 f"Planner exceeded target maximum for a multi-ayah section: "
@@ -3649,17 +3661,12 @@ class QuranProduction:
             )
 
         section_id = (
-            f"cycle-{cycle}-"
-            f"{keys[0].replace(':', '-')}-"
-            f"{keys[-1].replace(':', '-')}"
+            f"cycle-{cycle}-{keys[0].replace(':', '-')}-{keys[-1].replace(':', '-')}"
         )
         section_dir = BUILD / section_id
         section_dir.mkdir(parents=True, exist_ok=True)
 
-        log(
-            f"Selected {keys[0]} → {keys[-1]} "
-            f"({len(selected)} ayahs, planned={planned_duration:.2f}s)"
-        )
+        log(f"Selected {keys[0]} → {keys[-1]} ({len(selected)} ayahs, planned={planned_duration:.2f}s)")
 
         if DRY_RUN:
             theme, queries, _fallback = self.meaning.visual_queries(selected, cycle)
@@ -3675,14 +3682,9 @@ class QuranProduction:
             atomic_write_json(section_dir / "dry-run.json", result)
             return result
 
-        audio_items, section_audio, audio_duration = self.audio.prepare(
-            selected,
-            section_dir,
-        )
+        # ---------------- Audio, typography, captions ----------------
+        audio_items, section_audio, audio_duration = self.audio.prepare(selected, section_dir)
 
-        # Build the reference-style typography as transparent PNG frames.
-        # Arabic is shaped by Pillow/libraqm, not ffmpeg/libass, so there are
-        # no missing-glyph boxes and no Arabic text can escape the safe area.
         overlay_frames = self.typography.make_timed_overlay_frames(
             section_dir,
             selected,
@@ -3690,99 +3692,97 @@ class QuranProduction:
             start_verse.chapter_name,
             start_verse.chapter_name_arabic,
         )
-
-        # One static, full-duration darkening veil for the whole section —
-        # composited once in the renderer instead of baked into every ayah
-        # frame, so the coverage is perfectly even from first frame to last.
         scrim_path = self.typography.build_static_scrim(section_dir)
 
         captions = section_dir / "captions.srt"
         CaptionEngine.make_srt(captions, selected, audio_items)
 
+        # ---------------- Visual search ----------------
         theme, queries, fallback_queries = self.meaning.visual_queries(selected, cycle)
-        candidates = self.visuals.find_candidates(queries, fallback_queries, audio_duration)
+        candidates = self.visuals.find_candidates(
+            queries, fallback_queries, audio_duration, limit=15
+        )
         if not candidates:
             raise RuntimeError(
-                "No suitable Pexels video was found at all "
-                "(fresh or reusable) across every meaning-aware "
-                "and fallback query."
+                "No suitable Pexels video was found at all across every "
+                "meaning-aware and fallback query."
             )
 
         final_video = section_dir / "quran-section.mp4"
-        MAX_VISUAL_ATTEMPTS = min(5, len(candidates))
+        max_attempts = min(10, len(candidates))
 
         visual: Optional[VisualCandidate] = None
+        visual_fp = ""
         camera_profile: Optional[str] = None
         qa: Optional[dict[str, Any]] = None
         last_visual_error: Optional[Exception] = None
+        known_hashes = self.progress.state.get("visual_hashes", [])
 
-        for attempt_index, candidate in enumerate(candidates[:MAX_VISUAL_ATTEMPTS], start=1):
+        for attempt_index, candidate in enumerate(candidates[:max_attempts], start=1):
             try:
                 source_video = section_dir / f"pexels-source-{attempt_index}.mp4"
                 self.visuals.download(candidate, source_video)
 
-                if video_contains_face(source_video):
+                if video_contains_people(source_video):
                     raise RuntimeError(
-                        f"Visual candidate {candidate.video_id} contains a "
-                        "detected human face on frame inspection; rejecting "
-                        "and trying the next candidate."
+                        f"Candidate {candidate.video_id}: people/face detected."
+                    )
+
+                fp = frame_fingerprint(source_video)
+                if (
+                    candidate.video_id not in self.progress.used_visuals
+                    and is_duplicate_footage(fp, known_hashes)
+                ):
+                    raise RuntimeError(
+                        f"Candidate {candidate.video_id}: duplicate footage (re-upload)."
                     )
 
                 background = section_dir / f"background-{attempt_index}.mp4"
                 camera_profile = self.renderer.prepare_background(
-                    source_video,
-                    background,
-                    audio_duration,
-                    cycle,
-                    candidate.video_id,
+                    source_video, background, audio_duration, cycle, candidate.video_id,
                 )
 
                 self.renderer.render(
-                    background,
-                    scrim_path,
-                    overlay_frames,
-                    section_audio,
-                    final_video,
-                    audio_duration,
+                    background, scrim_path, overlay_frames,
+                    section_audio, final_video, audio_duration,
                 )
 
                 qa = self.qa.validate_video(final_video, audio_duration)
                 visual = candidate
+                visual_fp = fp
                 break
             except Exception as exc:
                 last_visual_error = exc
                 final_video.unlink(missing_ok=True)
                 log(
                     f"Visual candidate {candidate.video_id} "
-                    f"(attempt {attempt_index}/{MAX_VISUAL_ATTEMPTS}) failed "
-                    f"during download/render: {exc}. Trying next candidate.",
+                    f"(attempt {attempt_index}/{max_attempts}) rejected: "
+                    f"{exc}. Trying next.",
                     "WARN",
                 )
                 continue
 
         if visual is None or qa is None:
             raise RuntimeError(
-                f"All {MAX_VISUAL_ATTEMPTS} visual candidate(s) failed to "
-                f"download or render. Last error: {last_visual_error}"
+                f"All {max_attempts} visual candidate(s) failed. "
+                f"Last error: {last_visual_error}"
             )
 
         log(
             f"Media QA PASSED: {qa['width']}x{qa['height']} "
-            f"{qa['duration']:.2f}s H.264/AAC "
-            f"(visual {visual.video_id})"
+            f"{qa['duration']:.2f}s H.264/AAC (visual {visual.video_id})"
         )
 
         if audio_duration > FACEBOOK_REELS_MAX_SECONDS:
             log(
-                f"This section is {audio_duration:.2f}s, which is longer than "
-                f"Facebook Reels' 90s limit (safety threshold "
-                f"{FACEBOOK_REELS_MAX_SECONDS:.0f}s). The ayah is NOT being cut — "
-                "the full video will still be produced and published, but it is "
-                "flagged facebook_reels_compatible=false in its metadata and "
-                "publish_queue.json so the Facebook channel can be skipped for "
-                "this one video instead of being rejected on upload.",
+                f"Section is {audio_duration:.2f}s, over the Facebook Reels "
+                f"threshold ({FACEBOOK_REELS_MAX_SECONDS:.0f}s). Not cutting; "
+                "flagged facebook_reels_compatible=false.",
                 "WARN",
             )
+
+        # ---------------- Metadata ----------------
+        visual_is_fresh = visual.video_id not in self.progress.used_visuals
 
         metadata: dict[str, Any] = {
             "schema_version": 4,
@@ -3804,15 +3804,11 @@ class QuranProduction:
                 "source": "EveryAyah / Ghamadi_40kbps",
                 "duration_seconds": round(audio_duration, 3),
                 "verse_durations": {
-                    item.verse_key: round(item.duration, 3)
-                    for item in audio_items
+                    item.verse_key: round(item.duration, 3) for item in audio_items
                 },
                 "timeline": self._audio_timeline(audio_items),
             },
-            "translation": {
-                "resource_id": TRANSLATION_ID,
-                "name": TRANSLATION_NAME,
-            },
+            "translation": {"resource_id": TRANSLATION_ID, "name": TRANSLATION_NAME},
             "meaning": {
                 "theme": theme,
                 "selection_mode": "quran-order" if cycle == 1 else "meaning-ranked-contiguous",
@@ -3825,11 +3821,12 @@ class QuranProduction:
                 "file_url": visual.file_url,
                 "photographer": visual.photographer,
                 "photographer_url": visual.photographer_url,
-                "fresh_for_cycle": visual.video_id not in self.progress.used_visuals,
+                "fresh_for_cycle": visual_is_fresh,
                 "visual_duration_seconds": visual.duration,
                 "source_width": visual.width,
                 "source_height": visual.height,
                 "camera_profile": camera_profile,
+                "fingerprint": visual_fp,
             },
             "render": {
                 "width": qa["width"],
@@ -3856,17 +3853,12 @@ class QuranProduction:
                 "validated_at": utc_now(),
             },
             "distribution": {
-                # This is a LABEL only. Ayahs are never cut to satisfy it.
-                # A section that exceeds FACEBOOK_REELS_MAX_SECONDS is still
-                # fully rendered and published (Instagram/YouTube have no
-                # such limit) — it is simply marked ineligible here so the
-                # publishing layer can skip the Facebook channel for this
-                # one video instead of it being rejected and retried.
                 "facebook_reels_max_seconds": FACEBOOK_REELS_MAX_SECONDS,
                 "facebook_reels_compatible": audio_duration <= FACEBOOK_REELS_MAX_SECONDS,
             },
         }
 
+        # ---------------- Publish + commit ----------------
         publish_video, publish_metadata = self.publisher.package(
             final_video,
             metadata,
@@ -3879,8 +3871,6 @@ class QuranProduction:
         )
         self.publisher.enqueue(metadata, publish_video, publish_metadata)
 
-        visual_is_fresh = visual.video_id not in self.progress.used_visuals
-
         self.progress.commit(
             keys=keys,
             visual_id=visual.video_id,
@@ -3892,6 +3882,7 @@ class QuranProduction:
                 "chapter": start_verse.chapter_id,
                 "duration_seconds": round(audio_duration, 3),
                 "visual_id": visual.video_id,
+                "visual_fingerprint": visual_fp,
                 "theme": theme,
                 "visual_query": visual.query,
                 "published_file": publish_video.name,
@@ -3903,7 +3894,6 @@ class QuranProduction:
 
         if not KEEP_BUILD:
             shutil.rmtree(section_dir, ignore_errors=True)
-            log("Build artifacts cleaned up (set QURAN_KEEP_BUILD=1 to keep them).", "DEBUG")
         else:
             log(f"QURAN_KEEP_BUILD=1; keeping build artifacts at {section_dir}", "INFO")
 
@@ -3927,21 +3917,12 @@ class QuranProduction:
             "elapsed_seconds": round(elapsed, 2),
         }
 
-        log("================================================")
         log("QURAN PRODUCTION SECTION PASSED")
-        log("================================================")
-        log(f"Cycle: {cycle}")
-        log(f"Surah: {start_verse.chapter_name} ({start_verse.chapter_id})")
+        log(f"Cycle: {cycle} | Surah: {start_verse.chapter_name} ({start_verse.chapter_id})")
         log(f"Verses: {', '.join(keys)}")
-        log(f"Audio: {RECITER}")
-        log(f"Translation: {TRANSLATION_NAME} ({TRANSLATION_ID})")
-        log(f"Theme: {theme}")
         log(f"Visual: Pexels {visual.video_id} (fresh={visual_is_fresh})")
-        log(f"Duration: {audio_duration:.2f}s")
-        log(f"Output: {publish_video}")
-        log(f"Captions: {metadata.get('captions', {}).get('file', '(none)')}")
+        log(f"Duration: {audio_duration:.2f}s | Output: {publish_video}")
         log(f"Elapsed: {elapsed:.2f}s")
-        log("================================================")
         return result
 
 
