@@ -1836,5 +1836,23 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-267-to-269-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-10-26T14:48:36Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.json",
+    "published_sha256": "16c9d3d7d7fa608eae8c1d1a94a9b5d449e9cffbc987ec47fdfb87a1d13a804a",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:270",
+      "2:271",
+      "2:272"
+    ],
+    "duration_seconds": 75.912,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-10-27T13:56:57Z"
   }
 ]

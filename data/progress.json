@@ -276,7 +276,10 @@
     "2:266",
     "2:267",
     "2:268",
-    "2:269"
+    "2:269",
+    "2:270",
+    "2:271",
+    "2:272"
   ],
   "published_sections": [
     {
@@ -444,19 +447,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:267",
-      "2:268",
-      "2:269"
+      "2:270",
+      "2:271",
+      "2:272"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 77.819,
-    "visual_id": 31086181,
-    "visual_fingerprint": "4e4d4d3b70aa8e0e",
-    "theme": "knowledge",
-    "visual_query": "ornate Arabic calligraphy on historic architecture, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-267-to-269-Cycle-1.mp4",
-    "published_sha256": "5299356c31f22ae8971dfb42a7bf042f154bf43975b7fb5b9468ac7e993f8b6c"
+    "duration_seconds": 75.912,
+    "visual_id": 40434304,
+    "visual_fingerprint": "e000b83c62d9b062",
+    "theme": "guidance",
+    "visual_query": "single path through quiet hills under morning sky, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.mp4",
+    "published_sha256": "16c9d3d7d7fa608eae8c1d1a94a9b5d449e9cffbc987ec47fdfb87a1d13a804a"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -566,10 +569,11 @@
     40364503,
     39335862,
     34625916,
-    31086181
+    31086181,
+    40434304
   ],
   "theme_usage": {
-    "guidance": 15,
+    "guidance": 16,
     "creation": 6,
     "justice": 4,
     "paradise": 3,
@@ -595,7 +599,7 @@
     "garden": 2
   },
   "completed_cycles": [],
-  "published_count": 107,
+  "published_count": 108,
   "history": [
     {
       "cycle": 1,
@@ -2025,6 +2029,20 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-267-to-269-Cycle-1.mp4",
       "published_sha256": "5299356c31f22ae8971dfb42a7bf042f154bf43975b7fb5b9468ac7e993f8b6c",
       "created_at": "2026-10-26T14:48:36Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:270",
+        "2:271",
+        "2:272"
+      ],
+      "visual_id": 40434304,
+      "theme": "guidance",
+      "visual_query": "single path through quiet hills under morning sky, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.mp4",
+      "published_sha256": "16c9d3d7d7fa608eae8c1d1a94a9b5d449e9cffbc987ec47fdfb87a1d13a804a",
+      "created_at": "2026-10-27T13:56:57Z"
     }
   ],
   "visual_history": [
@@ -2134,10 +2152,12 @@
     40364503,
     39335862,
     34625916,
-    31086181
+    31086181,
+    40434304
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
-    "4e4d4d3b70aa8e0e"
+    "4e4d4d3b70aa8e0e",
+    "e000b83c62d9b062"
   ]
 }
