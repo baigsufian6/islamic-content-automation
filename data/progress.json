@@ -279,7 +279,8 @@
     "2:269",
     "2:270",
     "2:271",
-    "2:272"
+    "2:272",
+    "2:273"
   ],
   "published_sections": [
     {
@@ -447,19 +448,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:270",
-      "2:271",
-      "2:272"
+      "2:273"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 75.912,
-    "visual_id": 40434304,
-    "visual_fingerprint": "e000b83c62d9b062",
-    "theme": "guidance",
-    "visual_query": "single path through quiet hills under morning sky, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.mp4",
-    "published_sha256": "16c9d3d7d7fa608eae8c1d1a94a9b5d449e9cffbc987ec47fdfb87a1d13a804a"
+    "duration_seconds": 38.452,
+    "visual_id": 39442147,
+    "visual_fingerprint": "c0e0e0e0e4074246",
+    "theme": "knowledge",
+    "visual_query": "Quran pages with soft golden light and shallow focus, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-273-Cycle-1.mp4",
+    "published_sha256": "b3550d2caca056d53ce812b668f783d6f499fbd8f19e40e31bd29bc5cbe59bc7"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -570,7 +569,8 @@
     39335862,
     34625916,
     31086181,
-    40434304
+    40434304,
+    39442147
   ],
   "theme_usage": {
     "guidance": 16,
@@ -578,7 +578,7 @@
     "justice": 4,
     "paradise": 3,
     "earth": 1,
-    "knowledge": 15,
+    "knowledge": 16,
     "worship": 5,
     "patience": 5,
     "warning": 5,
@@ -599,7 +599,7 @@
     "garden": 2
   },
   "completed_cycles": [],
-  "published_count": 108,
+  "published_count": 109,
   "history": [
     {
       "cycle": 1,
@@ -2043,6 +2043,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-270-to-272-Cycle-1.mp4",
       "published_sha256": "16c9d3d7d7fa608eae8c1d1a94a9b5d449e9cffbc987ec47fdfb87a1d13a804a",
       "created_at": "2026-10-27T13:56:57Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:273"
+      ],
+      "visual_id": 39442147,
+      "theme": "knowledge",
+      "visual_query": "Quran pages with soft golden light and shallow focus, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-273-Cycle-1.mp4",
+      "published_sha256": "b3550d2caca056d53ce812b668f783d6f499fbd8f19e40e31bd29bc5cbe59bc7",
+      "created_at": "2026-10-28T14:51:01Z"
     }
   ],
   "visual_history": [
@@ -2153,11 +2165,13 @@
     39335862,
     34625916,
     31086181,
-    40434304
+    40434304,
+    39442147
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
     "4e4d4d3b70aa8e0e",
-    "e000b83c62d9b062"
+    "e000b83c62d9b062",
+    "c0e0e0e0e4074246"
   ]
 }
