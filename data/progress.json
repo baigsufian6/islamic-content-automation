@@ -280,7 +280,9 @@
     "2:270",
     "2:271",
     "2:272",
-    "2:273"
+    "2:273",
+    "2:274",
+    "2:275"
   ],
   "published_sections": [
     {
@@ -448,17 +450,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:273"
+      "2:274",
+      "2:275"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 38.452,
-    "visual_id": 39442147,
-    "visual_fingerprint": "c0e0e0e0e4074246",
-    "theme": "knowledge",
-    "visual_query": "Quran pages with soft golden light and shallow focus, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-273-Cycle-1.mp4",
-    "published_sha256": "b3550d2caca056d53ce812b668f783d6f499fbd8f19e40e31bd29bc5cbe59bc7"
+    "duration_seconds": 73.247,
+    "visual_id": 40553447,
+    "visual_fingerprint": "00000001008703a1",
+    "theme": "afterlife",
+    "visual_query": "mountains beneath an immense golden sky, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-274-to-275-Cycle-1.mp4",
+    "published_sha256": "0f053d5006bd733cb8f2dd381d6e93e70929c6642f6159738b881f656da749c8"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -570,7 +573,8 @@
     34625916,
     31086181,
     40434304,
-    39442147
+    39442147,
+    40553447
   ],
   "theme_usage": {
     "guidance": 16,
@@ -586,7 +590,7 @@
     "mercy": 13,
     "water": 2,
     "hope": 1,
-    "afterlife": 9,
+    "afterlife": 10,
     "revelation": 2,
     "remembrance": 2,
     "mortality": 5,
@@ -599,7 +603,7 @@
     "garden": 2
   },
   "completed_cycles": [],
-  "published_count": 109,
+  "published_count": 110,
   "history": [
     {
       "cycle": 1,
@@ -2055,6 +2059,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-273-Cycle-1.mp4",
       "published_sha256": "b3550d2caca056d53ce812b668f783d6f499fbd8f19e40e31bd29bc5cbe59bc7",
       "created_at": "2026-10-28T14:51:01Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:274",
+        "2:275"
+      ],
+      "visual_id": 40553447,
+      "theme": "afterlife",
+      "visual_query": "mountains beneath an immense golden sky, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-274-to-275-Cycle-1.mp4",
+      "published_sha256": "0f053d5006bd733cb8f2dd381d6e93e70929c6642f6159738b881f656da749c8",
+      "created_at": "2026-10-29T14:59:27Z"
     }
   ],
   "visual_history": [
@@ -2166,12 +2183,14 @@
     34625916,
     31086181,
     40434304,
-    39442147
+    39442147,
+    40553447
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
     "4e4d4d3b70aa8e0e",
     "e000b83c62d9b062",
-    "c0e0e0e0e4074246"
+    "c0e0e0e0e4074246",
+    "00000001008703a1"
   ]
 }
