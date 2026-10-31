@@ -286,7 +286,9 @@
     "2:276",
     "2:277",
     "2:278",
-    "2:279"
+    "2:279",
+    "2:280",
+    "2:281"
   ],
   "published_sections": [
     {
@@ -454,20 +456,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:276",
-      "2:277",
-      "2:278",
-      "2:279"
+      "2:280",
+      "2:281"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 68.258,
-    "visual_id": 38688896,
-    "visual_fingerprint": "8092d365d5dfff5c",
-    "theme": "repentance",
-    "visual_query": "sunrise over empty desert after night, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-276-to-279-Cycle-1.mp4",
-    "published_sha256": "3e4a6af9d261814298468af845373b74fc1935c4f9a68ea68b4f6c96b5130401"
+    "duration_seconds": 32.026,
+    "visual_id": 9174516,
+    "visual_fingerprint": "60712381702edad1",
+    "theme": "trials",
+    "visual_query": "rough ocean waves beneath dark sky, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-280-to-281-Cycle-1.mp4",
+    "published_sha256": "dfc9b395fcac86c8243735d2541adcbc73373f4220c6bde8ceb86df2baed51a4"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -581,7 +581,8 @@
     40434304,
     39442147,
     40553447,
-    38688896
+    38688896,
+    9174516
   ],
   "theme_usage": {
     "guidance": 16,
@@ -603,14 +604,14 @@
     "mortality": 5,
     "judgment": 3,
     "gratitude": 1,
-    "trials": 1,
+    "trials": 2,
     "provision": 1,
     "reflection": 2,
     "light": 1,
     "garden": 2
   },
   "completed_cycles": [],
-  "published_count": 111,
+  "published_count": 112,
   "history": [
     {
       "cycle": 1,
@@ -2094,6 +2095,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-276-to-279-Cycle-1.mp4",
       "published_sha256": "3e4a6af9d261814298468af845373b74fc1935c4f9a68ea68b4f6c96b5130401",
       "created_at": "2026-10-30T14:50:57Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:280",
+        "2:281"
+      ],
+      "visual_id": 9174516,
+      "theme": "trials",
+      "visual_query": "rough ocean waves beneath dark sky, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-280-to-281-Cycle-1.mp4",
+      "published_sha256": "dfc9b395fcac86c8243735d2541adcbc73373f4220c6bde8ceb86df2baed51a4",
+      "created_at": "2026-10-31T14:11:28Z"
     }
   ],
   "visual_history": [
@@ -2207,7 +2221,8 @@
     40434304,
     39442147,
     40553447,
-    38688896
+    38688896,
+    9174516
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2215,6 +2230,7 @@
     "e000b83c62d9b062",
     "c0e0e0e0e4074246",
     "00000001008703a1",
-    "8092d365d5dfff5c"
+    "8092d365d5dfff5c",
+    "60712381702edad1"
   ]
 }
