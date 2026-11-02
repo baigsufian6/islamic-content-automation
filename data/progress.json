@@ -289,7 +289,8 @@
     "2:279",
     "2:280",
     "2:281",
-    "2:282"
+    "2:282",
+    "2:283"
   ],
   "published_sections": [
     {
@@ -457,17 +458,17 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:282"
+      "2:283"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 149.551,
-    "visual_id": 40350852,
-    "visual_fingerprint": "61f0f0dcf1f04850",
-    "theme": "justice",
-    "visual_query": "symmetrical mosque courtyard geometric patterns, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-282-Cycle-1.mp4",
-    "published_sha256": "c5cfbb2b11d7bc12355c713d895c8bcf2f0f1a3b966ab48c4e7d54398263d8cb"
+    "duration_seconds": 35.866,
+    "visual_id": 34764927,
+    "visual_fingerprint": "fafcfc7cfcfc38ce",
+    "theme": "trust",
+    "visual_query": "vast calm ocean beneath peaceful sunrise, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-283-Cycle-1.mp4",
+    "published_sha256": "a5877433c68ae543c049d082456c22ea4e96af5395197bf5b61f02a8d0392244"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -583,7 +584,8 @@
     40553447,
     38688896,
     9174516,
-    40350852
+    40350852,
+    34764927
   ],
   "theme_usage": {
     "guidance": 16,
@@ -609,10 +611,11 @@
     "provision": 1,
     "reflection": 2,
     "light": 1,
-    "garden": 2
+    "garden": 2,
+    "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 113,
+  "published_count": 114,
   "history": [
     {
       "cycle": 1,
@@ -2121,6 +2124,18 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-282-Cycle-1.mp4",
       "published_sha256": "c5cfbb2b11d7bc12355c713d895c8bcf2f0f1a3b966ab48c4e7d54398263d8cb",
       "created_at": "2026-11-01T14:48:30Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:283"
+      ],
+      "visual_id": 34764927,
+      "theme": "trust",
+      "visual_query": "vast calm ocean beneath peaceful sunrise, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-283-Cycle-1.mp4",
+      "published_sha256": "a5877433c68ae543c049d082456c22ea4e96af5395197bf5b61f02a8d0392244",
+      "created_at": "2026-11-02T17:43:27Z"
     }
   ],
   "visual_history": [
@@ -2236,7 +2251,8 @@
     40553447,
     38688896,
     9174516,
-    40350852
+    40350852,
+    34764927
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2246,6 +2262,7 @@
     "00000001008703a1",
     "8092d365d5dfff5c",
     "60712381702edad1",
-    "61f0f0dcf1f04850"
+    "61f0f0dcf1f04850",
+    "fafcfc7cfcfc38ce"
   ]
 }
