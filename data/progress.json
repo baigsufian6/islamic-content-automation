@@ -290,7 +290,9 @@
     "2:280",
     "2:281",
     "2:282",
-    "2:283"
+    "2:283",
+    "2:284",
+    "2:285"
   ],
   "published_sections": [
     {
@@ -458,17 +460,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "2:283"
+      "2:284",
+      "2:285"
     ],
     "surah": "Al-Baqarah",
     "chapter": 2,
-    "duration_seconds": 35.866,
-    "visual_id": 34764927,
-    "visual_fingerprint": "fafcfc7cfcfc38ce",
-    "theme": "trust",
-    "visual_query": "vast calm ocean beneath peaceful sunrise, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-283-Cycle-1.mp4",
-    "published_sha256": "a5877433c68ae543c049d082456c22ea4e96af5395197bf5b61f02a8d0392244"
+    "duration_seconds": 64.104,
+    "visual_id": 34807067,
+    "visual_fingerprint": "c0149ccccec3c1c2",
+    "theme": "mercy",
+    "visual_query": "open Quran manuscript illuminated by warm candlelight, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-284-to-285-Cycle-1.mp4",
+    "published_sha256": "eb305b6e5acc7f9913e6d8ad937de5869d2090a9454a5b8ce503569c98f18dc6"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -585,7 +588,8 @@
     38688896,
     9174516,
     40350852,
-    34764927
+    34764927,
+    34807067
   ],
   "theme_usage": {
     "guidance": 16,
@@ -598,7 +602,7 @@
     "patience": 5,
     "warning": 5,
     "repentance": 4,
-    "mercy": 13,
+    "mercy": 14,
     "water": 2,
     "hope": 1,
     "afterlife": 10,
@@ -615,7 +619,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 114,
+  "published_count": 115,
   "history": [
     {
       "cycle": 1,
@@ -2136,6 +2140,19 @@
       "published_file": "Surah-Al-Baqarah-Chapter-2-Ayah-283-Cycle-1.mp4",
       "published_sha256": "a5877433c68ae543c049d082456c22ea4e96af5395197bf5b61f02a8d0392244",
       "created_at": "2026-11-02T17:43:27Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "2:284",
+        "2:285"
+      ],
+      "visual_id": 34807067,
+      "theme": "mercy",
+      "visual_query": "open Quran manuscript illuminated by warm candlelight, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-284-to-285-Cycle-1.mp4",
+      "published_sha256": "eb305b6e5acc7f9913e6d8ad937de5869d2090a9454a5b8ce503569c98f18dc6",
+      "created_at": "2026-11-03T15:46:44Z"
     }
   ],
   "visual_history": [
@@ -2252,7 +2269,8 @@
     38688896,
     9174516,
     40350852,
-    34764927
+    34764927,
+    34807067
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2263,6 +2281,7 @@
     "8092d365d5dfff5c",
     "60712381702edad1",
     "61f0f0dcf1f04850",
-    "fafcfc7cfcfc38ce"
+    "fafcfc7cfcfc38ce",
+    "c0149ccccec3c1c2"
   ]
 }

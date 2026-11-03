@@ -1955,5 +1955,22 @@
     "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayah-283-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-11-02T17:43:27Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-284-to-285-Cycle-1.mp4",
+    "metadata_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-284-to-285-Cycle-1.json",
+    "published_sha256": "eb305b6e5acc7f9913e6d8ad937de5869d2090a9454a5b8ce503569c98f18dc6",
+    "cycle": 1,
+    "surah": "Al-Baqarah",
+    "chapter": 2,
+    "verse_keys": [
+      "2:284",
+      "2:285"
+    ],
+    "duration_seconds": 64.104,
+    "captions_file": "Surah-Al-Baqarah-Chapter-2-Ayahs-284-to-285-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-11-03T15:46:44Z"
   }
 ]
