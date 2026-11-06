@@ -301,7 +301,10 @@
     "3:5",
     "3:6",
     "3:7",
-    "3:8"
+    "3:8",
+    "3:9",
+    "3:10",
+    "3:11"
   ],
   "published_sections": [
     {
@@ -469,18 +472,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:7",
-      "3:8"
+      "3:9",
+      "3:10",
+      "3:11"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 72.803,
-    "visual_id": 28154999,
-    "visual_fingerprint": "77abf7ff7e76f1a8",
-    "theme": "mercy",
-    "visual_query": "calm landscape glowing with soft golden morning light, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.mp4",
-    "published_sha256": "130d2c3c1da15ff9c781d9c1f20a8700daab1c33214d4f3c241c15e6e7287aed"
+    "duration_seconds": 47.517,
+    "visual_id": 18254971,
+    "visual_fingerprint": "0000707070000000",
+    "theme": "creation",
+    "visual_query": "full moon above distant mountains, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-9-to-11-Cycle-1.mp4",
+    "published_sha256": "a57b5bbf3367db3320f1cf6a1f29e9178ac40c170cdcac6fd9775513f4d864d3"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -601,11 +605,12 @@
     34807067,
     29458283,
     34665367,
-    28154999
+    28154999,
+    18254971
   ],
   "theme_usage": {
     "guidance": 17,
-    "creation": 6,
+    "creation": 7,
     "justice": 5,
     "paradise": 3,
     "earth": 1,
@@ -631,7 +636,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 118,
+  "published_count": 119,
   "history": [
     {
       "cycle": 1,
@@ -2207,6 +2212,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.mp4",
       "published_sha256": "130d2c3c1da15ff9c781d9c1f20a8700daab1c33214d4f3c241c15e6e7287aed",
       "created_at": "2026-11-06T02:44:32Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:9",
+        "3:10",
+        "3:11"
+      ],
+      "visual_id": 18254971,
+      "theme": "creation",
+      "visual_query": "full moon above distant mountains, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-9-to-11-Cycle-1.mp4",
+      "published_sha256": "a57b5bbf3367db3320f1cf6a1f29e9178ac40c170cdcac6fd9775513f4d864d3",
+      "created_at": "2026-11-06T15:33:25Z"
     }
   ],
   "visual_history": [
@@ -2327,7 +2346,8 @@
     34807067,
     29458283,
     34665367,
-    28154999
+    28154999,
+    18254971
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2342,6 +2362,7 @@
     "c0149ccccec3c1c2",
     "ffffb7ffe1fae48e",
     "43b145c990e198b2",
-    "77abf7ff7e76f1a8"
+    "77abf7ff7e76f1a8",
+    "0000707070000000"
   ]
 }
