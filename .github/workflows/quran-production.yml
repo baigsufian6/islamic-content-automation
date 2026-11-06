@@ -63,7 +63,7 @@ name: Quran Production Pipeline
 #      (run-result.json, publish/, any .mp4) are uploaded as a
 #      workflow artifact with `if: always()`. Even if "Read run
 #      result", the Release, R2 or Buffer fails, the video is kept
-#      for 14 days under the run's Artifacts section.
+#      for 3 days under the run's Artifacts section.
 #   9. Release cleanup is now non-blocking (continue-on-error) and
 #      only touches releases whose tag starts with "section-", so a
 #      housekeeping failure can't stop publishing and manual
@@ -220,7 +220,9 @@ jobs:
       # Runs even if the build step above failed partway (if: always()).
       # If anything later in the flow breaks (Read run result, Release,
       # R2, Buffer), the rendered video + metadata are still
-      # downloadable from this run's "Artifacts" section for 14 days.
+      # downloadable from this run's "Artifacts" section for 3 days.
+      # (Kept short on purpose: only ~3 backups exist at once, so the
+      #  repo's free 500 MB artifact quota is very unlikely to fill up.)
       #
       # ADJUST `path` if your worker writes the MP4 somewhere else.
       # `if-no-files-found: warn` means a missing path never fails
@@ -232,6 +234,9 @@ jobs:
 
       - name: Save raw outputs as workflow artifact (safety net)
         if: always()
+        # Non-blocking: if the repo's artifact storage quota is full, this
+        # step would otherwise fail and stop every step after it.
+        continue-on-error: true
         uses: actions/upload-artifact@v4 # TODO: pin to commit SHA
         with:
           name: quran-run-${{ github.run_id }}-${{ github.run_attempt }}
@@ -241,7 +246,7 @@ jobs:
             output/
             **/*.mp4
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 3
 
 
       # ============================================================
@@ -2226,7 +2231,7 @@ jobs:
             printf '| YouTube Shorts-compatible (<=58s) | %s |\n' "$S_YT_OK"
             printf '| R2 video URL | %s |\n' "$S_R2_URL"
             printf '| R2 old MP4s deleted this run | %s |\n' "$S_R2_DELETED"
-            printf '| Backup artifact (14 days) | %s |\n' "$S_ARTIFACT"
+            printf '| Backup artifact (3 days) | %s |\n' "$S_ARTIFACT"
             echo ""
             echo "### Buffer channel status"
             echo ""
