@@ -299,7 +299,9 @@
     "3:3",
     "3:4",
     "3:5",
-    "3:6"
+    "3:6",
+    "3:7",
+    "3:8"
   ],
   "published_sections": [
     {
@@ -467,22 +469,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:1",
-      "3:2",
-      "3:3",
-      "3:4",
-      "3:5",
-      "3:6"
+      "3:7",
+      "3:8"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 75.677,
-    "visual_id": 34665367,
-    "visual_fingerprint": "43b145c990e198b2",
-    "theme": "guidance",
-    "visual_query": "peaceful mountain path leading toward sunrise, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-1-to-6-Cycle-1.mp4",
-    "published_sha256": "3cff044b7f3c3b4099226ca79bfbf4564b76ec6cbc7cee228bf4c54e2f0675f6"
+    "duration_seconds": 72.803,
+    "visual_id": 28154999,
+    "visual_fingerprint": "77abf7ff7e76f1a8",
+    "theme": "mercy",
+    "visual_query": "calm landscape glowing with soft golden morning light, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.mp4",
+    "published_sha256": "130d2c3c1da15ff9c781d9c1f20a8700daab1c33214d4f3c241c15e6e7287aed"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -602,7 +600,8 @@
     34764927,
     34807067,
     29458283,
-    34665367
+    34665367,
+    28154999
   ],
   "theme_usage": {
     "guidance": 17,
@@ -615,7 +614,7 @@
     "patience": 5,
     "warning": 5,
     "repentance": 4,
-    "mercy": 15,
+    "mercy": 16,
     "water": 2,
     "hope": 1,
     "afterlife": 10,
@@ -632,7 +631,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 117,
+  "published_count": 118,
   "history": [
     {
       "cycle": 1,
@@ -2195,6 +2194,19 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-1-to-6-Cycle-1.mp4",
       "published_sha256": "3cff044b7f3c3b4099226ca79bfbf4564b76ec6cbc7cee228bf4c54e2f0675f6",
       "created_at": "2026-11-05T16:08:39Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:7",
+        "3:8"
+      ],
+      "visual_id": 28154999,
+      "theme": "mercy",
+      "visual_query": "calm landscape glowing with soft golden morning light, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.mp4",
+      "published_sha256": "130d2c3c1da15ff9c781d9c1f20a8700daab1c33214d4f3c241c15e6e7287aed",
+      "created_at": "2026-11-06T02:44:32Z"
     }
   ],
   "visual_history": [
@@ -2314,7 +2326,8 @@
     34764927,
     34807067,
     29458283,
-    34665367
+    34665367,
+    28154999
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2328,6 +2341,7 @@
     "fafcfc7cfcfc38ce",
     "c0149ccccec3c1c2",
     "ffffb7ffe1fae48e",
-    "43b145c990e198b2"
+    "43b145c990e198b2",
+    "77abf7ff7e76f1a8"
   ]
 }

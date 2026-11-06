@@ -2009,5 +2009,22 @@
     "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-1-to-6-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-11-05T16:08:39Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.mp4",
+    "metadata_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.json",
+    "published_sha256": "130d2c3c1da15ff9c781d9c1f20a8700daab1c33214d4f3c241c15e6e7287aed",
+    "cycle": 1,
+    "surah": "Ali 'Imran",
+    "chapter": 3,
+    "verse_keys": [
+      "3:7",
+      "3:8"
+    ],
+    "duration_seconds": 72.803,
+    "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-7-to-8-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-11-06T02:44:32Z"
   }
 ]
