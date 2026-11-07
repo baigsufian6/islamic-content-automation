@@ -304,7 +304,10 @@
     "3:8",
     "3:9",
     "3:10",
-    "3:11"
+    "3:11",
+    "3:12",
+    "3:13",
+    "3:14"
   ],
   "published_sections": [
     {
@@ -472,19 +475,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:9",
-      "3:10",
-      "3:11"
+      "3:12",
+      "3:13",
+      "3:14"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 47.517,
-    "visual_id": 18254971,
-    "visual_fingerprint": "0000707070000000",
-    "theme": "creation",
-    "visual_query": "full moon above distant mountains, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-9-to-11-Cycle-1.mp4",
-    "published_sha256": "a57b5bbf3367db3320f1cf6a1f29e9178ac40c170cdcac6fd9775513f4d864d3"
+    "duration_seconds": 72.464,
+    "visual_id": 40346247,
+    "visual_fingerprint": "9b25c4a9c2c073d1",
+    "theme": "paradise",
+    "visual_query": "serene garden surrounded by flowing water, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-12-to-14-Cycle-1.mp4",
+    "published_sha256": "f6359acc27c54be22bd9c3e49e59431cf8be37537bdc177270beb8a27c32c117"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -606,13 +609,14 @@
     29458283,
     34665367,
     28154999,
-    18254971
+    18254971,
+    40346247
   ],
   "theme_usage": {
     "guidance": 17,
     "creation": 7,
     "justice": 5,
-    "paradise": 3,
+    "paradise": 4,
     "earth": 1,
     "knowledge": 16,
     "worship": 5,
@@ -636,7 +640,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 119,
+  "published_count": 120,
   "history": [
     {
       "cycle": 1,
@@ -2226,6 +2230,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-9-to-11-Cycle-1.mp4",
       "published_sha256": "a57b5bbf3367db3320f1cf6a1f29e9178ac40c170cdcac6fd9775513f4d864d3",
       "created_at": "2026-11-06T15:33:25Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:12",
+        "3:13",
+        "3:14"
+      ],
+      "visual_id": 40346247,
+      "theme": "paradise",
+      "visual_query": "serene garden surrounded by flowing water, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-12-to-14-Cycle-1.mp4",
+      "published_sha256": "f6359acc27c54be22bd9c3e49e59431cf8be37537bdc177270beb8a27c32c117",
+      "created_at": "2026-11-07T12:58:20Z"
     }
   ],
   "visual_history": [
@@ -2347,7 +2365,8 @@
     29458283,
     34665367,
     28154999,
-    18254971
+    18254971,
+    40346247
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2363,6 +2382,7 @@
     "ffffb7ffe1fae48e",
     "43b145c990e198b2",
     "77abf7ff7e76f1a8",
-    "0000707070000000"
+    "0000707070000000",
+    "9b25c4a9c2c073d1"
   ]
 }
