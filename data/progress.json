@@ -307,7 +307,11 @@
     "3:11",
     "3:12",
     "3:13",
-    "3:14"
+    "3:14",
+    "3:15",
+    "3:16",
+    "3:17",
+    "3:18"
   ],
   "published_sections": [
     {
@@ -475,19 +479,20 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:12",
-      "3:13",
-      "3:14"
+      "3:15",
+      "3:16",
+      "3:17",
+      "3:18"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 72.464,
-    "visual_id": 40346247,
-    "visual_fingerprint": "9b25c4a9c2c073d1",
-    "theme": "paradise",
-    "visual_query": "serene garden surrounded by flowing water, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-12-to-14-Cycle-1.mp4",
-    "published_sha256": "f6359acc27c54be22bd9c3e49e59431cf8be37537bdc177270beb8a27c32c117"
+    "duration_seconds": 75.624,
+    "visual_id": 38430629,
+    "visual_fingerprint": "c57370f0f3f0f060",
+    "theme": "mercy",
+    "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-15-to-18-Cycle-1.mp4",
+    "published_sha256": "3f51e73bc16a85cf9c583198df15937b9c00c713a6d04e9b19576f10510f7c83"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -610,7 +615,8 @@
     34665367,
     28154999,
     18254971,
-    40346247
+    40346247,
+    38430629
   ],
   "theme_usage": {
     "guidance": 17,
@@ -623,7 +629,7 @@
     "patience": 5,
     "warning": 5,
     "repentance": 4,
-    "mercy": 16,
+    "mercy": 17,
     "water": 2,
     "hope": 1,
     "afterlife": 10,
@@ -640,7 +646,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 120,
+  "published_count": 121,
   "history": [
     {
       "cycle": 1,
@@ -2244,6 +2250,21 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-12-to-14-Cycle-1.mp4",
       "published_sha256": "f6359acc27c54be22bd9c3e49e59431cf8be37537bdc177270beb8a27c32c117",
       "created_at": "2026-11-07T12:58:20Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:15",
+        "3:16",
+        "3:17",
+        "3:18"
+      ],
+      "visual_id": 38430629,
+      "theme": "mercy",
+      "visual_query": "soft golden sunrise over peaceful desert hills, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-15-to-18-Cycle-1.mp4",
+      "published_sha256": "3f51e73bc16a85cf9c583198df15937b9c00c713a6d04e9b19576f10510f7c83",
+      "created_at": "2026-11-07T14:37:52Z"
     }
   ],
   "visual_history": [
@@ -2366,7 +2387,8 @@
     34665367,
     28154999,
     18254971,
-    40346247
+    40346247,
+    38430629
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2383,6 +2405,7 @@
     "43b145c990e198b2",
     "77abf7ff7e76f1a8",
     "0000707070000000",
-    "9b25c4a9c2c073d1"
+    "9b25c4a9c2c073d1",
+    "c57370f0f3f0f060"
   ]
 }
