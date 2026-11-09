@@ -313,7 +313,11 @@
     "3:17",
     "3:18",
     "3:19",
-    "3:20"
+    "3:20",
+    "3:21",
+    "3:22",
+    "3:23",
+    "3:24"
   ],
   "published_sections": [
     {
@@ -481,18 +485,20 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:19",
-      "3:20"
+      "3:21",
+      "3:22",
+      "3:23",
+      "3:24"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 56.111,
-    "visual_id": 40433618,
-    "visual_fingerprint": "4280b0e0e8f1d858",
-    "theme": "guidance",
-    "visual_query": "winding desert path toward distant golden light, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-19-to-20-Cycle-1.mp4",
-    "published_sha256": "350b517fa3b546fcbb17445f5146e14ca262a556e70c2866c53beb8ca8c50fb2"
+    "duration_seconds": 75.102,
+    "visual_id": 38430612,
+    "visual_fingerprint": "0080000098040d00",
+    "theme": "afterlife",
+    "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-21-to-24-Cycle-1.mp4",
+    "published_sha256": "f8454163d5801402ef8be5f59b6ac5aa384886898189d5a6c5c6681d602b807b"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -617,7 +623,8 @@
     18254971,
     40346247,
     38430629,
-    40433618
+    40433618,
+    38430612
   ],
   "theme_usage": {
     "guidance": 18,
@@ -633,7 +640,7 @@
     "mercy": 17,
     "water": 2,
     "hope": 1,
-    "afterlife": 10,
+    "afterlife": 11,
     "revelation": 2,
     "remembrance": 2,
     "mortality": 5,
@@ -647,7 +654,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 122,
+  "published_count": 123,
   "history": [
     {
       "cycle": 1,
@@ -2279,6 +2286,21 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-19-to-20-Cycle-1.mp4",
       "published_sha256": "350b517fa3b546fcbb17445f5146e14ca262a556e70c2866c53beb8ca8c50fb2",
       "created_at": "2026-11-08T14:44:41Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:21",
+        "3:22",
+        "3:23",
+        "3:24"
+      ],
+      "visual_id": 38430612,
+      "theme": "afterlife",
+      "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-21-to-24-Cycle-1.mp4",
+      "published_sha256": "f8454163d5801402ef8be5f59b6ac5aa384886898189d5a6c5c6681d602b807b",
+      "created_at": "2026-11-09T18:07:48Z"
     }
   ],
   "visual_history": [
@@ -2403,7 +2425,8 @@
     18254971,
     40346247,
     38430629,
-    40433618
+    40433618,
+    38430612
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2422,6 +2445,7 @@
     "0000707070000000",
     "9b25c4a9c2c073d1",
     "c57370f0f3f0f060",
-    "4280b0e0e8f1d858"
+    "4280b0e0e8f1d858",
+    "0080000098040d00"
   ]
 }
