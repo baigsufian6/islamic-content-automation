@@ -317,7 +317,10 @@
     "3:21",
     "3:22",
     "3:23",
-    "3:24"
+    "3:24",
+    "3:25",
+    "3:26",
+    "3:27"
   ],
   "published_sections": [
     {
@@ -485,20 +488,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:21",
-      "3:22",
-      "3:23",
-      "3:24"
+      "3:25",
+      "3:26",
+      "3:27"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 75.102,
-    "visual_id": 38430612,
-    "visual_fingerprint": "0080000098040d00",
-    "theme": "afterlife",
-    "visual_query": "endless desert horizon at dawn, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-21-to-24-Cycle-1.mp4",
-    "published_sha256": "f8454163d5801402ef8be5f59b6ac5aa384886898189d5a6c5c6681d602b807b"
+    "duration_seconds": 65.75,
+    "visual_id": 35972707,
+    "visual_fingerprint": "00000000020a0dcb",
+    "theme": "provision",
+    "visual_query": "abundant date palm oasis, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-25-to-27-Cycle-1.mp4",
+    "published_sha256": "2f9cff1086a3423a4894c3708ad4a05df58d8cf83aac2d643c5a41aea5c40564"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -624,7 +626,8 @@
     40346247,
     38430629,
     40433618,
-    38430612
+    38430612,
+    35972707
   ],
   "theme_usage": {
     "guidance": 18,
@@ -647,14 +650,14 @@
     "judgment": 3,
     "gratitude": 1,
     "trials": 2,
-    "provision": 1,
+    "provision": 2,
     "reflection": 2,
     "light": 1,
     "garden": 2,
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 123,
+  "published_count": 124,
   "history": [
     {
       "cycle": 1,
@@ -2301,6 +2304,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-21-to-24-Cycle-1.mp4",
       "published_sha256": "f8454163d5801402ef8be5f59b6ac5aa384886898189d5a6c5c6681d602b807b",
       "created_at": "2026-11-09T18:07:48Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:25",
+        "3:26",
+        "3:27"
+      ],
+      "visual_id": 35972707,
+      "theme": "provision",
+      "visual_query": "abundant date palm oasis, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-25-to-27-Cycle-1.mp4",
+      "published_sha256": "2f9cff1086a3423a4894c3708ad4a05df58d8cf83aac2d643c5a41aea5c40564",
+      "created_at": "2026-11-10T16:03:07Z"
     }
   ],
   "visual_history": [
@@ -2426,7 +2443,8 @@
     40346247,
     38430629,
     40433618,
-    38430612
+    38430612,
+    35972707
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2446,6 +2464,7 @@
     "9b25c4a9c2c073d1",
     "c57370f0f3f0f060",
     "4280b0e0e8f1d858",
-    "0080000098040d00"
+    "0080000098040d00",
+    "00000000020a0dcb"
   ]
 }
