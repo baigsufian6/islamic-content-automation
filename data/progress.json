@@ -320,7 +320,10 @@
     "3:24",
     "3:25",
     "3:26",
-    "3:27"
+    "3:27",
+    "3:28",
+    "3:29",
+    "3:30"
   ],
   "published_sections": [
     {
@@ -488,19 +491,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:25",
-      "3:26",
-      "3:27"
+      "3:28",
+      "3:29",
+      "3:30"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 65.75,
-    "visual_id": 35972707,
-    "visual_fingerprint": "00000000020a0dcb",
-    "theme": "provision",
-    "visual_query": "abundant date palm oasis, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-25-to-27-Cycle-1.mp4",
-    "published_sha256": "2f9cff1086a3423a4894c3708ad4a05df58d8cf83aac2d643c5a41aea5c40564"
+    "duration_seconds": 72.673,
+    "visual_id": 39657522,
+    "visual_fingerprint": "e4e2e0f0f67e9f9f",
+    "theme": "mercy",
+    "visual_query": "warm sunlight spreading across a quiet valley, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-28-to-30-Cycle-1.mp4",
+    "published_sha256": "4547a5edc32d411723a4a1e325122ec96c6851d3efc70efd0cf4d9114303dcf9"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -627,7 +630,8 @@
     38430629,
     40433618,
     38430612,
-    35972707
+    35972707,
+    39657522
   ],
   "theme_usage": {
     "guidance": 18,
@@ -640,7 +644,7 @@
     "patience": 5,
     "warning": 5,
     "repentance": 4,
-    "mercy": 17,
+    "mercy": 18,
     "water": 2,
     "hope": 1,
     "afterlife": 11,
@@ -657,7 +661,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 124,
+  "published_count": 125,
   "history": [
     {
       "cycle": 1,
@@ -2318,6 +2322,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-25-to-27-Cycle-1.mp4",
       "published_sha256": "2f9cff1086a3423a4894c3708ad4a05df58d8cf83aac2d643c5a41aea5c40564",
       "created_at": "2026-11-10T16:03:07Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:28",
+        "3:29",
+        "3:30"
+      ],
+      "visual_id": 39657522,
+      "theme": "mercy",
+      "visual_query": "warm sunlight spreading across a quiet valley, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-28-to-30-Cycle-1.mp4",
+      "published_sha256": "4547a5edc32d411723a4a1e325122ec96c6851d3efc70efd0cf4d9114303dcf9",
+      "created_at": "2026-11-12T16:34:14Z"
     }
   ],
   "visual_history": [
@@ -2444,7 +2462,8 @@
     38430629,
     40433618,
     38430612,
-    35972707
+    35972707,
+    39657522
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2465,6 +2484,7 @@
     "c57370f0f3f0f060",
     "4280b0e0e8f1d858",
     "0080000098040d00",
-    "00000000020a0dcb"
+    "00000000020a0dcb",
+    "e4e2e0f0f67e9f9f"
   ]
 }
