@@ -2153,5 +2153,25 @@
     "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-28-to-30-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-11-12T16:34:14Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Ali-Imran-Chapter-3-Ayahs-31-to-35-Cycle-1.mp4",
+    "metadata_file": "Surah-Ali-Imran-Chapter-3-Ayahs-31-to-35-Cycle-1.json",
+    "published_sha256": "d23ed539ea72f6ed8009223e060a86f0e5bd121a150370d00183fd9a6f1b56ba",
+    "cycle": 1,
+    "surah": "Ali 'Imran",
+    "chapter": 3,
+    "verse_keys": [
+      "3:31",
+      "3:32",
+      "3:33",
+      "3:34",
+      "3:35"
+    ],
+    "duration_seconds": 65.541,
+    "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-31-to-35-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-11-13T15:52:01Z"
   }
 ]
