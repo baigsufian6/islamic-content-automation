@@ -328,7 +328,10 @@
     "3:32",
     "3:33",
     "3:34",
-    "3:35"
+    "3:35",
+    "3:36",
+    "3:37",
+    "3:38"
   ],
   "published_sections": [
     {
@@ -496,21 +499,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:31",
-      "3:32",
-      "3:33",
-      "3:34",
-      "3:35"
+      "3:36",
+      "3:37",
+      "3:38"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 65.541,
-    "visual_id": 40983416,
-    "visual_fingerprint": "f0d02072e043b135",
+    "duration_seconds": 79.073,
+    "visual_id": 19942396,
+    "visual_fingerprint": "739ce8fc773e0ee0",
     "theme": "mercy",
-    "visual_query": "gentle sunrise over vast peaceful mountains, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-31-to-35-Cycle-1.mp4",
-    "published_sha256": "d23ed539ea72f6ed8009223e060a86f0e5bd121a150370d00183fd9a6f1b56ba"
+    "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-36-to-38-Cycle-1.mp4",
+    "published_sha256": "b91d12b2f4bcd20e837782321c5df16d619a3863d468bc4364e6b32a607bbdca"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -639,7 +640,8 @@
     38430612,
     35972707,
     39657522,
-    40983416
+    40983416,
+    19942396
   ],
   "theme_usage": {
     "guidance": 18,
@@ -652,7 +654,7 @@
     "patience": 5,
     "warning": 5,
     "repentance": 4,
-    "mercy": 19,
+    "mercy": 20,
     "water": 2,
     "hope": 1,
     "afterlife": 11,
@@ -669,7 +671,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 126,
+  "published_count": 127,
   "history": [
     {
       "cycle": 1,
@@ -2360,6 +2362,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-31-to-35-Cycle-1.mp4",
       "published_sha256": "d23ed539ea72f6ed8009223e060a86f0e5bd121a150370d00183fd9a6f1b56ba",
       "created_at": "2026-11-13T15:52:01Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:36",
+        "3:37",
+        "3:38"
+      ],
+      "visual_id": 19942396,
+      "theme": "mercy",
+      "visual_query": "golden light breaking through soft morning clouds, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-36-to-38-Cycle-1.mp4",
+      "published_sha256": "b91d12b2f4bcd20e837782321c5df16d619a3863d468bc4364e6b32a607bbdca",
+      "created_at": "2026-11-14T14:44:33Z"
     }
   ],
   "visual_history": [
@@ -2488,7 +2504,8 @@
     38430612,
     35972707,
     39657522,
-    40983416
+    40983416,
+    19942396
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2511,6 +2528,7 @@
     "0080000098040d00",
     "00000000020a0dcb",
     "e4e2e0f0f67e9f9f",
-    "f0d02072e043b135"
+    "f0d02072e043b135",
+    "739ce8fc773e0ee0"
   ]
 }
