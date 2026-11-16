@@ -334,7 +334,12 @@
     "3:38",
     "3:39",
     "3:40",
-    "3:41"
+    "3:41",
+    "3:42",
+    "3:43",
+    "3:44",
+    "3:45",
+    "3:46"
   ],
   "published_sections": [
     {
@@ -502,19 +507,21 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:39",
-      "3:40",
-      "3:41"
+      "3:42",
+      "3:43",
+      "3:44",
+      "3:45",
+      "3:46"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 66.821,
-    "visual_id": 39657535,
-    "visual_fingerprint": "fefef397176f6f66",
-    "theme": "remembrance",
-    "visual_query": "Quran pages with gentle sunlight across the paper, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-39-to-41-Cycle-1.mp4",
-    "published_sha256": "91855e8a6440cdd53a9b075c61b0bbe97efe3e81330c2f1cc9bba19a4d1dacc6"
+    "duration_seconds": 71.889,
+    "visual_id": 40704204,
+    "visual_fingerprint": "00ccb89b8860707c",
+    "theme": "afterlife",
+    "visual_query": "dramatic sunrise over vast empty landscape, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-42-to-46-Cycle-1.mp4",
+    "published_sha256": "7fb1cd98cf4fd0534b26ab391afbaea982887606ab8bc51e62049d1d20211ebf"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -645,7 +652,8 @@
     39657522,
     40983416,
     19942396,
-    39657535
+    39657535,
+    40704204
   ],
   "theme_usage": {
     "guidance": 18,
@@ -661,7 +669,7 @@
     "mercy": 20,
     "water": 2,
     "hope": 1,
-    "afterlife": 11,
+    "afterlife": 12,
     "revelation": 2,
     "remembrance": 3,
     "mortality": 5,
@@ -675,7 +683,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 128,
+  "published_count": 129,
   "history": [
     {
       "cycle": 1,
@@ -2394,6 +2402,22 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-39-to-41-Cycle-1.mp4",
       "published_sha256": "91855e8a6440cdd53a9b075c61b0bbe97efe3e81330c2f1cc9bba19a4d1dacc6",
       "created_at": "2026-11-15T15:13:34Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:42",
+        "3:43",
+        "3:44",
+        "3:45",
+        "3:46"
+      ],
+      "visual_id": 40704204,
+      "theme": "afterlife",
+      "visual_query": "dramatic sunrise over vast empty landscape, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-42-to-46-Cycle-1.mp4",
+      "published_sha256": "7fb1cd98cf4fd0534b26ab391afbaea982887606ab8bc51e62049d1d20211ebf",
+      "created_at": "2026-11-16T17:47:23Z"
     }
   ],
   "visual_history": [
@@ -2524,7 +2548,8 @@
     39657522,
     40983416,
     19942396,
-    39657535
+    39657535,
+    40704204
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2549,6 +2574,7 @@
     "e4e2e0f0f67e9f9f",
     "f0d02072e043b135",
     "739ce8fc773e0ee0",
-    "fefef397176f6f66"
+    "fefef397176f6f66",
+    "00ccb89b8860707c"
   ]
 }
