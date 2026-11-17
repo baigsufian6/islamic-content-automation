@@ -339,7 +339,10 @@
     "3:43",
     "3:44",
     "3:45",
-    "3:46"
+    "3:46",
+    "3:47",
+    "3:48",
+    "3:49"
   ],
   "published_sections": [
     {
@@ -507,21 +510,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:42",
-      "3:43",
-      "3:44",
-      "3:45",
-      "3:46"
+      "3:47",
+      "3:48",
+      "3:49"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 71.889,
-    "visual_id": 40704204,
-    "visual_fingerprint": "00ccb89b8860707c",
-    "theme": "afterlife",
-    "visual_query": "dramatic sunrise over vast empty landscape, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-42-to-46-Cycle-1.mp4",
-    "published_sha256": "7fb1cd98cf4fd0534b26ab391afbaea982887606ab8bc51e62049d1d20211ebf"
+    "duration_seconds": 77.166,
+    "visual_id": 39657533,
+    "visual_fingerprint": "f0f0e16410449950",
+    "theme": "knowledge",
+    "visual_query": "open Quran manuscript pages in warm natural light, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-47-to-49-Cycle-1.mp4",
+    "published_sha256": "a743267e238e2a77f1365916e449d042429b4cb7e95255f59d5e5b24b50cea18"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -653,7 +654,8 @@
     40983416,
     19942396,
     39657535,
-    40704204
+    40704204,
+    39657533
   ],
   "theme_usage": {
     "guidance": 18,
@@ -661,7 +663,7 @@
     "justice": 5,
     "paradise": 4,
     "earth": 1,
-    "knowledge": 16,
+    "knowledge": 17,
     "worship": 5,
     "patience": 5,
     "warning": 5,
@@ -683,7 +685,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 129,
+  "published_count": 130,
   "history": [
     {
       "cycle": 1,
@@ -2418,6 +2420,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-42-to-46-Cycle-1.mp4",
       "published_sha256": "7fb1cd98cf4fd0534b26ab391afbaea982887606ab8bc51e62049d1d20211ebf",
       "created_at": "2026-11-16T17:47:23Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:47",
+        "3:48",
+        "3:49"
+      ],
+      "visual_id": 39657533,
+      "theme": "knowledge",
+      "visual_query": "open Quran manuscript pages in warm natural light, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-47-to-49-Cycle-1.mp4",
+      "published_sha256": "a743267e238e2a77f1365916e449d042429b4cb7e95255f59d5e5b24b50cea18",
+      "created_at": "2026-11-17T17:20:18Z"
     }
   ],
   "visual_history": [
@@ -2549,7 +2565,8 @@
     40983416,
     19942396,
     39657535,
-    40704204
+    40704204,
+    39657533
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2575,6 +2592,7 @@
     "f0d02072e043b135",
     "739ce8fc773e0ee0",
     "fefef397176f6f66",
-    "00ccb89b8860707c"
+    "00ccb89b8860707c",
+    "f0f0e16410449950"
   ]
 }

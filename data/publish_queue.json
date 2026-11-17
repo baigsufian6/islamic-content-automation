@@ -2229,5 +2229,23 @@
     "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-42-to-46-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-11-16T17:47:23Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Ali-Imran-Chapter-3-Ayahs-47-to-49-Cycle-1.mp4",
+    "metadata_file": "Surah-Ali-Imran-Chapter-3-Ayahs-47-to-49-Cycle-1.json",
+    "published_sha256": "a743267e238e2a77f1365916e449d042429b4cb7e95255f59d5e5b24b50cea18",
+    "cycle": 1,
+    "surah": "Ali 'Imran",
+    "chapter": 3,
+    "verse_keys": [
+      "3:47",
+      "3:48",
+      "3:49"
+    ],
+    "duration_seconds": 77.166,
+    "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-47-to-49-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-11-17T17:20:18Z"
   }
 ]
