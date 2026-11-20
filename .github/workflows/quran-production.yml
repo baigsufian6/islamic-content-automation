@@ -584,7 +584,7 @@ jobs:
         id: release
         continue-on-error: true
 
-        uses: softprops/action-gh-release@v2 # TODO: pin to commit SHA — see note above
+        uses: softprops/action-gh-release@v3 # TODO: pin to commit SHA — see note above
 
         with:
           tag_name: ${{ steps.meta.outputs.tag_name }}
