@@ -57,27 +57,24 @@ name: Quran Production Pipeline
 #   5. Pip installs are version-pinned.
 #   6. GitHub Releases auto-cleaned with floor + per-run cap.
 #   7. YouTube safe-skip for videos over the Shorts limit.
+#   8. SAFETY NET: raw outputs uploaded as a workflow artifact.
+#   9. Release cleanup is non-blocking and only touches "section-" tags.
+#  10. GitHub Release step is non-blocking.
+#  11. Buffer: each channel is attempted independently.
+#  12. Run summary uses env vars instead of inline interpolation.
 #
-#   NEW IN THIS VERSION:
-#   8. SAFETY NET: right after the build step, the raw outputs
-#      (run-result.json, publish/, any .mp4) are uploaded as a
-#      workflow artifact with `if: always()`. Even if "Read run
-#      result", the Release, R2 or Buffer fails, the video is kept
-#      for 3 days under the run's Artifacts section.
-#   9. Release cleanup is now non-blocking (continue-on-error) and
-#      only touches releases whose tag starts with "section-", so a
-#      housekeeping failure can't stop publishing and manual
-#      releases are never counted or deleted.
-#  10. The GitHub Release step is also non-blocking now. The
-#      artifact (8) is the real safety net, and a GitHub API
-#      hiccup shouldn't stop R2 + Buffer from running.
-#  11. Buffer: each channel is attempted independently. If
-#      Instagram fails, Facebook and YouTube are still tried. The
-#      status outputs are always written, and the step still FAILS
-#      at the end if any channel failed, so you see the red X.
-#  12. Run summary: caption and other values are passed via env
-#      vars instead of being pasted into the shell script (a quote,
-#      backtick or $(...) in a caption could break/execute).
+#   NEW IN THIS VERSION (reproducible environment):
+#  13. Runner pinned to ubuntu-24.04 (was ubuntu-latest, which
+#      silently moved to Ubuntu 26.04 / Python 3.14 and broke the
+#      pinned Pillow install).
+#  14. Python pinned to 3.12 via actions/setup-python, with pip
+#      caching keyed on requirements.txt.
+#  15. Python dependencies moved to requirements.txt and installed
+#      with --only-binary=:all: so a missing wheel fails in seconds
+#      instead of attempting a slow source build.
+#  16. libfribidi0 installed so Pillow's Arabic shaping (raqm) works.
+#  17. production/preflight.py runs before the build and fails fast
+#      with a clear message if the environment is wrong.
 # ----------------------------------------------------------------
 # ================================================================
 
@@ -104,7 +101,9 @@ jobs:
 
   production:
 
-    runs-on: ubuntu-latest
+    # CHANGED: pinned (was ubuntu-latest). Upgrade this deliberately,
+    # together with python-version below, never by surprise.
+    runs-on: ubuntu-24.04
 
     environment: Quran API
 
@@ -123,10 +122,22 @@ jobs:
 
 
       # ============================================================
+      # 1.5. PIN PYTHON  (NEW)
+      # ============================================================
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+
+      # ============================================================
       # 2. INSTALL DEPENDENCIES
-      # (see earlier notes: core packages are atomic, each Arabic
-      #  font is installed independently, and we fail loudly if none
-      #  of the Arabic fonts landed.)
+      # (core packages are atomic, each Arabic font is installed
+      #  independently, and we fail loudly if none of the Arabic
+      #  fonts landed.)
       # ============================================================
 
       - name: Install rendering and storage dependencies
@@ -138,6 +149,11 @@ jobs:
             fontconfig \
             fonts-noto-core \
             fonts-noto-extra
+
+          # NEW: needed for Pillow's raqm (Arabic shaping). Non-fatal,
+          # because the worker has an arabic-reshaper/bidi fallback.
+          sudo apt-get install -y libfribidi0 \
+            || echo "WARNING: libfribidi0 unavailable, skipping."
 
           for pkg in fonts-hosny-amiri fonts-sil-scheherazade fonts-noto-naskh-arabic; do
             sudo apt-get install -y "$pkg" \
@@ -151,13 +167,9 @@ jobs:
             exit 1
           fi
 
-          python3 -m pip install --quiet \
-            requests==2.32.3 \
-            pillow==10.4.0 \
-            boto3==1.35.36 \
-            arabic-reshaper==3.0.0 \
-            python-bidi==0.4.2 \
-            opencv-python-headless==4.10.0.84
+          # CHANGED: installs from requirements.txt, wheels only.
+          python -m pip install --upgrade pip
+          python -m pip install --only-binary=:all: -r requirements.txt
 
 
       # ============================================================
@@ -188,6 +200,14 @@ jobs:
           fi
 
           echo "production/quran_worker_wow.py found as expected."
+
+
+      # ============================================================
+      # 2.9. PREFLIGHT ENVIRONMENT CHECK  (NEW)
+      # ============================================================
+
+      - name: Preflight environment check
+        run: python production/preflight.py
 
 
       # ============================================================
