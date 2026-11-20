@@ -257,7 +257,7 @@ jobs:
         # Non-blocking: if the repo's artifact storage quota is full, this
         # step would otherwise fail and stop every step after it.
         continue-on-error: true
-        uses: actions/upload-artifact@v4 # TODO: pin to commit SHA
+        uses: actions/upload-artifact@v7 # TODO: pin to commit SHA
         with:
           name: quran-run-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
