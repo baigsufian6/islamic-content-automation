@@ -355,7 +355,9 @@
     "3:59",
     "3:60",
     "3:61",
-    "3:62"
+    "3:62",
+    "3:63",
+    "3:64"
   ],
   "published_sections": [
     {
@@ -523,20 +525,18 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:59",
-      "3:60",
-      "3:61",
-      "3:62"
+      "3:63",
+      "3:64"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 75.154,
-    "visual_id": 29896688,
-    "visual_fingerprint": "0e1e0e0d1dff77ff",
-    "theme": "knowledge",
-    "visual_query": "detailed Arabic calligraphy on ancient stone, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-59-to-62-Cycle-1.mp4",
-    "published_sha256": "9ec0f32e81fb87217355f64ec69cf6c7ed332fcf45fed1fe1ccf55bd68949e79"
+    "duration_seconds": 45.897,
+    "visual_id": 30354458,
+    "visual_fingerprint": "daaab1d5b4b6a4c4",
+    "theme": "worship",
+    "visual_query": "geometric mosque architecture in golden hour, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-63-to-64-Cycle-1.mp4",
+    "published_sha256": "982e35561951f4d68787bef11d51fbfebe26b37ecb49198d8f672d18d5b29767"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -672,7 +672,8 @@
     39657533,
     39712616,
     41085961,
-    29896688
+    29896688,
+    30354458
   ],
   "theme_usage": {
     "guidance": 19,
@@ -681,7 +682,7 @@
     "paradise": 4,
     "earth": 1,
     "knowledge": 18,
-    "worship": 5,
+    "worship": 6,
     "patience": 5,
     "warning": 5,
     "repentance": 4,
@@ -702,7 +703,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 133,
+  "published_count": 134,
   "history": [
     {
       "cycle": 1,
@@ -2497,6 +2498,19 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-59-to-62-Cycle-1.mp4",
       "published_sha256": "9ec0f32e81fb87217355f64ec69cf6c7ed332fcf45fed1fe1ccf55bd68949e79",
       "created_at": "2026-11-22T15:53:55Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:63",
+        "3:64"
+      ],
+      "visual_id": 30354458,
+      "theme": "worship",
+      "visual_query": "geometric mosque architecture in golden hour, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-63-to-64-Cycle-1.mp4",
+      "published_sha256": "982e35561951f4d68787bef11d51fbfebe26b37ecb49198d8f672d18d5b29767",
+      "created_at": "2026-11-23T19:51:41Z"
     }
   ],
   "visual_history": [
@@ -2632,7 +2646,8 @@
     39657533,
     39712616,
     41085961,
-    29896688
+    29896688,
+    30354458
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2662,6 +2677,7 @@
     "f0f0e16410449950",
     "30155894fddc9eb4",
     "0ff77ec14c0024c0",
-    "0e1e0e0d1dff77ff"
+    "0e1e0e0d1dff77ff",
+    "daaab1d5b4b6a4c4"
   ]
 }
