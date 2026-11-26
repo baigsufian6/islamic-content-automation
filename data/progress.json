@@ -364,7 +364,10 @@
     "3:68",
     "3:69",
     "3:70",
-    "3:71"
+    "3:71",
+    "3:72",
+    "3:73",
+    "3:74"
   ],
   "published_sections": [
     {
@@ -532,20 +535,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:68",
-      "3:69",
-      "3:70",
-      "3:71"
+      "3:72",
+      "3:73",
+      "3:74"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 58.88,
-    "visual_id": 28435597,
-    "visual_fingerprint": "191a1c1c080aa9dd",
-    "theme": "justice",
-    "visual_query": "still water reflecting symmetrical mountains, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-68-to-71-Cycle-1.mp4",
-    "published_sha256": "32af71b713ecab59844f4f15645e85fcb9f91c95a9277406c0d592f9388fe222"
+    "duration_seconds": 61.048,
+    "visual_id": 35287109,
+    "visual_fingerprint": "000000404c262edd",
+    "theme": "mercy",
+    "visual_query": "warm lantern glowing inside quiet Islamic architecture, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.mp4",
+    "published_sha256": "2efd648a3de5f42e5f0e120a2622c71ca9bee24bf12b6ecb91b0121a59e62c82"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -684,7 +686,8 @@
     29896688,
     30354458,
     34680752,
-    28435597
+    28435597,
+    35287109
   ],
   "theme_usage": {
     "guidance": 19,
@@ -697,7 +700,7 @@
     "patience": 5,
     "warning": 5,
     "repentance": 4,
-    "mercy": 20,
+    "mercy": 21,
     "water": 2,
     "hope": 1,
     "afterlife": 13,
@@ -714,7 +717,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 136,
+  "published_count": 137,
   "history": [
     {
       "cycle": 1,
@@ -2551,6 +2554,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-68-to-71-Cycle-1.mp4",
       "published_sha256": "32af71b713ecab59844f4f15645e85fcb9f91c95a9277406c0d592f9388fe222",
       "created_at": "2026-11-25T18:25:13Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:72",
+        "3:73",
+        "3:74"
+      ],
+      "visual_id": 35287109,
+      "theme": "mercy",
+      "visual_query": "warm lantern glowing inside quiet Islamic architecture, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.mp4",
+      "published_sha256": "2efd648a3de5f42e5f0e120a2622c71ca9bee24bf12b6ecb91b0121a59e62c82",
+      "created_at": "2026-11-26T18:02:58Z"
     }
   ],
   "visual_history": [
@@ -2689,7 +2706,8 @@
     29896688,
     30354458,
     34680752,
-    28435597
+    28435597,
+    35287109
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2722,6 +2740,7 @@
     "0e1e0e0d1dff77ff",
     "daaab1d5b4b6a4c4",
     "94d878e180c5e09c",
-    "191a1c1c080aa9dd"
+    "191a1c1c080aa9dd",
+    "000000404c262edd"
   ]
 }

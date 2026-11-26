@@ -2359,5 +2359,23 @@
     "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-68-to-71-Cycle-1.srt",
     "facebook_compatible": true,
     "created_at": "2026-11-25T18:25:13Z"
+  },
+  {
+    "status": "pending",
+    "video_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.mp4",
+    "metadata_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.json",
+    "published_sha256": "2efd648a3de5f42e5f0e120a2622c71ca9bee24bf12b6ecb91b0121a59e62c82",
+    "cycle": 1,
+    "surah": "Ali 'Imran",
+    "chapter": 3,
+    "verse_keys": [
+      "3:72",
+      "3:73",
+      "3:74"
+    ],
+    "duration_seconds": 61.048,
+    "captions_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.srt",
+    "facebook_compatible": true,
+    "created_at": "2026-11-26T18:02:58Z"
   }
 ]
