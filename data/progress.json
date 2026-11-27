@@ -367,7 +367,10 @@
     "3:71",
     "3:72",
     "3:73",
-    "3:74"
+    "3:74",
+    "3:75",
+    "3:76",
+    "3:77"
   ],
   "published_sections": [
     {
@@ -535,19 +538,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:72",
-      "3:73",
-      "3:74"
+      "3:75",
+      "3:76",
+      "3:77"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 61.048,
-    "visual_id": 35287109,
-    "visual_fingerprint": "000000404c262edd",
-    "theme": "mercy",
-    "visual_query": "warm lantern glowing inside quiet Islamic architecture, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.mp4",
-    "published_sha256": "2efd648a3de5f42e5f0e120a2622c71ca9bee24bf12b6ecb91b0121a59e62c82"
+    "duration_seconds": 76.669,
+    "visual_id": 39226573,
+    "visual_fingerprint": "00007000e822cb85",
+    "theme": "afterlife",
+    "visual_query": "vast empty plain beneath a glowing horizon, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-75-to-77-Cycle-1.mp4",
+    "published_sha256": "bd11ee1d57274c054610033ea6ffce4213d0fb887c20b1b11acbbf2e8a0dcf85"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -687,7 +690,8 @@
     30354458,
     34680752,
     28435597,
-    35287109
+    35287109,
+    39226573
   ],
   "theme_usage": {
     "guidance": 19,
@@ -703,7 +707,7 @@
     "mercy": 21,
     "water": 2,
     "hope": 1,
-    "afterlife": 13,
+    "afterlife": 14,
     "revelation": 2,
     "remembrance": 3,
     "mortality": 5,
@@ -717,7 +721,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 137,
+  "published_count": 138,
   "history": [
     {
       "cycle": 1,
@@ -2568,6 +2572,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-72-to-74-Cycle-1.mp4",
       "published_sha256": "2efd648a3de5f42e5f0e120a2622c71ca9bee24bf12b6ecb91b0121a59e62c82",
       "created_at": "2026-11-26T18:02:58Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:75",
+        "3:76",
+        "3:77"
+      ],
+      "visual_id": 39226573,
+      "theme": "afterlife",
+      "visual_query": "vast empty plain beneath a glowing horizon, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-75-to-77-Cycle-1.mp4",
+      "published_sha256": "bd11ee1d57274c054610033ea6ffce4213d0fb887c20b1b11acbbf2e8a0dcf85",
+      "created_at": "2026-11-27T17:50:08Z"
     }
   ],
   "visual_history": [
@@ -2707,7 +2725,8 @@
     30354458,
     34680752,
     28435597,
-    35287109
+    35287109,
+    39226573
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2741,6 +2760,7 @@
     "daaab1d5b4b6a4c4",
     "94d878e180c5e09c",
     "191a1c1c080aa9dd",
-    "000000404c262edd"
+    "000000404c262edd",
+    "00007000e822cb85"
   ]
 }
