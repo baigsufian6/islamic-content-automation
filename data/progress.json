@@ -370,7 +370,10 @@
     "3:74",
     "3:75",
     "3:76",
-    "3:77"
+    "3:77",
+    "3:78",
+    "3:79",
+    "3:80"
   ],
   "published_sections": [
     {
@@ -538,19 +541,19 @@
   "last_section": {
     "cycle": 1,
     "verse_keys": [
-      "3:75",
-      "3:76",
-      "3:77"
+      "3:78",
+      "3:79",
+      "3:80"
     ],
     "surah": "Ali 'Imran",
     "chapter": 3,
-    "duration_seconds": 76.669,
-    "visual_id": 39226573,
-    "visual_fingerprint": "00007000e822cb85",
-    "theme": "afterlife",
-    "visual_query": "vast empty plain beneath a glowing horizon, cinematic natural landscape, subtle movement",
-    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-75-to-77-Cycle-1.mp4",
-    "published_sha256": "bd11ee1d57274c054610033ea6ffce4213d0fb887c20b1b11acbbf2e8a0dcf85"
+    "duration_seconds": 77.949,
+    "visual_id": 38675832,
+    "visual_fingerprint": "f040663513550302",
+    "theme": "knowledge",
+    "visual_query": "old manuscript pages illuminated by soft sunlight, cinematic natural landscape, subtle movement",
+    "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-78-to-80-Cycle-1.mp4",
+    "published_sha256": "9f7c9b96f8bacbe41a8467cc715d686d1f3cb39d9baf40d86f3c9e35ea814af2"
   },
   "schema_version": 4,
   "used_pexels_ids": [
@@ -691,7 +694,8 @@
     34680752,
     28435597,
     35287109,
-    39226573
+    39226573,
+    38675832
   ],
   "theme_usage": {
     "guidance": 19,
@@ -699,7 +703,7 @@
     "justice": 6,
     "paradise": 4,
     "earth": 1,
-    "knowledge": 19,
+    "knowledge": 20,
     "worship": 6,
     "patience": 5,
     "warning": 5,
@@ -721,7 +725,7 @@
     "trust": 1
   },
   "completed_cycles": [],
-  "published_count": 138,
+  "published_count": 139,
   "history": [
     {
       "cycle": 1,
@@ -2586,6 +2590,20 @@
       "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-75-to-77-Cycle-1.mp4",
       "published_sha256": "bd11ee1d57274c054610033ea6ffce4213d0fb887c20b1b11acbbf2e8a0dcf85",
       "created_at": "2026-11-27T17:50:08Z"
+    },
+    {
+      "cycle": 1,
+      "verse_keys": [
+        "3:78",
+        "3:79",
+        "3:80"
+      ],
+      "visual_id": 38675832,
+      "theme": "knowledge",
+      "visual_query": "old manuscript pages illuminated by soft sunlight, cinematic natural landscape, subtle movement",
+      "published_file": "Surah-Ali-Imran-Chapter-3-Ayahs-78-to-80-Cycle-1.mp4",
+      "published_sha256": "9f7c9b96f8bacbe41a8467cc715d686d1f3cb39d9baf40d86f3c9e35ea814af2",
+      "created_at": "2026-11-28T16:35:51Z"
     }
   ],
   "visual_history": [
@@ -2726,7 +2744,8 @@
     34680752,
     28435597,
     35287109,
-    39226573
+    39226573,
+    38675832
   ],
   "visual_hashes": [
     "823171dbd0f4d133",
@@ -2761,6 +2780,7 @@
     "94d878e180c5e09c",
     "191a1c1c080aa9dd",
     "000000404c262edd",
-    "00007000e822cb85"
+    "00007000e822cb85",
+    "f040663513550302"
   ]
 }
